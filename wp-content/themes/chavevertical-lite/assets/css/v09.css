@@ -195,3 +195,30 @@
     grid-template-columns:repeat(5,minmax(0,1fr))!important;
   }
 }
+
+
+/* v0.9.3 — always keep the 9 featured categories on one desktop row */
+@media(min-width:992px){
+  .cvl-v4-categories-section .cvl-v4-category-grid{
+    grid-template-columns:repeat(9,minmax(0,1fr))!important;
+    gap:8px!important;
+  }
+
+  .cvl-v4-categories-section .cvl-v4-category-card{
+    min-width:0!important;
+  }
+
+  .cvl-v4-categories-section .cvl-v4-category-media{
+    padding:7px!important;
+  }
+
+  .cvl-v4-categories-section .cvl-v4-category-name{
+    min-height:50px!important;
+    padding:7px 8px!important;
+  }
+
+  .cvl-v4-categories-section .cvl-v4-category-name strong{
+    font-size:9px!important;
+    line-height:1.15!important;
+  }
+}
