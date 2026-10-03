@@ -70,11 +70,11 @@ defined( 'ABSPATH' ) || exit;
                     <li><a href="https://www.livroreclamacoes.pt/inicio/inicio" target="_blank" rel="noopener">Livro de Reclamações</a></li>
                     <li><a href="<?php echo esc_url( cvl_account_url() ); ?>">A minha conta</a></li>
                 </ul>
-                <div class="cvl-footer-trust">
-                    <img src="https://astro.chavevertical.com/livro-reclamacoes.webp?v=20260927-3" alt="Livro de Reclamações" loading="lazy">
-                    <img src="https://astro.chavevertical.com/shopmania-badge.png?v=20260927-3" alt="ShopMania" loading="lazy">
-                    <img src="https://astro.chavevertical.com/google-site-seguro.png?v=20260927-3" alt="Google Site Seguro" loading="lazy">
-                </div>
+            </div>
+            <div class="cvl-footer-trust">
+                <img src="https://astro.chavevertical.com/livro-reclamacoes.webp?v=20260927-3" alt="Livro de Reclamações" loading="lazy">
+                <img src="https://astro.chavevertical.com/shopmania-badge.png?v=20260927-3" alt="ShopMania" loading="lazy">
+                <img src="https://astro.chavevertical.com/google-site-seguro.png?v=20260927-3" alt="Google Site Seguro" loading="lazy">
             </div>
         </div>
     </div>
