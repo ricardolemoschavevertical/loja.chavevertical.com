@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.3.0' );
+define( 'CVL_VERSION', '0.4.0' );
 
 add_action( 'after_setup_theme', function () {
     load_theme_textdomain( 'chavevertical-lite', get_template_directory() . '/languages' );
@@ -32,6 +32,13 @@ add_action( 'wp_enqueue_scripts', function () {
         'cvl-main',
         get_template_directory_uri() . '/assets/css/main.css',
         array(),
+        CVL_VERSION
+    );
+
+    wp_enqueue_style(
+        'cvl-v04',
+        get_template_directory_uri() . '/assets/css/v04.css',
+        array( 'cvl-main' ),
         CVL_VERSION
     );
 
