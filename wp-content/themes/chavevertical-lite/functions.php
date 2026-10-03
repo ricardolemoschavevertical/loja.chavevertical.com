@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.4.0' );
+define( 'CVL_VERSION', '0.5.0' );
 
 add_action( 'after_setup_theme', function () {
     load_theme_textdomain( 'chavevertical-lite', get_template_directory() . '/languages' );
@@ -39,6 +39,13 @@ add_action( 'wp_enqueue_scripts', function () {
         'cvl-v04',
         get_template_directory_uri() . '/assets/css/v04.css',
         array( 'cvl-main' ),
+        CVL_VERSION
+    );
+
+    wp_enqueue_style(
+        'cvl-v05',
+        get_template_directory_uri() . '/assets/css/v05.css',
+        array( 'cvl-v04' ),
         CVL_VERSION
     );
 
@@ -167,7 +174,8 @@ function cvl_loop_product_category() {
 add_action( 'woocommerce_before_shop_loop_item_title', 'cvl_loop_product_category', 20 );
 
 /**
- * Card de produto: SKU à esquerda e marca/logótipo à direita.
+ * Card de produto: marca/logótipo centrado e referência numa linha própria,
+ * seguindo a hierarquia visual do storefront Shopware.
  */
 function cvl_loop_product_meta() {
     global $product;
@@ -179,17 +187,7 @@ function cvl_loop_product_meta() {
     $sku   = $product->get_sku();
     $brand = cvl_get_product_brand( $product->get_id() );
 
-    if ( ! $sku && ! $brand ) {
-        return;
-    }
-
-    echo '<div class="cvl-product-meta">';
-
-    if ( $sku ) {
-        echo '<span class="cvl-product-sku">' . esc_html( $sku ) . '</span>';
-    } else {
-        echo '<span></span>';
-    }
+    echo '<div class="cvl-product-brand-row">';
 
     if ( $brand ) {
         echo '<span class="cvl-product-brand" aria-label="' . esc_attr( $brand['name'] ) . '">';
@@ -215,8 +213,44 @@ function cvl_loop_product_meta() {
     }
 
     echo '</div>';
+
+    echo '<div class="cvl-product-sku-row">';
+
+    if ( $sku ) {
+        echo '<span class="cvl-product-sku" title="' . esc_attr( $sku ) . '"><i aria-hidden="true"></i>' . esc_html( $sku ) . '</span>';
+    }
+
+    echo '</div>';
 }
 add_action( 'woocommerce_after_shop_loop_item_title', 'cvl_loop_product_meta', 4 );
+
+/**
+ * Estado comercial no canto superior da imagem, como no layout Shopware.
+ */
+function cvl_loop_product_badge() {
+    global $product;
+
+    if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product ) {
+        return;
+    }
+
+    $status = $product->get_stock_status();
+    $class  = '';
+    $label  = __( 'POR ENCOMENDA', 'chavevertical-lite' );
+
+    if ( $product->is_on_sale() ) {
+        $class = 'is-sale';
+        $label = __( 'PROMOÇÃO', 'chavevertical-lite' );
+    } elseif ( 'instock' === $status ) {
+        $label = __( 'EM STOCK', 'chavevertical-lite' );
+    } elseif ( 'outofstock' === $status ) {
+        $class = 'is-unavailable';
+        $label = __( 'SOB CONSULTA', 'chavevertical-lite' );
+    }
+
+    echo '<span class="cvl-product-badge ' . esc_attr( $class ) . '">' . esc_html( $label ) . '</span>';
+}
+add_action( 'woocommerce_before_shop_loop_item_title', 'cvl_loop_product_badge', 5 );
 
 /**
  * Card de produto: disponibilidade perto do rating/preço.
@@ -237,7 +271,7 @@ function cvl_loop_product_stock() {
         $label = __( 'Em stock', 'chavevertical-lite' );
     } elseif ( 'outofstock' === $status ) {
         $class = 'is-outofstock';
-        $label = __( 'Indisponível', 'chavevertical-lite' );
+        $label = __( 'Sob consulta', 'chavevertical-lite' );
     }
 
     echo '<div class="cvl-product-stock ' . esc_attr( $class ) . '"><span aria-hidden="true"></span>' . esc_html( $label ) . '</div>';
@@ -275,6 +309,24 @@ add_filter( 'woocommerce_product_add_to_cart_text', function ( $text, $product )
 
     return __( 'Ver produto', 'chavevertical-lite' );
 }, 10, 2 );
+
+add_filter( 'woocommerce_loop_add_to_cart_link', function ( $html, $product ) {
+    if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product || ! $product->is_type( 'simple' ) || ! $product->is_purchasable() || ! $product->is_in_stock() ) {
+        return $html;
+    }
+
+    $icon = '<svg class="cvl-cart-button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 8H7"></path><circle cx="10" cy="20" r="1.2"></circle><circle cx="18" cy="20" r="1.2"></circle></svg>';
+    $label = esc_html__( 'Adicionar ao carrinho', 'chavevertical-lite' );
+    $replacement = '>' . $icon . '<span class="screen-reader-text">' . $label . '</span></a>';
+
+    $html = preg_replace( '/>[^<]*<\/a>$/', $replacement, $html, 1 );
+
+    if ( is_string( $html ) ) {
+        $html = str_replace( 'class="', 'class="cvl-cart-icon-button ', $html );
+    }
+
+    return $html;
+}, 20, 2 );
 
 /**
  * Ficha de produto: referência e marca imediatamente abaixo do título.
@@ -326,7 +378,7 @@ function cvl_single_product_meta_top() {
 add_action( 'woocommerce_single_product_summary', 'cvl_single_product_meta_top', 7 );
 
 add_filter( 'loop_shop_columns', function () {
-    return 5;
+    return 6;
 } );
 
 add_filter( 'loop_shop_per_page', function () {

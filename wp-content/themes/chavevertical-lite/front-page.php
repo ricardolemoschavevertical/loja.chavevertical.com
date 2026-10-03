@@ -126,25 +126,20 @@ $cvl_category_image = static function ( $term, $size = 'large', $loading = 'lazy
 };
 ?>
 
-<section class="cvl-v4-hero">
-    <div class="cvl-shell cvl-v4-hero-grid">
-        <div class="cvl-v4-hero-copy">
-            <span class="cvl-v4-eyebrow">MÁQUINAS · FERRAMENTAS · EQUIPAMENTO PROFISSIONAL</span>
-            <h1>Equipamento profissional para quem precisa de trabalhar.</h1>
-            <p>Oficina, indústria, construção, manutenção e logística. Um catálogo técnico organizado para encontrar rapidamente o produto certo.</p>
+<section class="cvl-ref-hero">
+    <div class="cvl-shell cvl-ref-hero-grid">
+        <div class="cvl-ref-hero-copy">
+            <span class="cvl-ref-kicker">EQUIPAMENTO PROFISSIONAL · APOIO ESPECIALIZADO</span>
+            <h1>Ferramentas certas.<br><span>Trabalho melhor.</span></h1>
+            <p>Máquinas, ferramentas e equipamento para oficina, indústria, construção e manutenção — com apoio de uma equipa que conhece o produto.</p>
 
-            <div class="cvl-v4-hero-actions">
-                <a class="cvl-v4-button cvl-v4-button-primary" href="<?php echo esc_url( $shop_url ); ?>">
-                    VER CATÁLOGO
-                    <span aria-hidden="true">→</span>
-                </a>
-                <a class="cvl-v4-button cvl-v4-button-secondary" href="<?php echo esc_url( home_url( '/contactos/' ) ); ?>">
-                    PEDIR COTAÇÃO
-                </a>
+            <div class="cvl-ref-hero-actions">
+                <a class="cvl-ref-button cvl-ref-button-primary" href="<?php echo esc_url( $shop_url ); ?>">EXPLORAR CATÁLOGO <span aria-hidden="true">→</span></a>
+                <a class="cvl-ref-button cvl-ref-button-ghost" href="<?php echo esc_url( home_url( '/contactos/' ) ); ?>">PEDIR COTAÇÃO</a>
             </div>
 
-            <div class="cvl-v4-quick-searches">
-                <span>Pesquisa rápida</span>
+            <div class="cvl-ref-popular-searches">
+                <span>Mais procurado:</span>
                 <a href="<?php echo esc_url( home_url( '/?s=carro+de+ferramentas&post_type=product' ) ); ?>">Carros de ferramentas</a>
                 <a href="<?php echo esc_url( home_url( '/?s=compressor&post_type=product' ) ); ?>">Compressores</a>
                 <a href="<?php echo esc_url( home_url( '/?s=porta-paletes&post_type=product' ) ); ?>">Porta-paletes</a>
@@ -152,50 +147,28 @@ $cvl_category_image = static function ( $term, $size = 'large', $loading = 'lazy
             </div>
         </div>
 
-        <?php if ( ! empty( $hero_categories ) ) : ?>
-            <div class="cvl-v4-hero-categories" aria-label="<?php esc_attr_e( 'Áreas principais', 'chavevertical-lite' ); ?>">
-                <?php foreach ( $hero_categories as $index => $hero_category ) : ?>
-                    <?php
-                    $hero_url = get_term_link( $hero_category );
-
-                    if ( is_wp_error( $hero_url ) ) {
-                        continue;
-                    }
-
-                    $hero_image = $cvl_category_image(
-                        $hero_category,
-                        0 === $index ? 'large' : 'medium_large',
-                        'eager'
-                    );
-                    ?>
-                    <a class="cvl-v4-hero-category <?php echo 0 === $index ? 'is-primary' : ''; ?>" href="<?php echo esc_url( $hero_url ); ?>">
-                        <span class="cvl-v4-hero-category-media">
-                            <?php
-                            if ( $hero_image ) {
-                                echo wp_kses_post( $hero_image );
-                            } else {
-                                echo '<span class="cvl-v4-category-fallback" aria-hidden="true">CV</span>';
-                            }
-                            ?>
-                        </span>
-                        <span class="cvl-v4-hero-category-copy">
-                            <small><?php echo 0 === $index ? 'ÁREA EM DESTAQUE' : 'EXPLORAR'; ?></small>
-                            <strong><?php echo esc_html( $hero_category->name ); ?></strong>
-                            <span aria-hidden="true">↗</span>
-                        </span>
-                    </a>
-                <?php endforeach; ?>
+        <div class="cvl-ref-hero-visual" aria-label="CHAVE VERTICAL">
+            <span class="cvl-ref-hero-shape" aria-hidden="true"></span>
+            <div class="cvl-ref-hero-machine">
+                <span>CV</span>
+                <strong>CATÁLOGO PROFISSIONAL</strong>
+                <small>OFICINA · INDÚSTRIA · CONSTRUÇÃO</small>
             </div>
-        <?php endif; ?>
+            <div class="cvl-ref-hero-card">
+                <small>EQUIPAMENTO PROFISSIONAL</small>
+                <b>Mais de 30.000 referências</b>
+                <span>Compra técnica acompanhada</span>
+            </div>
+        </div>
     </div>
 </section>
 
-<section class="cvl-v4-trust">
-    <div class="cvl-shell cvl-v4-trust-grid">
-        <div><strong>30.000+</strong><span>referências profissionais</span></div>
-        <div><strong>Portugal</strong><span>entregas em todo o país</span></div>
-        <div><strong>Apoio técnico</strong><span>antes e depois da compra</span></div>
-        <div><strong>B2B</strong><span>propostas para empresas e projetos</span></div>
+<section class="cvl-ref-benefits" aria-label="Vantagens Chave Vertical">
+    <div class="cvl-shell cvl-ref-benefit-grid">
+        <div><span class="cvl-ref-benefit-icon">↗</span><span><b>Entregas em Portugal</b><small>Transporte adequado ao equipamento</small></span></div>
+        <div><span class="cvl-ref-benefit-icon">✓</span><span><b>Compra acompanhada</b><small>Informação clara antes da encomenda</small></span></div>
+        <div><span class="cvl-ref-benefit-icon">◎</span><span><b>Apoio especializado</b><small>Comercial, técnico e pós-venda</small></span></div>
+        <div><span class="cvl-ref-benefit-icon">⚙</span><span><b>Catálogo profissional</b><small>Máquinas, ferramentas e consumíveis</small></span></div>
     </div>
 </section>
 
@@ -268,7 +241,7 @@ $cvl_category_image = static function ( $term, $size = 'large', $loading = 'lazy
 
         <?php
         if ( function_exists( 'woocommerce_product_loop_start' ) ) {
-            wc_set_loop_prop( 'columns', 5 );
+            wc_set_loop_prop( 'columns', 6 );
             woocommerce_product_loop_start();
 
             global $post;
