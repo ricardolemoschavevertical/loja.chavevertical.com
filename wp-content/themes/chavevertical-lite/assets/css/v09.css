@@ -222,3 +222,78 @@
     line-height:1.15!important;
   }
 }
+
+
+/* v0.9.4 — normalize contact dropdown into a clean vertical list */
+.cvl-contact-dropdown{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  justify-content:flex-start!important;
+  width:300px!important;
+  padding:0!important;
+  overflow:hidden!important;
+  background:#fff!important;
+  border:1px solid #e5e8ea!important;
+  border-radius:0!important;
+  box-shadow:0 10px 24px rgba(23,30,35,.14)!important;
+}
+
+.cvl-contact-dropdown>a{
+  box-sizing:border-box!important;
+  width:100%!important;
+  min-width:100%!important;
+  max-width:100%!important;
+  min-height:38px!important;
+  padding:0 14px!important;
+  display:flex!important;
+  flex:0 0 auto!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:9px!important;
+  margin:0!important;
+  border:0!important;
+  border-bottom:1px solid #eceff0!important;
+  border-radius:0!important;
+  background:#fff!important;
+  color:#626a6e!important;
+  font-size:11px!important;
+  font-weight:700!important;
+  line-height:1.2!important;
+  text-align:left!important;
+  text-transform:uppercase!important;
+  white-space:nowrap!important;
+}
+
+.cvl-contact-dropdown>a:last-child{
+  border-bottom:0!important;
+}
+
+.cvl-contact-dropdown>a:hover,
+.cvl-contact-dropdown>a:focus-visible{
+  background:#f4f6f6!important;
+  color:#087a70!important;
+}
+
+.cvl-contact-dropdown-icon{
+  width:16px!important;
+  min-width:16px!important;
+  flex:0 0 16px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  color:#8a9296!important;
+  font-size:11px!important;
+}
+
+@media(max-width:991.98px){
+  .cvl-contact-dropdown{
+    width:100%!important;
+    box-shadow:none!important;
+  }
+
+  .cvl-contact-dropdown>a{
+    min-height:42px!important;
+    padding:0 24px 0 30px!important;
+  }
+}
