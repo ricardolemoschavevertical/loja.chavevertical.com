@@ -326,3 +326,36 @@
     font-size:10.4px!important;
   }
 }
+
+
+/* v0.8.3 — categories button closer to reference screenshot */
+@media(min-width:992px){
+  .cvl-nav-inner{
+    align-items:center!important;
+    min-height:58px!important;
+  }
+
+  .cvl-categories-link{
+    width:auto!important;
+    min-width:0!important;
+    min-height:36px!important;
+    height:36px!important;
+    padding:0 10px!important;
+    gap:7px!important;
+    align-self:center!important;
+    border-radius:4px!important;
+    font-size:11px!important;
+    line-height:1!important;
+  }
+
+  .cvl-nav-menu-icon{
+    width:14px!important;
+    height:11px!important;
+    flex-basis:14px!important;
+  }
+
+  .cvl-nav-menu-icon i{
+    width:14px!important;
+    height:2px!important;
+  }
+}
