@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.8.3' );
+define( 'CVL_VERSION', '0.8.4' );
 
 add_action( 'after_setup_theme', function () {
     load_theme_textdomain( 'chavevertical-lite', get_template_directory() . '/languages' );
