@@ -84,38 +84,18 @@ defined( 'ABSPATH' ) || exit;
 
     <nav class="cvl-nav" id="cvl-main-nav" aria-label="<?php esc_attr_e( 'Navegação principal', 'chavevertical-lite' ); ?>">
         <div class="cvl-shell cvl-nav-inner">
-            <?php
-            $cvl_top_categories = array();
-            if ( taxonomy_exists( 'product_cat' ) ) {
-                $cvl_excluded_nav_categories = array();
-                $cvl_uncategorized_nav = get_term_by( 'slug', 'uncategorized', 'product_cat' );
-                if ( $cvl_uncategorized_nav && ! is_wp_error( $cvl_uncategorized_nav ) ) {
-                    $cvl_excluded_nav_categories[] = (int) $cvl_uncategorized_nav->term_id;
-                }
-                $cvl_top_categories = get_terms( array(
-                    'taxonomy' => 'product_cat', 'parent' => 0, 'hide_empty' => false,
-                    'exclude' => $cvl_excluded_nav_categories, 'number' => 0,
-                    'orderby' => 'name', 'order' => 'ASC',
-                ) );
-                if ( is_wp_error( $cvl_top_categories ) ) {
-                    $cvl_top_categories = array();
-                }
-            }
-            ?>
+            <?php $cvl_category_tree = cvl_get_product_category_tree(); ?>
 
-            <?php if ( ! empty( $cvl_top_categories ) ) : ?>
-                <details class="cvl-categories-menu">
-                    <summary class="cvl-categories-link"><span class="cvl-nav-menu-icon" aria-hidden="true"><i></i><i></i><i></i></span><span>CATEGORIAS</span></summary>
-                    <div class="cvl-categories-dropdown">
-                        <?php foreach ( $cvl_top_categories as $cvl_category ) : ?>
-                            <?php $cvl_category_url = get_term_link( $cvl_category ); ?>
-                            <?php if ( ! is_wp_error( $cvl_category_url ) ) : ?>
-                                <a href="<?php echo esc_url( $cvl_category_url ); ?>"><span><?php echo esc_html( $cvl_category->name ); ?></span><small><?php echo esc_html( number_format_i18n( $cvl_category->count ) ); ?></small></a>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-                        <a class="cvl-categories-all" href="<?php echo esc_url( cvl_shop_url() ); ?>"><strong><?php esc_html_e( 'VER TODOS OS PRODUTOS', 'chavevertical-lite' ); ?></strong></a>
-                    </div>
-                </details>
+            <?php if ( ! empty( $cvl_category_tree[0] ) ) : ?>
+                <button
+                    class="cvl-categories-link cvl-categories-trigger"
+                    type="button"
+                    aria-expanded="false"
+                    aria-controls="cvl-category-drawer"
+                >
+                    <span class="cvl-nav-menu-icon" aria-hidden="true"><i></i><i></i><i></i></span>
+                    <span>CATEGORIAS</span>
+                </button>
             <?php else : ?>
                 <a class="cvl-categories-link" href="<?php echo esc_url( cvl_shop_url() ); ?>">☰ <span>CATEGORIAS</span></a>
             <?php endif; ?>
@@ -142,6 +122,30 @@ defined( 'ABSPATH' ) || exit;
             <a class="cvl-nav-cta" href="<?php echo esc_url( home_url( '/contactos/' ) ); ?>">PEDIDO DE CONTACTO</a>
         </div>
     </nav>
+
+    <?php if ( ! empty( $cvl_category_tree[0] ) ) : ?>
+        <div class="cvl-category-overlay" hidden></div>
+
+        <aside
+            id="cvl-category-drawer"
+            class="cvl-category-drawer"
+            aria-hidden="true"
+            aria-label="<?php esc_attr_e( 'Categorias de produtos', 'chavevertical-lite' ); ?>"
+        >
+            <div class="cvl-category-drawer-header">
+                <strong><?php esc_html_e( 'CATEGORIAS', 'chavevertical-lite' ); ?></strong>
+                <button class="cvl-category-drawer-close" type="button" aria-label="<?php esc_attr_e( 'Fechar categorias', 'chavevertical-lite' ); ?>">×</button>
+            </div>
+
+            <div class="cvl-category-drawer-body">
+                <?php cvl_render_category_drawer_items( $cvl_category_tree ); ?>
+            </div>
+
+            <div class="cvl-category-drawer-footer">
+                <a href="<?php echo esc_url( cvl_shop_url() ); ?>"><?php esc_html_e( 'VER TODOS OS PRODUTOS', 'chavevertical-lite' ); ?> <span aria-hidden="true">→</span></a>
+            </div>
+        </aside>
+    <?php endif; ?>
 </header>
 
 <main id="content" class="cvl-main">
