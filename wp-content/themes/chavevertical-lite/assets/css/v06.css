@@ -353,3 +353,41 @@ body.cvl-category-drawer-open{
     max-height:42px!important;
   }
 }
+
+
+/* Square category imagery — keep original artwork intact */
+.cvl-v4-category-media,
+.cvl-shop-category-section .cvl-category-image,
+.cvl-category-grid-premium .cvl-category-image{
+  width:100%!important;
+  height:auto!important;
+  min-height:0!important;
+  aspect-ratio:1 / 1!important;
+  padding:12px!important;
+  display:grid!important;
+  place-items:center!important;
+  overflow:hidden!important;
+  background:#fff!important;
+}
+.cvl-v4-category-media img,
+.cvl-shop-category-section .cvl-category-image img,
+.cvl-category-grid-premium .cvl-category-image img{
+  width:100%!important;
+  height:100%!important;
+  max-width:100%!important;
+  max-height:100%!important;
+  margin:0!important;
+  object-fit:contain!important;
+  object-position:center!important;
+}
+.cvl-v4-category-card,
+.cvl-shop-category-section .cvl-category-card,
+.cvl-category-grid-premium .cvl-category-card{
+  display:flex!important;
+  flex-direction:column!important;
+}
+.cvl-v4-category-name,
+.cvl-shop-category-section .cvl-category-copy,
+.cvl-category-grid-premium .cvl-category-copy{
+  margin-top:auto!important;
+}
