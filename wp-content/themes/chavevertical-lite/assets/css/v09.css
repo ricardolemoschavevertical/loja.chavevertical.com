@@ -1,0 +1,156 @@
+/* Chave Vertical Lite v0.9 — verified contact dropdown */
+
+.cvl-menu-reference>li.is-contact-item{
+  position:relative!important;
+  overflow:visible!important;
+}
+
+.cvl-contact-menu{
+  position:relative;
+  min-height:58px;
+}
+
+.cvl-contact-menu>summary{
+  list-style:none;
+}
+
+.cvl-contact-menu>summary::-webkit-details-marker{
+  display:none;
+}
+
+.cvl-contact-menu-trigger{
+  min-height:58px;
+  padding:0 18px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  color:#287d18;
+  background:#fff;
+  cursor:pointer;
+  font-size:12px;
+  font-weight:800;
+  line-height:1;
+  white-space:nowrap;
+  text-transform:uppercase;
+  transition:background .15s ease,color .15s ease;
+}
+
+.cvl-contact-menu-trigger:hover,
+.cvl-contact-menu[open]>.cvl-contact-menu-trigger{
+  background:#f7f9f9;
+  color:#087a70;
+}
+
+.cvl-contact-menu-icon{
+  width:15px;
+  height:15px;
+  display:grid;
+  place-items:center;
+  color:#16900f;
+  font-size:12px;
+  line-height:1;
+}
+
+.cvl-contact-menu-chevron{
+  margin-left:-2px;
+  color:#336c4c;
+  font-size:13px;
+  transform:translateY(-1px);
+  transition:transform .15s ease;
+}
+
+.cvl-contact-menu[open] .cvl-contact-menu-chevron{
+  transform:translateY(-1px) rotate(180deg);
+}
+
+.cvl-contact-dropdown{
+  position:absolute;
+  z-index:120;
+  top:100%;
+  right:0;
+  width:292px;
+  padding:0;
+  overflow:hidden;
+  border:1px solid #eceeef;
+  background:#fff;
+  box-shadow:0 11px 28px rgba(23,30,35,.14);
+}
+
+.cvl-contact-dropdown>a{
+  min-height:34px;
+  padding:0 17px;
+  display:grid;
+  grid-template-columns:18px minmax(0,1fr);
+  align-items:center;
+  gap:7px;
+  border-bottom:1px solid #eeeeee;
+  background:#fff;
+  color:#777;
+  font-size:11px;
+  font-weight:600;
+  line-height:1.2;
+  text-transform:uppercase;
+}
+
+.cvl-contact-dropdown>a:last-child{
+  border-bottom:0;
+}
+
+.cvl-contact-dropdown>a:hover,
+.cvl-contact-dropdown>a:focus-visible{
+  background:#f1f1f1;
+  color:#4f5559;
+}
+
+.cvl-contact-dropdown-icon{
+  display:grid;
+  place-items:center;
+  color:#858c90;
+  font-size:12px;
+  line-height:1;
+}
+
+@media(max-width:1199.98px){
+  .cvl-contact-menu-trigger{
+    padding-inline:12px;
+    font-size:10.8px;
+  }
+
+  .cvl-contact-dropdown{
+    width:278px;
+  }
+}
+
+@media(max-width:991.98px){
+  .cvl-contact-menu{
+    width:100%;
+    min-height:0;
+  }
+
+  .cvl-contact-menu-trigger{
+    min-height:46px;
+    padding:0 18px;
+    justify-content:flex-start;
+    border-bottom:1px solid #edf0f1;
+    font-size:12px;
+  }
+
+  .cvl-contact-menu-chevron{
+    margin-left:auto;
+  }
+
+  .cvl-contact-dropdown{
+    position:static;
+    width:100%;
+    border:0;
+    border-bottom:1px solid #edf0f1;
+    box-shadow:none;
+  }
+
+  .cvl-contact-dropdown>a{
+    min-height:42px;
+    padding-left:30px;
+    background:#fafbfb;
+  }
+}
