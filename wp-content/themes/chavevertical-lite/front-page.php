@@ -9,13 +9,21 @@ $products   = array();
 $brands     = array();
 
 if ( taxonomy_exists( 'product_cat' ) ) {
+    $cvl_excluded_categories = array();
+    $cvl_uncategorized = get_term_by( 'slug', 'uncategorized', 'product_cat' );
+
+    if ( $cvl_uncategorized && ! is_wp_error( $cvl_uncategorized ) ) {
+        $cvl_excluded_categories[] = (int) $cvl_uncategorized->term_id;
+    }
+
     $categories = get_terms( array(
         'taxonomy'   => 'product_cat',
         'parent'     => 0,
         'hide_empty' => false,
-        'number'     => 8,
-        'orderby'    => 'count',
-        'order'      => 'DESC',
+        'exclude'    => $cvl_excluded_categories,
+        'number'     => 12,
+        'orderby'    => 'name',
+        'order'      => 'ASC',
     ) );
 
     if ( is_wp_error( $categories ) ) {
