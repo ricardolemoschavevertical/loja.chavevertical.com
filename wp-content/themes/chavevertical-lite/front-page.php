@@ -82,27 +82,14 @@ if ( taxonomy_exists( 'product_brand' ) ) {
     $brands = get_terms( array(
         'taxonomy'   => 'product_brand',
         'hide_empty' => false,
-        'number'     => 28,
+        'number'     => 0,
         'orderby'    => 'name',
         'order'      => 'ASC',
-        'meta_query' => array(
-            array(
-                'key'     => 'thumbnail_id',
-                'compare' => 'EXISTS',
-            ),
-        ),
     ) );
 
     if ( is_wp_error( $brands ) ) {
         $brands = array();
     }
-
-    $brands = array_values(
-        array_filter(
-            $brands,
-            static fn( $brand ) => absint( get_term_meta( $brand->term_id, 'thumbnail_id', true ) ) > 0
-        )
-    );
 }
 
 if ( function_exists( 'wc_get_products' ) ) {
@@ -286,7 +273,13 @@ $cvl_category_image = static function ( $term, $size = 'large', $loading = 'lazy
     </div>
 
     <div class="cvl-brand-carousel-shell" aria-hidden="true">
-        <div class="cvl-brand-carousel-track">
+        <?php
+        $cvl_brand_duration = max(
+            32,
+            (int) round( ( max( 1, count( $brands ) ) / 28 ) * 32 )
+        );
+        ?>
+        <div class="cvl-brand-carousel-track" style="--cvl-brand-duration: <?php echo esc_attr( (string) $cvl_brand_duration ); ?>s;">
             <?php
             $cvl_brand_track = array_merge( $brands, $brands );
 
@@ -299,9 +292,6 @@ $cvl_category_image = static function ( $term, $size = 'large', $loading = 'lazy
 
                 $thumbnail_id = absint( get_term_meta( $brand->term_id, 'thumbnail_id', true ) );
 
-                if ( ! $thumbnail_id ) {
-                    continue;
-                }
                 ?>
                 <a
                     class="cvl-brand-carousel-item"
@@ -310,18 +300,22 @@ $cvl_category_image = static function ( $term, $size = 'large', $loading = 'lazy
                     tabindex="-1"
                 >
                     <?php
-                    echo wp_kses_post(
-                        wp_get_attachment_image(
-                            $thumbnail_id,
-                            'medium',
-                            false,
-                            array(
-                                'loading'  => 'lazy',
-                                'decoding' => 'async',
-                                'alt'      => $brand->name,
+                    if ( $thumbnail_id ) {
+                        echo wp_kses_post(
+                            wp_get_attachment_image(
+                                $thumbnail_id,
+                                'medium',
+                                false,
+                                array(
+                                    'loading'  => 'lazy',
+                                    'decoding' => 'async',
+                                    'alt'      => $brand->name,
+                                )
                             )
-                        )
-                    );
+                        );
+                    } else {
+                        echo '<span class="cvl-brand-carousel-name">' . esc_html( $brand->name ) . '</span>';
+                    }
                     ?>
                 </a>
             <?php endforeach; ?>
