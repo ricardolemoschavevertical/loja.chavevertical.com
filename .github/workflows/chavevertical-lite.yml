@@ -6,6 +6,7 @@ on:
     paths:
       - "wp-content/themes/chavevertical-lite/**"
       - ".github/workflows/chavevertical-lite.yml"
+      - "ops/deploy-theme.sh"
   workflow_dispatch:
 
 permissions:
@@ -13,11 +14,13 @@ permissions:
 
 concurrency:
   group: chavevertical-lite-deploy
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   package:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -49,53 +52,22 @@ jobs:
 
   deploy:
     needs: package
-    runs-on: ubuntu-latest
-    env:
-      WP_SSH_HOST: ${{ secrets.WP_SSH_HOST }}
-      WP_SSH_USER: ${{ secrets.WP_SSH_USER }}
-      WP_SSH_KEY: ${{ secrets.WP_SSH_KEY }}
-      WP_SSH_PORT: ${{ secrets.WP_SSH_PORT }}
-      WP_PATH: ${{ secrets.WP_PATH }}
-
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-      - name: Check deploy configuration
-        id: config
-        shell: bash
-        run: |
-          if [ -n "$WP_SSH_HOST" ] && [ -n "$WP_SSH_USER" ] && [ -n "$WP_SSH_KEY" ] && [ -n "$WP_PATH" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "SSH deploy not configured. Theme ZIP was still built successfully."
-          fi
+      - name: Download validated theme ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: chavevertical-lite
+          path: ${{ runner.temp }}/chavevertical-lite-${{ github.run_id }}-${{ github.run_attempt }}
 
-      - name: Configure SSH
-        if: steps.config.outputs.ready == 'true'
+      - name: Deploy and verify theme
         shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p ~/.ssh
-          printf '%s\n' "$WP_SSH_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          PORT="${WP_SSH_PORT:-22}"
-          ssh-keyscan -p "$PORT" -H "$WP_SSH_HOST" >> ~/.ssh/known_hosts
-
-      - name: Deploy theme
-        if: steps.config.outputs.ready == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          PORT="${WP_SSH_PORT:-22}"
-          DEST="$WP_PATH/wp-content/themes/chavevertical-lite"
-          ssh -p "$PORT" "$WP_SSH_USER@$WP_SSH_HOST" "mkdir -p '$DEST'"
-          rsync -az --delete -e "ssh -p $PORT"             wp-content/themes/chavevertical-lite/             "$WP_SSH_USER@$WP_SSH_HOST:$DEST/"
-
-      - name: Verify deployed theme
-        if: steps.config.outputs.ready == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          PORT="${WP_SSH_PORT:-22}"
-          ssh -p "$PORT" "$WP_SSH_USER@$WP_SSH_HOST"             "test -f '$WP_PATH/wp-content/themes/chavevertical-lite/style.css' && test -f '$WP_PATH/wp-content/themes/chavevertical-lite/functions.php' && echo 'Theme deployed successfully.'"
+        env:
+          THEME_ZIP: ${{ runner.temp }}/chavevertical-lite-${{ github.run_id }}-${{ github.run_attempt }}/chavevertical-lite.zip
+        run: bash ops/deploy-theme.sh "$THEME_ZIP"
