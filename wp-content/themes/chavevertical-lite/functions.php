@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.1.0' );
+define( 'CVL_VERSION', '0.2.0' );
 
 add_action( 'after_setup_theme', function () {
     load_theme_textdomain( 'chavevertical-lite', get_template_directory() . '/languages' );
@@ -72,6 +72,7 @@ function cvl_cart_count() {
     if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
         return 0;
     }
+
     return WC()->cart->get_cart_contents_count();
 }
 
@@ -81,6 +82,7 @@ add_filter( 'woocommerce_add_to_cart_fragments', function ( $fragments ) {
     <span class="cvl-cart-count"><?php echo esc_html( cvl_cart_count() ); ?></span>
     <?php
     $fragments['span.cvl-cart-count'] = ob_get_clean();
+
     return $fragments;
 } );
 
@@ -93,4 +95,245 @@ add_action( 'widgets_init', function () {
         'before_title'  => '<h3>',
         'after_title'   => '</h3>',
     ) );
+} );
+
+/**
+ * Dados da marca do produto.
+ * Usa a taxonomia product_brand quando existir e mostra o respetivo
+ * thumbnail_id quando estiver disponível. Caso contrário devolve só o nome.
+ */
+function cvl_get_product_brand( $product_id ) {
+    if ( ! taxonomy_exists( 'product_brand' ) ) {
+        return null;
+    }
+
+    $terms = wp_get_post_terms( $product_id, 'product_brand' );
+
+    if ( is_wp_error( $terms ) || empty( $terms ) ) {
+        return null;
+    }
+
+    $term         = reset( $terms );
+    $thumbnail_id = absint( get_term_meta( $term->term_id, 'thumbnail_id', true ) );
+
+    return array(
+        'name'         => $term->name,
+        'url'          => get_term_link( $term ),
+        'thumbnail_id' => $thumbnail_id,
+    );
+}
+
+function cvl_get_product_primary_category( $product_id ) {
+    $terms = wp_get_post_terms( $product_id, 'product_cat' );
+
+    if ( is_wp_error( $terms ) || empty( $terms ) ) {
+        return null;
+    }
+
+    foreach ( $terms as $term ) {
+        if ( ! in_array( strtolower( $term->name ), array( 'uncategorized', 'predefinido' ), true ) ) {
+            return $term;
+        }
+    }
+
+    return reset( $terms );
+}
+
+/**
+ * Card de produto: categoria por cima do título.
+ */
+function cvl_loop_product_category() {
+    global $product;
+
+    if ( ! $product instanceof WC_Product ) {
+        return;
+    }
+
+    $category = cvl_get_product_primary_category( $product->get_id() );
+
+    if ( ! $category ) {
+        return;
+    }
+
+    $url = get_term_link( $category );
+
+    if ( is_wp_error( $url ) ) {
+        return;
+    }
+
+    echo '<a class="cvl-product-category" href="' . esc_url( $url ) . '">' . esc_html( $category->name ) . '</a>';
+}
+add_action( 'woocommerce_before_shop_loop_item_title', 'cvl_loop_product_category', 20 );
+
+/**
+ * Card de produto: SKU à esquerda e marca/logótipo à direita.
+ */
+function cvl_loop_product_meta() {
+    global $product;
+
+    if ( ! $product instanceof WC_Product ) {
+        return;
+    }
+
+    $sku   = $product->get_sku();
+    $brand = cvl_get_product_brand( $product->get_id() );
+
+    if ( ! $sku && ! $brand ) {
+        return;
+    }
+
+    echo '<div class="cvl-product-meta">';
+
+    if ( $sku ) {
+        echo '<span class="cvl-product-sku">' . esc_html( $sku ) . '</span>';
+    } else {
+        echo '<span></span>';
+    }
+
+    if ( $brand ) {
+        $brand_url = is_wp_error( $brand['url'] ) ? '' : $brand['url'];
+
+        if ( $brand_url ) {
+            echo '<a class="cvl-product-brand" href="' . esc_url( $brand_url ) . '" aria-label="' . esc_attr( $brand['name'] ) . '">';
+        } else {
+            echo '<span class="cvl-product-brand">';
+        }
+
+        if ( $brand['thumbnail_id'] ) {
+            echo wp_kses_post(
+                wp_get_attachment_image(
+                    $brand['thumbnail_id'],
+                    'medium',
+                    false,
+                    array(
+                        'class'   => 'cvl-product-brand-logo',
+                        'loading' => 'lazy',
+                        'alt'     => $brand['name'],
+                    )
+                )
+            );
+        } else {
+            echo '<span class="cvl-product-brand-name">' . esc_html( $brand['name'] ) . '</span>';
+        }
+
+        echo $brand_url ? '</a>' : '</span>';
+    }
+
+    echo '</div>';
+}
+add_action( 'woocommerce_after_shop_loop_item_title', 'cvl_loop_product_meta', 4 );
+
+/**
+ * Card de produto: disponibilidade perto do rating/preço.
+ */
+function cvl_loop_product_stock() {
+    global $product;
+
+    if ( ! $product instanceof WC_Product ) {
+        return;
+    }
+
+    $status = $product->get_stock_status();
+    $class  = 'is-backorder';
+    $label  = __( 'Disponível por encomenda', 'chavevertical-lite' );
+
+    if ( 'instock' === $status ) {
+        $class = 'is-instock';
+        $label = __( 'Em stock', 'chavevertical-lite' );
+    } elseif ( 'outofstock' === $status ) {
+        $class = 'is-outofstock';
+        $label = __( 'Indisponível', 'chavevertical-lite' );
+    }
+
+    echo '<div class="cvl-product-stock ' . esc_attr( $class ) . '"><span aria-hidden="true"></span>' . esc_html( $label ) . '</div>';
+}
+add_action( 'woocommerce_after_shop_loop_item_title', 'cvl_loop_product_stock', 7 );
+
+/**
+ * Ações do card: botão principal WooCommerce + botão Ver.
+ */
+function cvl_loop_actions_open() {
+    echo '<div class="cvl-product-actions">';
+}
+add_action( 'woocommerce_after_shop_loop_item', 'cvl_loop_actions_open', 9 );
+
+function cvl_loop_view_button() {
+    global $product;
+
+    if ( ! $product instanceof WC_Product ) {
+        return;
+    }
+
+    echo '<a class="button cvl-view-product" href="' . esc_url( $product->get_permalink() ) . '">' . esc_html__( 'Ver', 'chavevertical-lite' ) . '</a>';
+}
+add_action( 'woocommerce_after_shop_loop_item', 'cvl_loop_view_button', 15 );
+
+function cvl_loop_actions_close() {
+    echo '</div>';
+}
+add_action( 'woocommerce_after_shop_loop_item', 'cvl_loop_actions_close', 20 );
+
+add_filter( 'woocommerce_product_add_to_cart_text', function ( $text, $product ) {
+    if ( $product instanceof WC_Product && $product->is_type( 'simple' ) && $product->is_purchasable() && $product->is_in_stock() ) {
+        return __( 'Adicionar ao carrinho', 'chavevertical-lite' );
+    }
+
+    return __( 'Ver produto', 'chavevertical-lite' );
+}, 10, 2 );
+
+/**
+ * Ficha de produto: referência e marca imediatamente abaixo do título.
+ */
+function cvl_single_product_meta_top() {
+    global $product;
+
+    if ( ! $product instanceof WC_Product ) {
+        return;
+    }
+
+    $sku   = $product->get_sku();
+    $brand = cvl_get_product_brand( $product->get_id() );
+
+    if ( ! $sku && ! $brand ) {
+        return;
+    }
+
+    echo '<div class="cvl-single-meta-top">';
+
+    if ( $sku ) {
+        echo '<div class="cvl-single-sku"><small>' . esc_html__( 'Referência', 'chavevertical-lite' ) . '</small><strong>' . esc_html( $sku ) . '</strong></div>';
+    }
+
+    if ( $brand ) {
+        echo '<div class="cvl-single-brand">';
+
+        if ( $brand['thumbnail_id'] ) {
+            echo wp_kses_post(
+                wp_get_attachment_image(
+                    $brand['thumbnail_id'],
+                    'medium',
+                    false,
+                    array(
+                        'class' => 'cvl-single-brand-logo',
+                        'alt'   => $brand['name'],
+                    )
+                )
+            );
+        } else {
+            echo '<strong>' . esc_html( $brand['name'] ) . '</strong>';
+        }
+
+        echo '</div>';
+    }
+
+    echo '</div>';
+}
+add_action( 'woocommerce_single_product_summary', 'cvl_single_product_meta_top', 7 );
+
+add_filter( 'loop_shop_columns', function () {
+    return 5;
+} );
+
+add_filter( 'loop_shop_per_page', function () {
+    return 30;
 } );
