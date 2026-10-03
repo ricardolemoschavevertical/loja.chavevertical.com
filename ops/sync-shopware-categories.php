@@ -141,7 +141,7 @@ foreach ( $categories as $category ) {
         $parentTermId = (int) $sourceToTerm[ $parentSourceId ];
     }
 
-    $name = trim( wp_strip_all_tags( (string) $category['name'] ) );
+    $name = trim( html_entity_decode( wp_strip_all_tags( (string) $category['name'] ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ) );
     $slug = sanitize_title( (string) ( $category['slug'] ?? '' ) );
     if ( $slug === '' ) {
         $slug = sanitize_title( $name );
