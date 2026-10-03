@@ -1,0 +1,24 @@
+name: Inspect Woo Categories
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/inspect-woo-categories.yml"
+      - "ops/sync-shopware-categories.php"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Inspect WooCommerce categories
+        shell: bash
+        run: php ops/sync-shopware-categories.php
