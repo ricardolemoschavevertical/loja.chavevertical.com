@@ -1,0 +1,65 @@
+name: Import Shopware Categories Once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/import-shopware-categories-once.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  import:
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Download validated category manifest
+        shell: bash
+        env:
+          CATEGORY_ARCHIVE_URL: "https://sdmntprdenmarkeast.oaiusercontent.com/files/00000000-c7a0-8210-9c62-e1f7a18c549a/raw?se=2026-10-03T21%3A40%3A29Z&sp=r&sv=2026-02-06&sr=b&scid=4b5b2f6e-573e-5ab5-a585-d6ee8b4fab1c&skoid=a4604a88-85e4-4562-b6ab-a5622268de80&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-10-03T06%3A44%3A02Z&ske=2026-10-04T06%3A44%3A02Z&sks=b&skv=2026-02-06&sig=7sUOcgZgv64R609nn9vqMqIcQVElB3%2BSrD5pAd/eaqg%3D"
+        run: |
+          set -euo pipefail
+          rm -rf "$RUNNER_TEMP/cv-shopware-categories"
+          mkdir -p "$RUNNER_TEMP/cv-shopware-categories"
+          curl -fL --retry 3 --connect-timeout 20 --max-time 120 "$CATEGORY_ARCHIVE_URL" -o "$RUNNER_TEMP/shopware-categories.zip"
+          unzip -q "$RUNNER_TEMP/shopware-categories.zip" -d "$RUNNER_TEMP/cv-shopware-categories"
+          test -s "$RUNNER_TEMP/cv-shopware-categories/shopware-categories.json"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/'cv-shopware-categories'/'shopware-categories.json'
+          data=json.loads(p.read_text(encoding='utf-8'))
+          cats=data.get('categories') or []
+          assert len(cats)==498, f"expected 498 categories, got {len(cats)}"
+          assert sum(1 for c in cats if c.get('parent_shopware_id')==data.get('navigation_root_id'))==24
+          print('Manifest validated:', len(cats), 'categories')
+          PY
+
+      - name: Dry run
+        shell: bash
+        run: |
+          set -euo pipefail
+          MANIFEST="$RUNNER_TEMP/cv-shopware-categories/shopware-categories.json"
+          php ops/sync-shopware-categories.php "$MANIFEST" > "$RUNNER_TEMP/category-dry-run.log"
+          tail -n 12 "$RUNNER_TEMP/category-dry-run.log"
+
+      - name: Import categories and images
+        shell: bash
+        run: |
+          set -euo pipefail
+          MANIFEST="$RUNNER_TEMP/cv-shopware-categories/shopware-categories.json"
+          php -d memory_limit=1024M -d max_execution_time=0 ops/sync-shopware-categories.php "$MANIFEST" --apply --images
+
+      - name: Verify WooCommerce category tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          php ops/sync-shopware-categories.php > "$RUNNER_TEMP/category-verify.log"
+          head -n 45 "$RUNNER_TEMP/category-verify.log"
+          grep -q 'Woo categories: 499' "$RUNNER_TEMP/category-verify.log"
