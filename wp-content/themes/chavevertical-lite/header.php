@@ -101,25 +101,47 @@ defined( 'ABSPATH' ) || exit;
             <?php endif; ?>
 
             <?php
-            if ( has_nav_menu( 'primary' ) ) {
-                wp_nav_menu( array(
-                    'theme_location' => 'primary', 'container' => false, 'menu_class' => 'cvl-menu',
-                    'fallback_cb' => false, 'depth' => 2,
-                ) );
-            } else {
-                ?>
-                <ul class="cvl-menu cvl-menu-fallback">
-                    <li><a href="<?php echo esc_url( cvl_shop_url() ); ?>">PRODUTOS</a></li>
-                    <li><a href="<?php echo esc_url( home_url( '/marcas/' ) ); ?>">MARCAS</a></li>
-                    <li><a href="<?php echo esc_url( home_url( '/catalogos/' ) ); ?>">CATÁLOGOS</a></li>
-                    <li><a href="<?php echo esc_url( home_url( '/quem-somos/' ) ); ?>">QUEM SOMOS</a></li>
-                    <li><a href="<?php echo esc_url( home_url( '/contactos/' ) ); ?>">CONTACTOS</a></li>
-                </ul>
-                <?php
-            }
+            $cvl_reference_menu = array(
+                array(
+                    'label' => 'BRICOLAGE',
+                    'url'   => 'https://chavevertical.com/bricolage/',
+                ),
+                array(
+                    'label' => 'BLOG',
+                    'url'   => 'https://chavevertical.com/blog/',
+                ),
+                array(
+                    'label' => 'CONTACTOS',
+                    'url'   => 'https://chavevertical.com/contactos/',
+                ),
+                array(
+                    'label' => 'QUEM SOMOS',
+                    'url'   => 'https://chavevertical.com/quem-somos/',
+                ),
+                array(
+                    'label' => 'FORNECEDORES',
+                    'url'   => 'https://chavevertical.com/fornecedores/',
+                ),
+                array(
+                    'label' => 'CATÁLOGOS TÉCNICOS',
+                    'url'   => 'https://chavevertical.com/catalogos-tecnicos/',
+                ),
+                array(
+                    'label' => 'CONTACTE-NOS',
+                    'url'   => 'https://chavevertical.com/contactos/',
+                ),
+            );
             ?>
 
-            <a class="cvl-nav-cta" href="<?php echo esc_url( home_url( '/contactos/' ) ); ?>">PEDIDO DE CONTACTO</a>
+            <ul class="cvl-menu cvl-menu-reference" aria-label="<?php esc_attr_e( 'Menu principal', 'chavevertical-lite' ); ?>">
+                <?php foreach ( $cvl_reference_menu as $cvl_menu_item ) : ?>
+                    <li>
+                        <a href="<?php echo esc_url( $cvl_menu_item['url'] ); ?>">
+                            <?php echo esc_html( $cvl_menu_item['label'] ); ?>
+                        </a>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
         </div>
     </nav>
 
