@@ -155,13 +155,7 @@ function cvl_loop_product_category() {
         return;
     }
 
-    $url = get_term_link( $category );
-
-    if ( is_wp_error( $url ) ) {
-        return;
-    }
-
-    echo '<a class="cvl-product-category" href="' . esc_url( $url ) . '">' . esc_html( $category->name ) . '</a>';
+    echo '<span class="cvl-product-category">' . esc_html( $category->name ) . '</span>';
 }
 add_action( 'woocommerce_before_shop_loop_item_title', 'cvl_loop_product_category', 20 );
 
@@ -191,13 +185,7 @@ function cvl_loop_product_meta() {
     }
 
     if ( $brand ) {
-        $brand_url = is_wp_error( $brand['url'] ) ? '' : $brand['url'];
-
-        if ( $brand_url ) {
-            echo '<a class="cvl-product-brand" href="' . esc_url( $brand_url ) . '" aria-label="' . esc_attr( $brand['name'] ) . '">';
-        } else {
-            echo '<span class="cvl-product-brand">';
-        }
+        echo '<span class="cvl-product-brand" aria-label="' . esc_attr( $brand['name'] ) . '">';
 
         if ( $brand['thumbnail_id'] ) {
             echo wp_kses_post(
@@ -216,7 +204,7 @@ function cvl_loop_product_meta() {
             echo '<span class="cvl-product-brand-name">' . esc_html( $brand['name'] ) . '</span>';
         }
 
-        echo $brand_url ? '</a>' : '</span>';
+        echo '</span>';
     }
 
     echo '</div>';
