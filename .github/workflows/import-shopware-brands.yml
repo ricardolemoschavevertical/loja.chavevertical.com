@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/import-shopware-brands.yml"
+      - "ops/sync-shopware-brands.php"
   workflow_dispatch:
 
 permissions:
