@@ -68,7 +68,7 @@
   display:flex;
   align-items:center;
   gap:0;
-  animation:cvl-brand-scroll 32s linear infinite;
+  animation:cvl-brand-scroll var(--cvl-brand-duration,32s) linear infinite;
   will-change:transform;
 }
 
@@ -157,4 +157,24 @@
     max-width:100px!important;
     max-height:40px!important;
   }
+}
+
+
+.cvl-brand-carousel-name{
+  max-width:130px;
+  overflow:hidden;
+  color:#555;
+  font-size:13px;
+  font-weight:800;
+  line-height:1.15;
+  letter-spacing:.06em;
+  text-align:center;
+  text-overflow:ellipsis;
+  text-transform:uppercase;
+  white-space:nowrap;
+  transition:color .2s ease;
+}
+
+.cvl-brand-carousel-item:hover .cvl-brand-carousel-name{
+  color:var(--cvl-red,#d62828);
 }
