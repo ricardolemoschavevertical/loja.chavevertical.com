@@ -9,19 +9,19 @@ $products   = array();
 $brands     = array();
 
 if ( taxonomy_exists( 'product_cat' ) ) {
-    $cvl_excluded_categories = array();
-    $cvl_uncategorized = get_term_by( 'slug', 'uncategorized', 'product_cat' );
+    $excluded = array();
+    $uncategorized = get_term_by( 'slug', 'uncategorized', 'product_cat' );
 
-    if ( $cvl_uncategorized && ! is_wp_error( $cvl_uncategorized ) ) {
-        $cvl_excluded_categories[] = (int) $cvl_uncategorized->term_id;
+    if ( $uncategorized && ! is_wp_error( $uncategorized ) ) {
+        $excluded[] = (int) $uncategorized->term_id;
     }
 
     $categories = get_terms( array(
         'taxonomy'   => 'product_cat',
         'parent'     => 0,
         'hide_empty' => false,
-        'exclude'    => $cvl_excluded_categories,
-        'number'     => 12,
+        'exclude'    => $excluded,
+        'number'     => 0,
         'orderby'    => 'name',
         'order'      => 'ASC',
     ) );
@@ -30,6 +30,53 @@ if ( taxonomy_exists( 'product_cat' ) ) {
         $categories = array();
     }
 }
+
+if ( ! empty( $categories ) ) {
+    $priority = array(
+        'oficina-automovel',
+        'ferramentas-electricas',
+        'ferramentas-manuais',
+        'elevacao-e-carga',
+        'ar-comprimido',
+        'maquinas-p-industria-metal',
+        'construcao-civil',
+        'floresta-e-jardim',
+        'limpeza',
+        'equipamentos-de-soldadura',
+        'geradores',
+        'carpintaria-de-madeiras',
+        'ferramentas-pneumaticas',
+        'medicao-e-nivelamento',
+        'proteccao-e-seguranca',
+        'estantaria-e-arrumacao',
+        'electricidade-e-electronica',
+        'iluminacao',
+        'ambiente',
+        'canalizacao-e-desentupimentos',
+        'embalamento',
+        'equip-p-agricultura',
+        'escadas-escadotes-e-andaimes',
+        'outros',
+    );
+
+    $rank = array_flip( $priority );
+
+    usort(
+        $categories,
+        static function ( $a, $b ) use ( $rank ) {
+            $ra = $rank[ $a->slug ] ?? 999;
+            $rb = $rank[ $b->slug ] ?? 999;
+
+            if ( $ra === $rb ) {
+                return strcasecmp( $a->name, $b->name );
+            }
+
+            return $ra <=> $rb;
+        }
+    );
+}
+
+$hero_categories = array_slice( $categories, 0, 3 );
 
 if ( taxonomy_exists( 'product_brand' ) ) {
     $brands = get_terms( array(
@@ -55,136 +102,138 @@ if ( function_exists( 'wc_get_products' ) ) {
     ) );
 }
 
-$hero_product = ! empty( $products ) ? reset( $products ) : null;
+$cvl_category_image = static function ( $term, $size = 'large', $loading = 'lazy' ) {
+    if ( ! $term instanceof WP_Term ) {
+        return '';
+    }
+
+    $thumbnail_id = absint( get_term_meta( $term->term_id, 'thumbnail_id', true ) );
+
+    if ( ! $thumbnail_id ) {
+        return '';
+    }
+
+    return wp_get_attachment_image(
+        $thumbnail_id,
+        $size,
+        false,
+        array(
+            'loading'  => $loading,
+            'decoding' => 'async',
+            'alt'      => $term->name,
+        )
+    );
+};
 ?>
 
-<section class="cvl-hero cvl-hero-premium">
-    <div class="cvl-shell cvl-hero-grid">
-        <div class="cvl-hero-copy">
-            <span class="cvl-kicker">EQUIPAMENTO PROFISSIONAL · APOIO ESPECIALIZADO</span>
-            <h1>Ferramentas certas.<br><span>Trabalho melhor.</span></h1>
-            <p>Máquinas, ferramentas e equipamento para oficina, indústria, construção e manutenção — com apoio de uma equipa que conhece o produto.</p>
+<section class="cvl-v4-hero">
+    <div class="cvl-shell cvl-v4-hero-grid">
+        <div class="cvl-v4-hero-copy">
+            <span class="cvl-v4-eyebrow">MÁQUINAS · FERRAMENTAS · EQUIPAMENTO PROFISSIONAL</span>
+            <h1>Equipamento profissional para quem precisa de trabalhar.</h1>
+            <p>Oficina, indústria, construção, manutenção e logística. Um catálogo técnico organizado para encontrar rapidamente o produto certo.</p>
 
-            <div class="cvl-hero-actions">
-                <a class="cvl-button cvl-button-primary" href="<?php echo esc_url( $shop_url ); ?>">
-                    EXPLORAR CATÁLOGO <span aria-hidden="true">→</span>
+            <div class="cvl-v4-hero-actions">
+                <a class="cvl-v4-button cvl-v4-button-primary" href="<?php echo esc_url( $shop_url ); ?>">
+                    VER CATÁLOGO
+                    <span aria-hidden="true">→</span>
                 </a>
-                <a class="cvl-button cvl-button-ghost" href="<?php echo esc_url( home_url( '/contactos/' ) ); ?>">PEDIR COTAÇÃO</a>
+                <a class="cvl-v4-button cvl-v4-button-secondary" href="<?php echo esc_url( home_url( '/contactos/' ) ); ?>">
+                    PEDIR COTAÇÃO
+                </a>
             </div>
 
-            <div class="cvl-popular-searches" aria-label="Pesquisas populares">
-                <span>Mais procurado:</span>
+            <div class="cvl-v4-quick-searches">
+                <span>Pesquisa rápida</span>
                 <a href="<?php echo esc_url( home_url( '/?s=carro+de+ferramentas&post_type=product' ) ); ?>">Carros de ferramentas</a>
-                <a href="<?php echo esc_url( home_url( '/?s=compressores&post_type=product' ) ); ?>">Compressores</a>
+                <a href="<?php echo esc_url( home_url( '/?s=compressor&post_type=product' ) ); ?>">Compressores</a>
                 <a href="<?php echo esc_url( home_url( '/?s=porta-paletes&post_type=product' ) ); ?>">Porta-paletes</a>
-                <a href="<?php echo esc_url( home_url( '/?s=geradores&post_type=product' ) ); ?>">Geradores</a>
+                <a href="<?php echo esc_url( home_url( '/?s=gerador&post_type=product' ) ); ?>">Geradores</a>
             </div>
         </div>
 
-        <div class="cvl-hero-stage" aria-label="CHAVE VERTICAL">
-            <span class="cvl-hero-grid-pattern" aria-hidden="true"></span>
-            <span class="cvl-hero-orbit cvl-hero-orbit-one" aria-hidden="true"></span>
-            <span class="cvl-hero-orbit cvl-hero-orbit-two" aria-hidden="true"></span>
+        <?php if ( ! empty( $hero_categories ) ) : ?>
+            <div class="cvl-v4-hero-categories" aria-label="<?php esc_attr_e( 'Áreas principais', 'chavevertical-lite' ); ?>">
+                <?php foreach ( $hero_categories as $index => $hero_category ) : ?>
+                    <?php
+                    $hero_url = get_term_link( $hero_category );
 
-            <?php if ( $hero_product instanceof WC_Product ) : ?>
-                <a class="cvl-hero-product" href="<?php echo esc_url( $hero_product->get_permalink() ); ?>">
-                    <span class="cvl-hero-product-image">
-                        <?php echo wp_kses_post( $hero_product->get_image( 'woocommerce_single', array( 'loading' => 'eager', 'fetchpriority' => 'high' ) ) ); ?>
-                    </span>
-                    <span class="cvl-hero-product-card">
-                        <small>PRODUTO EM DESTAQUE</small>
-                        <strong><?php echo esc_html( $hero_product->get_name() ); ?></strong>
-                        <?php if ( $hero_product->get_price_html() ) : ?>
-                            <span><?php echo wp_kses_post( $hero_product->get_price_html() ); ?></span>
-                        <?php endif; ?>
-                    </span>
-                </a>
-            <?php else : ?>
-                <div class="cvl-hero-visual-fallback">
-                    <span class="cvl-hero-machine-mark">CV</span>
-                    <strong>CATÁLOGO PROFISSIONAL</strong>
-                    <small>OFICINA · INDÚSTRIA · CONSTRUÇÃO</small>
-                </div>
-            <?php endif; ?>
+                    if ( is_wp_error( $hero_url ) ) {
+                        continue;
+                    }
 
-            <div class="cvl-hero-mini-card cvl-hero-mini-card-one">
-                <span>30K+</span>
-                <small>referências preparadas</small>
+                    $hero_image = $cvl_category_image(
+                        $hero_category,
+                        0 === $index ? 'large' : 'medium_large',
+                        'eager'
+                    );
+                    ?>
+                    <a class="cvl-v4-hero-category <?php echo 0 === $index ? 'is-primary' : ''; ?>" href="<?php echo esc_url( $hero_url ); ?>">
+                        <span class="cvl-v4-hero-category-media">
+                            <?php
+                            if ( $hero_image ) {
+                                echo wp_kses_post( $hero_image );
+                            } else {
+                                echo '<span class="cvl-v4-category-fallback" aria-hidden="true">CV</span>';
+                            }
+                            ?>
+                        </span>
+                        <span class="cvl-v4-hero-category-copy">
+                            <small><?php echo 0 === $index ? 'ÁREA EM DESTAQUE' : 'EXPLORAR'; ?></small>
+                            <strong><?php echo esc_html( $hero_category->name ); ?></strong>
+                            <span aria-hidden="true">↗</span>
+                        </span>
+                    </a>
+                <?php endforeach; ?>
             </div>
-            <div class="cvl-hero-mini-card cvl-hero-mini-card-two">
-                <span>PT</span>
-                <small>entregas em Portugal</small>
-            </div>
-        </div>
+        <?php endif; ?>
     </div>
 </section>
 
-<section class="cvl-benefits" aria-label="Vantagens Chave Vertical">
-    <div class="cvl-shell cvl-benefit-grid">
-        <article>
-            <span class="cvl-benefit-icon">↗</span>
-            <span><strong>Entregas em Portugal</strong><small>Transporte adequado ao equipamento</small></span>
-        </article>
-        <article>
-            <span class="cvl-benefit-icon">✓</span>
-            <span><strong>Compra acompanhada</strong><small>Informação clara antes da encomenda</small></span>
-        </article>
-        <article>
-            <span class="cvl-benefit-icon">◎</span>
-            <span><strong>Apoio especializado</strong><small>Comercial, técnico e pós-venda</small></span>
-        </article>
-        <article>
-            <span class="cvl-benefit-icon">⚙</span>
-            <span><strong>Catálogo profissional</strong><small>Máquinas, ferramentas e consumíveis</small></span>
-        </article>
+<section class="cvl-v4-trust">
+    <div class="cvl-shell cvl-v4-trust-grid">
+        <div><strong>30.000+</strong><span>referências profissionais</span></div>
+        <div><strong>Portugal</strong><span>entregas em todo o país</span></div>
+        <div><strong>Apoio técnico</strong><span>antes e depois da compra</span></div>
+        <div><strong>B2B</strong><span>propostas para empresas e projetos</span></div>
     </div>
 </section>
 
 <?php if ( ! empty( $categories ) ) : ?>
-<section class="cvl-shell cvl-home-section cvl-category-section">
-    <header class="cvl-section-heading cvl-section-heading-row">
+<section class="cvl-shell cvl-v4-section cvl-v4-categories-section">
+    <header class="cvl-v4-section-head">
         <div>
-            <span>CATÁLOGO ORGANIZADO POR ÁREA</span>
-            <h2>Categorias em destaque</h2>
+            <span>CATÁLOGO PROFISSIONAL</span>
+            <h2>Comprar por categoria</h2>
+            <p>Escolha a área e aceda diretamente às respetivas subcategorias e produtos.</p>
         </div>
-        <a href="<?php echo esc_url( $shop_url ); ?>">VER TODAS AS CATEGORIAS →</a>
+        <a href="<?php echo esc_url( $shop_url ); ?>">VER CATÁLOGO →</a>
     </header>
 
-    <div class="cvl-category-grid cvl-category-grid-premium">
-        <?php foreach ( $categories as $index => $category ) : ?>
+    <div class="cvl-v4-category-grid">
+        <?php foreach ( $categories as $category ) : ?>
             <?php
             $category_url = get_term_link( $category );
-            $thumbnail_id = absint( get_term_meta( $category->term_id, 'thumbnail_id', true ) );
 
             if ( is_wp_error( $category_url ) ) {
                 continue;
             }
+
+            $image = $cvl_category_image( $category, 'medium_large' );
             ?>
-            <a class="cvl-category-card <?php echo 0 === $index ? 'is-featured' : ''; ?>" href="<?php echo esc_url( $category_url ); ?>">
-                <span class="cvl-category-index"><?php echo esc_html( str_pad( (string) ( $index + 1 ), 2, '0', STR_PAD_LEFT ) ); ?></span>
-                <span class="cvl-category-image">
+            <a class="cvl-v4-category-card" href="<?php echo esc_url( $category_url ); ?>">
+                <span class="cvl-v4-category-media">
                     <?php
-                    if ( $thumbnail_id ) {
-                        echo wp_kses_post(
-                            wp_get_attachment_image(
-                                $thumbnail_id,
-                                'medium',
-                                false,
-                                array(
-                                    'loading' => 'lazy',
-                                    'alt'     => $category->name,
-                                )
-                            )
-                        );
+                    if ( $image ) {
+                        echo wp_kses_post( $image );
                     } else {
-                        echo '<span class="cvl-category-placeholder" aria-hidden="true">⚙</span>';
+                        echo '<span class="cvl-v4-category-fallback" aria-hidden="true">CV</span>';
                     }
                     ?>
                 </span>
-                <span class="cvl-category-copy">
+                <span class="cvl-v4-category-name">
                     <strong><?php echo esc_html( $category->name ); ?></strong>
-                    <small><?php echo esc_html( number_format_i18n( $category->count ) ); ?> produtos</small>
-                    <span>EXPLORAR →</span>
+                    <span aria-hidden="true">→</span>
                 </span>
             </a>
         <?php endforeach; ?>
@@ -192,49 +241,29 @@ $hero_product = ! empty( $products ) ? reset( $products ) : null;
 </section>
 <?php endif; ?>
 
-<section class="cvl-solutions cvl-shell" aria-label="Soluções profissionais">
-    <a class="cvl-solution-card cvl-solution-card-dark" href="<?php echo esc_url( home_url( '/?s=oficina&post_type=product' ) ); ?>">
-        <span class="cvl-solution-number">01</span>
-        <span class="cvl-kicker">MAIS PROCURADO</span>
-        <h2>Equipar uma oficina</h2>
-        <p>Carros de ferramentas, elevadores, máquinas e equipamentos para utilização profissional.</p>
-        <strong>VER SOLUÇÕES →</strong>
-    </a>
-
-    <a class="cvl-solution-card cvl-solution-card-teal" href="<?php echo esc_url( home_url( '/?s=compressor&post_type=product' ) ); ?>">
-        <span class="cvl-solution-number">02</span>
-        <span class="cvl-kicker">AR COMPRIMIDO</span>
-        <h2>Produção e tratamento de ar</h2>
-        <p>Compressores, secadores, enroladores, reservatórios e acessórios pneumáticos.</p>
-        <strong>EXPLORAR →</strong>
-    </a>
-
-    <a class="cvl-solution-card cvl-solution-card-light" href="<?php echo esc_url( home_url( '/?s=porta-paletes&post_type=product' ) ); ?>">
-        <span class="cvl-solution-number">03</span>
-        <span class="cvl-kicker">MOVIMENTAÇÃO</span>
-        <h2>Elevação e logística</h2>
-        <p>Porta-paletes, mesas elevatórias, gruas e soluções para armazém e oficina.</p>
-        <strong>VER EQUIPAMENTO →</strong>
-    </a>
-
-    <a class="cvl-solution-card cvl-solution-card-contact" href="<?php echo esc_url( home_url( '/contactos/' ) ); ?>">
-        <span class="cvl-solution-number">04</span>
-        <span class="cvl-kicker">NÃO ENCONTRA?</span>
-        <h2>Tratamos da pesquisa por si.</h2>
-        <p>Indique a aplicação, referência ou características técnicas e ajudamos a encontrar a solução.</p>
-        <strong>PEDIR ACONSELHAMENTO →</strong>
-    </a>
+<section class="cvl-v4-assistance">
+    <div class="cvl-shell cvl-v4-assistance-grid">
+        <div>
+            <span>COMPRA TÉCNICA ACOMPANHADA</span>
+            <h2>Tem uma referência, aplicação ou ficha técnica?</h2>
+            <p>Envie-nos o pedido. Validamos produto, equivalências, disponibilidade e configuração antes da encomenda.</p>
+        </div>
+        <div class="cvl-v4-assistance-actions">
+            <a class="cvl-v4-button cvl-v4-button-light" href="<?php echo esc_url( home_url( '/contactos/' ) ); ?>">PEDIR PROPOSTA</a>
+            <a class="cvl-v4-assistance-phone" href="tel:+351234020500"><small>Apoio comercial</small><strong>234 020 500</strong></a>
+        </div>
+    </div>
 </section>
 
 <?php if ( ! empty( $products ) ) : ?>
-<section class="cvl-home-products">
+<section class="cvl-v4-products">
     <div class="cvl-shell">
-        <header class="cvl-section-heading cvl-section-heading-row">
+        <header class="cvl-v4-section-head">
             <div>
-                <span>ENTRADAS RECENTES</span>
-                <h2>Produtos em destaque</h2>
+                <span>NOVIDADES</span>
+                <h2>Produtos recentes</h2>
             </div>
-            <a href="<?php echo esc_url( $shop_url ); ?>">VER CATÁLOGO COMPLETO →</a>
+            <a href="<?php echo esc_url( $shop_url ); ?>">VER TODOS →</a>
         </header>
 
         <?php
@@ -263,41 +292,26 @@ $hero_product = ! empty( $products ) ? reset( $products ) : null;
 </section>
 <?php endif; ?>
 
-<section class="cvl-dark-promo">
-    <div class="cvl-shell cvl-dark-promo-grid">
-        <div>
-            <span class="cvl-kicker">PROJETOS E FORNECIMENTOS PROFISSIONAIS</span>
-            <h2>Precisa de equipar uma oficina, armazém ou linha de trabalho?</h2>
-            <p>Envie-nos a lista de material ou as especificações. A equipa comercial ajuda a validar equivalências, disponibilidade e configuração.</p>
-            <a class="cvl-button cvl-button-primary" href="<?php echo esc_url( home_url( '/contactos/' ) ); ?>">PEDIR PROPOSTA →</a>
-        </div>
-        <div class="cvl-promo-steps">
-            <span><b>01</b> Analisamos o pedido</span>
-            <span><b>02</b> Validamos a solução</span>
-            <span><b>03</b> Preparamos a cotação</span>
-        </div>
-    </div>
-</section>
-
 <?php if ( ! empty( $brands ) ) : ?>
-<section class="cvl-shell cvl-brand-section">
-    <header class="cvl-section-heading cvl-section-heading-row">
+<section class="cvl-shell cvl-v4-brands">
+    <header class="cvl-v4-section-head">
         <div>
-            <span>MARCAS PROFISSIONAIS</span>
-            <h2>Trabalhamos com marcas de referência</h2>
+            <span>MARCAS</span>
+            <h2>Marcas profissionais</h2>
         </div>
         <a href="<?php echo esc_url( home_url( '/marcas/' ) ); ?>">VER MARCAS →</a>
     </header>
 
-    <div class="cvl-brand-grid">
+    <div class="cvl-v4-brand-grid">
         <?php foreach ( $brands as $brand ) : ?>
             <?php
-            $brand_url    = get_term_link( $brand );
-            $thumbnail_id = absint( get_term_meta( $brand->term_id, 'thumbnail_id', true ) );
+            $brand_url = get_term_link( $brand );
 
             if ( is_wp_error( $brand_url ) ) {
                 continue;
             }
+
+            $thumbnail_id = absint( get_term_meta( $brand->term_id, 'thumbnail_id', true ) );
             ?>
             <a href="<?php echo esc_url( $brand_url ); ?>" aria-label="<?php echo esc_attr( $brand->name ); ?>">
                 <?php
@@ -308,8 +322,9 @@ $hero_product = ! empty( $products ) ? reset( $products ) : null;
                             'medium',
                             false,
                             array(
-                                'loading' => 'lazy',
-                                'alt'     => $brand->name,
+                                'loading'  => 'lazy',
+                                'decoding' => 'async',
+                                'alt'      => $brand->name,
                             )
                         )
                     );
@@ -322,20 +337,6 @@ $hero_product = ! empty( $products ) ? reset( $products ) : null;
     </div>
 </section>
 <?php endif; ?>
-
-<section class="cvl-commercial-strip cvl-commercial-strip-premium">
-    <div class="cvl-shell">
-        <div>
-            <span>RESPOSTA RÁPIDA</span>
-            <h2>Tem uma referência ou ficha técnica?</h2>
-            <p>Envie o pedido e ajudamos a encontrar o produto certo.</p>
-        </div>
-        <div class="cvl-commercial-actions">
-            <a class="cvl-button cvl-button-primary" href="<?php echo esc_url( home_url( '/contactos/' ) ); ?>">PEDIR COTAÇÃO</a>
-            <a class="cvl-button" href="tel:+351234020500">234 020 500</a>
-        </div>
-    </div>
-</section>
 
 <?php
 get_footer();
