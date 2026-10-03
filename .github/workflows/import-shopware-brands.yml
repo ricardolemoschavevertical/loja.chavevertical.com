@@ -1,0 +1,67 @@
+name: Import Shopware Brands
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/import-shopware-brands.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  import:
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Download validated brand manifest
+        shell: bash
+        env:
+          BRAND_ARCHIVE_URL: "https://sdmntprdenmarkeast.oaiusercontent.com/files/00000000-bf68-8210-8d78-89bf2577dc90/raw?se=2026-10-03T23%3A24%3A14Z&sp=r&sv=2026-02-06&sr=b&scid=5d3aa3c7-ceda-521f-8ed1-e1bc372e8000&skoid=a4604a88-85e4-4562-b6ab-a5622268de80&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-10-03T05%3A44%3A18Z&ske=2026-10-04T05%3A44%3A18Z&sks=b&skv=2026-02-06&sig=HjGkW0U37lGtKBUQ4YBWtgnSH%2Bfe8uO5NBefX3Yk2n4%3D"
+        run: |
+          set -euo pipefail
+          rm -rf "$RUNNER_TEMP/cv-shopware-brands"
+          mkdir -p "$RUNNER_TEMP/cv-shopware-brands"
+          curl -fL --retry 3 --connect-timeout 20 --max-time 120 "$BRAND_ARCHIVE_URL" -o "$RUNNER_TEMP/shopware-brands.zip"
+          unzip -q "$RUNNER_TEMP/shopware-brands.zip" -d "$RUNNER_TEMP/cv-shopware-brands"
+          test -s "$RUNNER_TEMP/cv-shopware-brands/shopware-brands.json"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/'cv-shopware-brands'/'shopware-brands.json'
+          data=json.loads(p.read_text(encoding='utf-8'))
+          brands=data.get('brands') or []
+          assert len(brands)==377, f"expected 377 brands, got {len(brands)}"
+          names=[str(b.get('name') or '').strip().casefold() for b in brands]
+          assert len(names)==len(set(names)), "duplicate brand names found"
+          print('Manifest validated:', len(brands), 'brands')
+          print('With image:', sum(1 for b in brands if b.get('image')))
+          PY
+
+      - name: Dry run
+        shell: bash
+        run: |
+          set -euo pipefail
+          MANIFEST="$RUNNER_TEMP/cv-shopware-brands/shopware-brands.json"
+          php ops/sync-shopware-brands.php "$MANIFEST" > "$RUNNER_TEMP/brand-dry-run.log"
+          tail -n 12 "$RUNNER_TEMP/brand-dry-run.log"
+
+      - name: Import brands and logos
+        shell: bash
+        run: |
+          set -euo pipefail
+          MANIFEST="$RUNNER_TEMP/cv-shopware-brands/shopware-brands.json"
+          php -d memory_limit=1024M -d max_execution_time=0 ops/sync-shopware-brands.php "$MANIFEST" --apply --images
+
+      - name: Verify WooCommerce brands
+        shell: bash
+        run: |
+          set -euo pipefail
+          php ops/sync-shopware-brands.php > "$RUNNER_TEMP/brand-verify.log"
+          head -n 45 "$RUNNER_TEMP/brand-verify.log"
+          grep -q 'Woo brands: 377' "$RUNNER_TEMP/brand-verify.log"
