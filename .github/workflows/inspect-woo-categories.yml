@@ -6,6 +6,7 @@ on:
     paths:
       - ".github/workflows/inspect-woo-categories.yml"
       - "ops/sync-shopware-categories.php"
+      - "ops/inspect-category-images.php"
   workflow_dispatch:
 
 permissions:
@@ -22,3 +23,7 @@ jobs:
       - name: Inspect WooCommerce categories
         shell: bash
         run: php ops/sync-shopware-categories.php
+
+      - name: Inspect category images
+        shell: bash
+        run: php ops/inspect-category-images.php
