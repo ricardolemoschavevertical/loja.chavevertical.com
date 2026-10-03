@@ -146,27 +146,53 @@ defined( 'ABSPATH' ) || exit;
 
             <ul class="cvl-menu cvl-menu-reference" aria-label="<?php esc_attr_e( 'Menu principal', 'chavevertical-lite' ); ?>">
                 <?php foreach ( $cvl_reference_menu as $cvl_menu_item ) : ?>
-                    <li class="<?php echo ! empty( $cvl_menu_item['badge'] ) ? 'has-menu-badge' : ''; ?><?php echo ! empty( $cvl_menu_item['contact'] ) ? ' is-contact-item' : ''; ?>">
-                        <?php if ( ! empty( $cvl_menu_item['badge'] ) ) : ?>
-                            <span class="cvl-menu-badge <?php echo esc_attr( $cvl_menu_item['badge_class'] ?? '' ); ?>">
-                                <?php echo esc_html( $cvl_menu_item['badge'] ); ?>
-                            </span>
-                        <?php endif; ?>
+                    <?php if ( ! empty( $cvl_menu_item['contact'] ) ) : ?>
+                        <li class="is-contact-item">
+                            <details class="cvl-contact-menu">
+                                <summary class="cvl-contact-menu-trigger">
+                                    <span class="cvl-contact-menu-icon" aria-hidden="true">▣</span>
+                                    <span><?php echo esc_html( $cvl_menu_item['label'] ); ?></span>
+                                    <span class="cvl-contact-menu-chevron" aria-hidden="true">⌄</span>
+                                </summary>
 
-                        <a href="<?php echo esc_url( $cvl_menu_item['url'] ); ?>">
-                            <?php if ( ! empty( $cvl_menu_item['contact'] ) ) : ?>
-                                <span class="cvl-contact-menu-icon" aria-hidden="true">▣</span>
+                                <div class="cvl-contact-dropdown">
+                                    <a href="https://chavevertical.com/contacto-pedido-de-cotacao/">
+                                        <span class="cvl-contact-dropdown-icon" aria-hidden="true">▧</span>
+                                        <span>FORMULÁRIO</span>
+                                    </a>
+
+                                    <a href="https://api.whatsapp.com/send?phone=351914580410" target="_blank" rel="noopener noreferrer">
+                                        <span class="cvl-contact-dropdown-icon" aria-hidden="true">◉</span>
+                                        <span>WHATSAPP</span>
+                                    </a>
+
+                                    <a href="mailto:ricardo@chavevertical.pt">
+                                        <span class="cvl-contact-dropdown-icon" aria-hidden="true">✉</span>
+                                        <span>EMAIL (LOJA ONLINE)</span>
+                                    </a>
+
+                                    <a href="mailto:geral@chavevertical.pt">
+                                        <span class="cvl-contact-dropdown-icon" aria-hidden="true">✉</span>
+                                        <span>EMAIL (DEPARTAMENTO COMERCIAL)</span>
+                                    </a>
+                                </div>
+                            </details>
+                        </li>
+                    <?php else : ?>
+                        <li class="<?php echo ! empty( $cvl_menu_item['badge'] ) ? 'has-menu-badge' : ''; ?>">
+                            <?php if ( ! empty( $cvl_menu_item['badge'] ) ) : ?>
+                                <span class="cvl-menu-badge <?php echo esc_attr( $cvl_menu_item['badge_class'] ?? '' ); ?>">
+                                    <?php echo esc_html( $cvl_menu_item['badge'] ); ?>
+                                </span>
                             <?php endif; ?>
 
-                            <span><?php echo esc_html( $cvl_menu_item['label'] ); ?></span>
-
-                            <?php if ( ! empty( $cvl_menu_item['contact'] ) ) : ?>
-                                <span class="cvl-contact-menu-chevron" aria-hidden="true">⌄</span>
-                            <?php endif; ?>
-                        </a>
-                    </li>
+                            <a href="<?php echo esc_url( $cvl_menu_item['url'] ); ?>">
+                                <span><?php echo esc_html( $cvl_menu_item['label'] ); ?></span>
+                            </a>
+                        </li>
+                    <?php endif; ?>
                 <?php endforeach; ?>
-
+            </ul>
         </div>
     </nav>
 
