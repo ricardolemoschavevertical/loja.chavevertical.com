@@ -276,3 +276,53 @@
     padding-top:0!important;
   }
 }
+
+
+/* v0.8.2 — centered compact main navigation */
+@media(min-width:992px){
+  .cvl-nav-inner{
+    justify-content:center!important;
+  }
+
+  .cvl-categories-link{
+    width:auto!important;
+    min-width:112px!important;
+    padding:0 11px!important;
+    justify-content:center!important;
+    gap:9px!important;
+  }
+
+  .cvl-nav-menu-icon{
+    width:15px!important;
+    height:12px!important;
+    flex-basis:15px!important;
+  }
+
+  .cvl-nav-menu-icon i{
+    width:15px!important;
+  }
+
+  .cvl-menu-reference{
+    flex:0 1 auto!important;
+    width:auto!important;
+    max-width:max-content!important;
+  }
+
+  .cvl-menu-reference>li>a{
+    padding-inline:17px!important;
+  }
+}
+
+@media(min-width:992px) and (max-width:1199.98px){
+  .cvl-categories-link{
+    min-width:106px!important;
+    padding-inline:9px!important;
+    gap:7px!important;
+    font-size:10.8px!important;
+  }
+
+  .cvl-menu-reference>li>a{
+    padding-inline:11px!important;
+    font-size:10.4px!important;
+  }
+}
