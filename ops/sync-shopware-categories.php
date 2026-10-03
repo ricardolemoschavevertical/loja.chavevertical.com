@@ -157,7 +157,12 @@ foreach ( $categories as $category ) {
             $reused++;
         } elseif ( isset( $slugToTerm[ $slug ] ) ) {
             $candidateTerm = get_term( $slugToTerm[ $slug ], 'product_cat' );
-            if ( $candidateTerm && ! is_wp_error( $candidateTerm ) && strtolower( $candidateTerm->name ) === strtolower( $name ) ) {
+            if (
+                $candidateTerm
+                && ! is_wp_error( $candidateTerm )
+                && strtolower( $candidateTerm->name ) === strtolower( $name )
+                && (int) $candidateTerm->parent === $parentTermId
+            ) {
                 $termId = (int) $candidateTerm->term_id;
                 $reused++;
             }
