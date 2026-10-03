@@ -214,19 +214,7 @@ $cvl_category_image = static function ( $term, $size = 'large', $loading = 'lazy
 </section>
 <?php endif; ?>
 
-<section class="cvl-v4-assistance">
-    <div class="cvl-shell cvl-v4-assistance-grid">
-        <div>
-            <span>COMPRA TÉCNICA ACOMPANHADA</span>
-            <h2>Tem uma referência, aplicação ou ficha técnica?</h2>
-            <p>Envie-nos o pedido. Validamos produto, equivalências, disponibilidade e configuração antes da encomenda.</p>
-        </div>
-        <div class="cvl-v4-assistance-actions">
-            <a class="cvl-v4-button cvl-v4-button-light" href="<?php echo esc_url( home_url( '/contactos/' ) ); ?>">PEDIR PROPOSTA</a>
-            <a class="cvl-v4-assistance-phone" href="tel:+351234020500"><small>Apoio comercial</small><strong>234 020 500</strong></a>
-        </div>
-    </div>
-</section>
+
 
 <?php if ( ! empty( $products ) ) : ?>
 <section class="cvl-v4-products">
