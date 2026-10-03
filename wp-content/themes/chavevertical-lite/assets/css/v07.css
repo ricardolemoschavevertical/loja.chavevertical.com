@@ -153,3 +153,126 @@
     font-size:12px!important;
   }
 }
+
+
+/* exact menu labels + badges from chavevertical.com */
+.cvl-nav{
+  overflow:visible!important;
+}
+
+.cvl-nav-inner{
+  position:relative!important;
+  overflow:visible!important;
+}
+
+.cvl-categories-link{
+  width:132px!important;
+  min-width:132px!important;
+  padding:0 13px!important;
+  border-radius:4px!important;
+  font-size:12px!important;
+}
+
+.cvl-menu-reference{
+  overflow:visible!important;
+}
+
+.cvl-menu-reference>li{
+  position:relative!important;
+  overflow:visible!important;
+}
+
+.cvl-menu-reference>li>a{
+  padding:0 20px!important;
+  font-size:12px!important;
+  font-weight:800!important;
+  text-transform:uppercase!important;
+}
+
+.cvl-menu-reference>li.has-menu-badge>a{
+  padding-top:8px!important;
+}
+
+.cvl-menu-badge{
+  position:absolute;
+  z-index:4;
+  top:-16px;
+  left:50%;
+  transform:translateX(-50%);
+  min-height:18px;
+  padding:3px 7px 2px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:2px;
+  color:#fff;
+  font-size:8px;
+  font-weight:900;
+  line-height:1;
+  letter-spacing:.01em;
+  white-space:nowrap;
+  pointer-events:none;
+}
+
+.cvl-menu-badge.is-campaign{
+  background:#00ba76;
+}
+
+.cvl-menu-badge.is-opportunity{
+  background:#6500b8;
+}
+
+.cvl-menu-badge.is-best{
+  background:#ff0050;
+}
+
+.cvl-menu-reference>li.is-contact-item>a{
+  gap:8px!important;
+}
+
+.cvl-contact-menu-icon{
+  font-size:12px;
+  line-height:1;
+}
+
+.cvl-contact-menu-chevron{
+  margin-left:-3px;
+  color:#3e4d56;
+  font-size:12px;
+  line-height:1;
+}
+
+@media(max-width:1199.98px){
+  .cvl-categories-link{
+    width:124px!important;
+    min-width:124px!important;
+  }
+
+  .cvl-menu-reference>li>a{
+    padding-inline:13px!important;
+    font-size:10.8px!important;
+  }
+}
+
+@media(max-width:991.98px){
+  .cvl-menu-badge{
+    position:static;
+    transform:none;
+    margin-left:auto;
+    margin-right:14px;
+    align-self:center;
+  }
+
+  .cvl-menu-reference>li{
+    display:flex!important;
+    align-items:center!important;
+  }
+
+  .cvl-menu-reference>li>a{
+    flex:1 1 auto!important;
+  }
+
+  .cvl-menu-reference>li.has-menu-badge>a{
+    padding-top:0!important;
+  }
+}
