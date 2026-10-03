@@ -325,3 +325,73 @@ add_filter( 'loop_shop_columns', function () {
 add_filter( 'loop_shop_per_page', function () {
     return 30;
 } );
+
+
+/**
+ * Shop root: visual category grid matching the Shopware reference.
+ */
+function cvl_shop_root_category_grid() {
+    if ( ! function_exists( 'is_shop' ) || ! is_shop() || ! taxonomy_exists( 'product_cat' ) ) {
+        return;
+    }
+
+    $exclude = array();
+    $uncategorized = get_term_by( 'slug', 'uncategorized', 'product_cat' );
+
+    if ( $uncategorized && ! is_wp_error( $uncategorized ) ) {
+        $exclude[] = (int) $uncategorized->term_id;
+    }
+
+    $terms = get_terms( array(
+        'taxonomy'   => 'product_cat',
+        'parent'     => 0,
+        'hide_empty' => false,
+        'exclude'    => $exclude,
+        'number'     => 0,
+        'orderby'    => 'name',
+        'order'      => 'ASC',
+    ) );
+
+    if ( is_wp_error( $terms ) || empty( $terms ) ) {
+        return;
+    }
+
+    echo '<section class="cvl-shop-category-section">';
+    echo '<header class="cvl-section-heading"><span>' . esc_html__( 'CATÁLOGO POR ÁREA', 'chavevertical-lite' ) . '</span><h2>' . esc_html__( 'Categorias', 'chavevertical-lite' ) . '</h2></header>';
+    echo '<div class="cvl-category-grid cvl-category-grid-premium cvl-category-grid-page">';
+
+    foreach ( $terms as $term ) {
+        $url = get_term_link( $term );
+        if ( is_wp_error( $url ) ) {
+            continue;
+        }
+
+        $thumbnail_id = absint( get_term_meta( $term->term_id, 'thumbnail_id', true ) );
+
+        echo '<a class="cvl-category-card" href="' . esc_url( $url ) . '">';
+        echo '<span class="cvl-category-image">';
+
+        if ( $thumbnail_id ) {
+            echo wp_kses_post(
+                wp_get_attachment_image(
+                    $thumbnail_id,
+                    'medium',
+                    false,
+                    array(
+                        'loading' => 'lazy',
+                        'alt'     => $term->name,
+                    )
+                )
+            );
+        } else {
+            echo '<span class="cvl-category-placeholder" aria-hidden="true">⚙</span>';
+        }
+
+        echo '</span>';
+        echo '<span class="cvl-category-copy"><strong>' . esc_html( $term->name ) . '</strong></span>';
+        echo '</a>';
+    }
+
+    echo '</div></section>';
+}
+add_action( 'woocommerce_archive_description', 'cvl_shop_root_category_grid', 20 );
