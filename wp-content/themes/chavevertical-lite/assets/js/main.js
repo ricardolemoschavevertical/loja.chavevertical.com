@@ -18,6 +18,12 @@
   const openDrawer = () => {
     if (!drawer || !drawerTrigger || !drawerOverlay) return;
 
+    if (nav && menuToggle) {
+      nav.classList.remove('is-open');
+      menuToggle.setAttribute('aria-expanded', 'false');
+      document.body.classList.remove('cvl-menu-open');
+    }
+
     drawer.classList.add('is-open');
     drawer.setAttribute('aria-hidden', 'false');
     drawerTrigger.setAttribute('aria-expanded', 'true');
