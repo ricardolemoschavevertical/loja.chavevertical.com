@@ -76,7 +76,8 @@ if ( ! empty( $categories ) ) {
     );
 }
 
-$hero_categories = array_slice( $categories, 0, 3 );
+$hero_categories     = array_slice( $categories, 0, 3 );
+$homepage_categories = array_slice( $categories, 0, 9 );
 
 if ( taxonomy_exists( 'product_brand' ) ) {
     $brands = get_terms( array(
@@ -180,11 +181,11 @@ $cvl_category_image = static function ( $term, $size = 'large', $loading = 'lazy
             <h2>Comprar por categoria</h2>
             <p>Escolha a área e aceda diretamente às respetivas subcategorias e produtos.</p>
         </div>
-        <a href="<?php echo esc_url( $shop_url ); ?>">VER CATÁLOGO →</a>
+        <a href="<?php echo esc_url( $shop_url ); ?>">VER TODAS AS CATEGORIAS</a>
     </header>
 
     <div class="cvl-v4-category-grid">
-        <?php foreach ( $categories as $category ) : ?>
+        <?php foreach ( $homepage_categories as $category ) : ?>
             <?php
             $category_url = get_term_link( $category );
 
