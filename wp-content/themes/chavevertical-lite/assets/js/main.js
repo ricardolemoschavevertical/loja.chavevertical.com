@@ -75,6 +75,21 @@
     });
   });
 
+
+  const contactMenu = document.querySelector('.cvl-contact-menu');
+
+  if (contactMenu) {
+    const desktop = window.matchMedia('(min-width: 992px)');
+
+    contactMenu.addEventListener('mouseenter', () => {
+      if (desktop.matches) contactMenu.open = true;
+    });
+
+    contactMenu.addEventListener('mouseleave', () => {
+      if (desktop.matches) contactMenu.open = false;
+    });
+  }
+
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
 
