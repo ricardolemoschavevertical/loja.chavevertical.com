@@ -42,8 +42,7 @@ defined( 'ABSPATH' ) || exit;
                 <p>✉️ <a href="mailto:ricardo@chavevertical.pt">ricardo@chavevertical.pt</a></p>
                 <p>📱 <a href="tel:+351914580410">914 580 410*</a></p>
                 <div class="cvl-footer-direct-actions">
-                    <a class="cvl-footer-btn cvl-footer-btn-wa" href="https://wa.me/351914580410" target="_blank" rel="noopener">WhatsApp</a>
-                    <a class="cvl-footer-btn cvl-footer-btn-tg" href="https://t.me/chavevertical" target="_blank" rel="noopener">Telegram</a>
+                    <a class="cvl-footer-btn cvl-footer-btn-wa" href="https://wa.me/351914580410" target="_blank" rel="noopener">💬 Falar por WhatsApp</a>
                 </div>
             </div>
             <div class="cvl-footer-card">
@@ -51,7 +50,6 @@ defined( 'ABSPATH' ) || exit;
                 <ul class="cvl-footer-links">
                     <li><a href="<?php echo esc_url( home_url( '/contactos/' ) ); ?>">Pedido de cotação</a></li>
                     <li><a href="https://wa.me/351914580410" target="_blank" rel="noopener">WhatsApp</a></li>
-                    <li><a href="https://t.me/chavevertical" target="_blank" rel="noopener">Telegram</a></li>
                     <li><a href="mailto:ricardo@chavevertical.pt">Email Loja Online</a></li>
                     <li><a href="mailto:comercial@chavevertical.pt">Email Comercial</a></li>
                 </ul>
@@ -74,6 +72,7 @@ defined( 'ABSPATH' ) || exit;
                 </ul>
                 <div class="cvl-footer-trust">
                     <img src="https://astro.chavevertical.com/livro-reclamacoes.webp?v=20260927-3" alt="Livro de Reclamações" loading="lazy">
+                    <img src="https://astro.chavevertical.com/shopmania-badge.png?v=20260927-3" alt="ShopMania" loading="lazy">
                     <img src="https://astro.chavevertical.com/google-site-seguro.png?v=20260927-3" alt="Google Site Seguro" loading="lazy">
                 </div>
             </div>
