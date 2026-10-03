@@ -154,3 +154,15 @@
     background:#fafbfb;
   }
 }
+
+
+/* v0.9.1 — match footer logo artwork background exactly */
+.cvl-footer-reference,
+.cvl-footer-bottom-wrap{
+  background:#2f2f2f!important;
+}
+
+.cvl-footer-logo,
+.cvl-footer-logo img{
+  background:#2f2f2f!important;
+}
