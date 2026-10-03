@@ -82,14 +82,27 @@ if ( taxonomy_exists( 'product_brand' ) ) {
     $brands = get_terms( array(
         'taxonomy'   => 'product_brand',
         'hide_empty' => false,
-        'number'     => 16,
-        'orderby'    => 'count',
-        'order'      => 'DESC',
+        'number'     => 28,
+        'orderby'    => 'name',
+        'order'      => 'ASC',
+        'meta_query' => array(
+            array(
+                'key'     => 'thumbnail_id',
+                'compare' => 'EXISTS',
+            ),
+        ),
     ) );
 
     if ( is_wp_error( $brands ) ) {
         $brands = array();
     }
+
+    $brands = array_values(
+        array_filter(
+            $brands,
+            static fn( $brand ) => absint( get_term_meta( $brand->term_id, 'thumbnail_id', true ) ) > 0
+        )
+    );
 }
 
 if ( function_exists( 'wc_get_products' ) ) {
@@ -266,29 +279,37 @@ $cvl_category_image = static function ( $term, $size = 'large', $loading = 'lazy
 <?php endif; ?>
 
 <?php if ( ! empty( $brands ) ) : ?>
-<section class="cvl-shell cvl-v4-brands">
-    <header class="cvl-v4-section-head">
-        <div>
-            <span>MARCAS</span>
-            <h2>Marcas profissionais</h2>
-        </div>
-        <a href="<?php echo esc_url( home_url( '/marcas/' ) ); ?>">VER MARCAS →</a>
-    </header>
+<section class="cvl-brand-carousel-section" aria-label="<?php esc_attr_e( 'Marcas representadas', 'chavevertical-lite' ); ?>">
+    <div class="cvl-shell cvl-brand-carousel-header">
+        <span class="cvl-brand-carousel-kicker"><?php esc_html_e( 'Marcas representadas', 'chavevertical-lite' ); ?></span>
+        <h2><?php esc_html_e( 'As ferramentas em que os profissionais confiam.', 'chavevertical-lite' ); ?></h2>
+    </div>
 
-    <div class="cvl-v4-brand-grid">
-        <?php foreach ( $brands as $brand ) : ?>
+    <div class="cvl-brand-carousel-shell" aria-hidden="true">
+        <div class="cvl-brand-carousel-track">
             <?php
-            $brand_url = get_term_link( $brand );
+            $cvl_brand_track = array_merge( $brands, $brands );
 
-            if ( is_wp_error( $brand_url ) ) {
-                continue;
-            }
+            foreach ( $cvl_brand_track as $brand ) :
+                $brand_url = get_term_link( $brand );
 
-            $thumbnail_id = absint( get_term_meta( $brand->term_id, 'thumbnail_id', true ) );
-            ?>
-            <a href="<?php echo esc_url( $brand_url ); ?>" aria-label="<?php echo esc_attr( $brand->name ); ?>">
-                <?php
-                if ( $thumbnail_id ) {
+                if ( is_wp_error( $brand_url ) ) {
+                    continue;
+                }
+
+                $thumbnail_id = absint( get_term_meta( $brand->term_id, 'thumbnail_id', true ) );
+
+                if ( ! $thumbnail_id ) {
+                    continue;
+                }
+                ?>
+                <a
+                    class="cvl-brand-carousel-item"
+                    href="<?php echo esc_url( $brand_url ); ?>"
+                    title="<?php echo esc_attr( $brand->name ); ?>"
+                    tabindex="-1"
+                >
+                    <?php
                     echo wp_kses_post(
                         wp_get_attachment_image(
                             $thumbnail_id,
@@ -301,12 +322,10 @@ $cvl_category_image = static function ( $term, $size = 'large', $loading = 'lazy
                             )
                         )
                     );
-                } else {
-                    echo '<strong>' . esc_html( $brand->name ) . '</strong>';
-                }
-                ?>
-            </a>
-        <?php endforeach; ?>
+                    ?>
+                </a>
+            <?php endforeach; ?>
+        </div>
     </div>
 </section>
 <?php endif; ?>
