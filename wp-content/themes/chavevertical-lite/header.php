@@ -103,45 +103,70 @@ defined( 'ABSPATH' ) || exit;
             <?php
             $cvl_reference_menu = array(
                 array(
-                     'label' => 'Bricolage',
-                    'url'   => 'https://chavevertical.com/bricolage/',
+                    'label' => 'CATÁLOGOS',
+                    'url'   => 'https://chavevertical.com/catalogos/',
                 ),
                 array(
-                     'label' => 'Blog',
-                    'url'   => 'https://chavevertical.com/blog/',
+                    'label' => 'MARCAS',
+                    'url'   => 'https://chavevertical.com/marcas/',
                 ),
                 array(
-                     'label' => 'Contactos',
-                    'url'   => 'https://chavevertical.com/contactos/',
+                    'label' => 'QUEM SOMOS',
+                    'url'   => 'https://chavevertical.com/sobrenos/',
                 ),
                 array(
-                     'label' => 'Quem Somos',
-                    'url'   => 'https://chavevertical.com/quem-somos/',
+                    'label' => 'CONTACTOS',
+                    'url'   => 'https://chavevertical.com/onde-estamos/',
                 ),
                 array(
-                     'label' => 'Fornecedores',
-                    'url'   => 'https://chavevertical.com/fornecedores/',
+                    'label' => 'FOLHETOS',
+                    'url'   => 'https://chavevertical.com/folhetos/',
+                    'badge' => 'CAMPANHAS',
+                    'badge_class' => 'is-campaign',
                 ),
                 array(
-                     'label' => 'Catálogos Técnicos',
-                    'url'   => 'https://chavevertical.com/catalogos-tecnicos/',
+                    'label' => 'PROMOÇÕES',
+                    'url'   => 'https://chavevertical.com/promocoes/',
+                    'badge' => 'OPORTUNIDADES',
+                    'badge_class' => 'is-opportunity',
                 ),
                 array(
-                     'label' => 'Contacte-nos',
-                    'url'   => 'https://chavevertical.com/contactos/',
+                    'label' => 'PREÇO!',
+                    'url'   => 'https://chavevertical.com/',
+                    'badge' => 'MELHOR',
+                    'badge_class' => 'is-best',
+                ),
+                array(
+                    'label' => 'PEDIDO DE CONTACTO',
+                    'url'   => 'https://chavevertical.com/contacto-pedido-de-cotacao/',
+                    'contact' => true,
                 ),
             );
             ?>
 
             <ul class="cvl-menu cvl-menu-reference" aria-label="<?php esc_attr_e( 'Menu principal', 'chavevertical-lite' ); ?>">
                 <?php foreach ( $cvl_reference_menu as $cvl_menu_item ) : ?>
-                    <li>
+                    <li class="<?php echo ! empty( $cvl_menu_item['badge'] ) ? 'has-menu-badge' : ''; ?><?php echo ! empty( $cvl_menu_item['contact'] ) ? ' is-contact-item' : ''; ?>">
+                        <?php if ( ! empty( $cvl_menu_item['badge'] ) ) : ?>
+                            <span class="cvl-menu-badge <?php echo esc_attr( $cvl_menu_item['badge_class'] ?? '' ); ?>">
+                                <?php echo esc_html( $cvl_menu_item['badge'] ); ?>
+                            </span>
+                        <?php endif; ?>
+
                         <a href="<?php echo esc_url( $cvl_menu_item['url'] ); ?>">
-                            <?php echo esc_html( $cvl_menu_item['label'] ); ?>
+                            <?php if ( ! empty( $cvl_menu_item['contact'] ) ) : ?>
+                                <span class="cvl-contact-menu-icon" aria-hidden="true">▣</span>
+                            <?php endif; ?>
+
+                            <span><?php echo esc_html( $cvl_menu_item['label'] ); ?></span>
+
+                            <?php if ( ! empty( $cvl_menu_item['contact'] ) ) : ?>
+                                <span class="cvl-contact-menu-chevron" aria-hidden="true">⌄</span>
+                            <?php endif; ?>
                         </a>
                     </li>
                 <?php endforeach; ?>
-            </ul>
+
         </div>
     </nav>
 
