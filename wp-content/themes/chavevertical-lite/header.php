@@ -103,31 +103,31 @@ defined( 'ABSPATH' ) || exit;
             <?php
             $cvl_reference_menu = array(
                 array(
-                    'label' => 'BRICOLAGE',
+                     'label' => 'Bricolage',
                     'url'   => 'https://chavevertical.com/bricolage/',
                 ),
                 array(
-                    'label' => 'BLOG',
+                     'label' => 'Blog',
                     'url'   => 'https://chavevertical.com/blog/',
                 ),
                 array(
-                    'label' => 'CONTACTOS',
+                     'label' => 'Contactos',
                     'url'   => 'https://chavevertical.com/contactos/',
                 ),
                 array(
-                    'label' => 'QUEM SOMOS',
+                     'label' => 'Quem Somos',
                     'url'   => 'https://chavevertical.com/quem-somos/',
                 ),
                 array(
-                    'label' => 'FORNECEDORES',
+                     'label' => 'Fornecedores',
                     'url'   => 'https://chavevertical.com/fornecedores/',
                 ),
                 array(
-                    'label' => 'CATÁLOGOS TÉCNICOS',
+                     'label' => 'Catálogos Técnicos',
                     'url'   => 'https://chavevertical.com/catalogos-tecnicos/',
                 ),
                 array(
-                    'label' => 'CONTACTE-NOS',
+                     'label' => 'Contacte-nos',
                     'url'   => 'https://chavevertical.com/contactos/',
                 ),
             );
