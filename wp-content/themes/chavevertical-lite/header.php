@@ -90,11 +90,19 @@ defined( 'ABSPATH' ) || exit;
             $cvl_top_categories = array();
 
             if ( taxonomy_exists( 'product_cat' ) ) {
+                $cvl_excluded_nav_categories = array();
+                $cvl_uncategorized_nav = get_term_by( 'slug', 'uncategorized', 'product_cat' );
+
+                if ( $cvl_uncategorized_nav && ! is_wp_error( $cvl_uncategorized_nav ) ) {
+                    $cvl_excluded_nav_categories[] = (int) $cvl_uncategorized_nav->term_id;
+                }
+
                 $cvl_top_categories = get_terms( array(
                     'taxonomy'   => 'product_cat',
                     'parent'     => 0,
                     'hide_empty' => false,
-                    'number'     => 18,
+                    'exclude'    => $cvl_excluded_nav_categories,
+                    'number'     => 0,
                     'orderby'    => 'name',
                     'order'      => 'ASC',
                 ) );
