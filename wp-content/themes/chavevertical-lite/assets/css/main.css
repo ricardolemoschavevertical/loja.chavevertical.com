@@ -808,3 +808,74 @@ button,input,select,textarea{font:inherit}
     flex:1;
   }
 }
+
+
+/* =========================================================
+   Pesquisa, arquivos e 404
+   ========================================================= */
+.cvl-search-heading{
+  max-width:900px;
+  margin-bottom:28px;
+}
+.cvl-search-heading>span,
+.cvl-error-page>span{
+  color:var(--cvl-teal);
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.09em;
+  text-transform:uppercase;
+}
+.cvl-search-heading h1,
+.cvl-error-page h1{
+  margin:8px 0 12px;
+  font-size:clamp(32px,4vw,48px);
+  line-height:1.08;
+}
+.cvl-search-results{
+  display:grid;
+  gap:14px;
+}
+.cvl-search-result{
+  padding:22px;
+  border:1px solid var(--cvl-line);
+  border-radius:8px;
+  background:#fff;
+}
+.cvl-search-result h2{
+  margin:0 0 8px;
+  font-size:20px;
+}
+.cvl-search-result p{
+  margin:0;
+  color:var(--cvl-muted);
+  line-height:1.65;
+}
+.cvl-empty-state,
+.cvl-error-page{
+  padding-block:80px;
+}
+.cvl-empty-state{
+  padding:52px;
+  border:1px solid var(--cvl-line);
+  border-radius:12px;
+  background:var(--cvl-paper);
+}
+.cvl-empty-state h2{
+  margin-top:0;
+}
+.cvl-empty-state p,
+.cvl-error-page p,
+.cvl-archive-description{
+  max-width:720px;
+  color:var(--cvl-muted);
+  line-height:1.65;
+}
+.cvl-error-page{
+  min-height:55vh;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+.cvl-error-page>span{
+  font-size:16px;
+}
