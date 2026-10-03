@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.5.0' );
+define( 'CVL_VERSION', '0.6.0' );
 
 add_action( 'after_setup_theme', function () {
     load_theme_textdomain( 'chavevertical-lite', get_template_directory() . '/languages' );
@@ -46,6 +46,13 @@ add_action( 'wp_enqueue_scripts', function () {
         'cvl-v05',
         get_template_directory_uri() . '/assets/css/v05.css',
         array( 'cvl-v04' ),
+        CVL_VERSION
+    );
+
+    wp_enqueue_style(
+        'cvl-v06',
+        get_template_directory_uri() . '/assets/css/v06.css',
+        array( 'cvl-v05' ),
         CVL_VERSION
     );
 
@@ -454,3 +461,150 @@ function cvl_shop_root_category_grid() {
     echo '</div></section>';
 }
 add_action( 'woocommerce_archive_description', 'cvl_shop_root_category_grid', 20 );
+
+
+/**
+ * Carrega a árvore completa de categorias numa única query.
+ * Mantém uma ordem comercial estável para as categorias principais.
+ */
+function cvl_get_product_category_tree() {
+    static $tree = null;
+
+    if ( null !== $tree ) {
+        return $tree;
+    }
+
+    $tree = array();
+
+    if ( ! taxonomy_exists( 'product_cat' ) ) {
+        return $tree;
+    }
+
+    $terms = get_terms( array(
+        'taxonomy'   => 'product_cat',
+        'hide_empty' => false,
+        'number'     => 0,
+    ) );
+
+    if ( is_wp_error( $terms ) || empty( $terms ) ) {
+        return $tree;
+    }
+
+    $uncategorized = get_term_by( 'slug', 'uncategorized', 'product_cat' );
+    $uncategorized_id = $uncategorized && ! is_wp_error( $uncategorized )
+        ? (int) $uncategorized->term_id
+        : 0;
+
+    foreach ( $terms as $term ) {
+        if ( $uncategorized_id && (int) $term->term_id === $uncategorized_id ) {
+            continue;
+        }
+
+        $parent = (int) $term->parent;
+
+        if ( ! isset( $tree[ $parent ] ) ) {
+            $tree[ $parent ] = array();
+        }
+
+        $tree[ $parent ][] = $term;
+    }
+
+    $root_priority = array(
+        'ferramentas-manuais',
+        'ferramentas-electricas',
+        'ferramentas-eletricas',
+        'ferramentas-pneumaticas',
+        'oficina-automovel',
+        'maquinas-p-industria-metal',
+        'carpintaria-de-madeiras',
+        'construcao-civil',
+        'canalizacao-e-desentupimentos',
+        'equipamentos-de-soldadura',
+        'electricidade-e-electronica',
+        'eletricidade-e-eletronica',
+        'equip-p-agricultura',
+        'elevacao-e-carga',
+        'medicao-e-nivelamento',
+        'lavagem-a-alta-pressao',
+        'aspiracao-e-lavagem-estofos',
+        'ar-comprimido',
+        'geradores',
+        'proteccao-e-seguranca',
+        'protecao-e-seguranca',
+        'limpeza',
+        'estantaria-e-arrumacao',
+        'floresta-e-jardim',
+        'iluminacao',
+    );
+    $rank = array_flip( $root_priority );
+
+    foreach ( $tree as $parent => &$siblings ) {
+        usort(
+            $siblings,
+            static function ( $a, $b ) use ( $parent, $rank ) {
+                if ( 0 === (int) $parent ) {
+                    $ra = $rank[ $a->slug ] ?? 999;
+                    $rb = $rank[ $b->slug ] ?? 999;
+
+                    if ( $ra !== $rb ) {
+                        return $ra <=> $rb;
+                    }
+                }
+
+                return strcasecmp( $a->name, $b->name );
+            }
+        );
+    }
+    unset( $siblings );
+
+    return $tree;
+}
+
+/**
+ * Renderiza a navegação off-canvas de categorias sem queries adicionais.
+ */
+function cvl_render_category_drawer_items( array $tree, int $parent = 0, int $depth = 0 ) {
+    if ( empty( $tree[ $parent ] ) || $depth > 5 ) {
+        return;
+    }
+
+    $list_class = 0 === $depth
+        ? 'cvl-category-drawer-list'
+        : 'cvl-category-drawer-sublist';
+
+    echo '<ul class="' . esc_attr( $list_class ) . '">';
+
+    foreach ( $tree[ $parent ] as $term ) {
+        $term_id      = (int) $term->term_id;
+        $term_url     = get_term_link( $term );
+        $has_children = ! empty( $tree[ $term_id ] );
+
+        if ( is_wp_error( $term_url ) ) {
+            continue;
+        }
+
+        echo '<li class="cvl-category-drawer-item' . ( $has_children ? ' has-children' : '' ) . '" data-depth="' . esc_attr( (string) $depth ) . '">';
+        echo '<div class="cvl-category-drawer-row">';
+        echo '<a href="' . esc_url( $term_url ) . '"><span>' . esc_html( $term->name ) . '</span></a>';
+
+        if ( $has_children ) {
+            echo '<button class="cvl-category-expand" type="button" aria-expanded="false" aria-label="' . esc_attr( sprintf( __( 'Mostrar subcategorias de %s', 'chavevertical-lite' ), $term->name ) ) . '">';
+            echo '<span aria-hidden="true">›</span>';
+            echo '</button>';
+        } else {
+            echo '<span class="cvl-category-row-arrow" aria-hidden="true">›</span>';
+        }
+
+        echo '</div>';
+
+        if ( $has_children ) {
+            echo '<div class="cvl-category-drawer-children" hidden>';
+            cvl_render_category_drawer_items( $tree, $term_id, $depth + 1 );
+            echo '</div>';
+        }
+
+        echo '</li>';
+    }
+
+    echo '</ul>';
+}
