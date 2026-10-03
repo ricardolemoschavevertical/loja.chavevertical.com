@@ -102,6 +102,14 @@ if ( $apply && $images ) {
     require_once ABSPATH . 'wp-admin/includes/media.php';
     require_once ABSPATH . 'wp-admin/includes/file.php';
     require_once ABSPATH . 'wp-admin/includes/image.php';
+
+    add_filter(
+        'image_sideload_extensions',
+        static function ( array $extensions ): array {
+            $extensions[] = 'avif';
+            return array_values( array_unique( $extensions ) );
+        }
+    );
 }
 
 foreach ( $brands as $brand ) {
