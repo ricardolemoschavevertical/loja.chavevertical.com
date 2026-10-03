@@ -166,3 +166,32 @@
 .cvl-footer-logo img{
   background:#2f2f2f!important;
 }
+
+
+/* v0.9.2 — nine featured categories on one row */
+@media(min-width:1200px){
+  .cvl-v4-categories-section .cvl-v4-category-grid{
+    grid-template-columns:repeat(9,minmax(0,1fr))!important;
+    gap:10px!important;
+  }
+
+  .cvl-v4-categories-section .cvl-v4-category-media{
+    padding:9px!important;
+  }
+
+  .cvl-v4-categories-section .cvl-v4-category-name{
+    min-height:52px!important;
+    padding:8px 9px!important;
+  }
+
+  .cvl-v4-categories-section .cvl-v4-category-name strong{
+    font-size:9.5px!important;
+    line-height:1.2!important;
+  }
+}
+
+@media(min-width:992px) and (max-width:1199.98px){
+  .cvl-v4-categories-section .cvl-v4-category-grid{
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  }
+}
