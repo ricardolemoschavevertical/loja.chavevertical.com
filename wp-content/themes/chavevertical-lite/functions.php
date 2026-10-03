@@ -145,7 +145,7 @@ function cvl_get_product_primary_category( $product_id ) {
 function cvl_loop_product_category() {
     global $product;
 
-    if ( ! $product instanceof WC_Product ) {
+    if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product ) {
         return;
     }
 
@@ -165,7 +165,7 @@ add_action( 'woocommerce_before_shop_loop_item_title', 'cvl_loop_product_categor
 function cvl_loop_product_meta() {
     global $product;
 
-    if ( ! $product instanceof WC_Product ) {
+    if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product ) {
         return;
     }
 
@@ -217,7 +217,7 @@ add_action( 'woocommerce_after_shop_loop_item_title', 'cvl_loop_product_meta', 4
 function cvl_loop_product_stock() {
     global $product;
 
-    if ( ! $product instanceof WC_Product ) {
+    if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product ) {
         return;
     }
 
@@ -248,7 +248,7 @@ add_action( 'woocommerce_after_shop_loop_item', 'cvl_loop_actions_open', 9 );
 function cvl_loop_view_button() {
     global $product;
 
-    if ( ! $product instanceof WC_Product ) {
+    if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product ) {
         return;
     }
 
@@ -262,7 +262,7 @@ function cvl_loop_actions_close() {
 add_action( 'woocommerce_after_shop_loop_item', 'cvl_loop_actions_close', 20 );
 
 add_filter( 'woocommerce_product_add_to_cart_text', function ( $text, $product ) {
-    if ( $product instanceof WC_Product && $product->is_type( 'simple' ) && $product->is_purchasable() && $product->is_in_stock() ) {
+    if ( class_exists( 'WC_Product' ) && $product instanceof WC_Product && $product->is_type( 'simple' ) && $product->is_purchasable() && $product->is_in_stock() ) {
         return __( 'Adicionar ao carrinho', 'chavevertical-lite' );
     }
 
@@ -275,7 +275,7 @@ add_filter( 'woocommerce_product_add_to_cart_text', function ( $text, $product )
 function cvl_single_product_meta_top() {
     global $product;
 
-    if ( ! $product instanceof WC_Product ) {
+    if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product ) {
         return;
     }
 
