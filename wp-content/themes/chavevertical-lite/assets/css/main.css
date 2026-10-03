@@ -879,3 +879,81 @@ button,input,select,textarea{font:inherit}
 .cvl-error-page>span{
   font-size:16px;
 }
+
+
+/* =========================================================
+   Navegação nativa de categorias WooCommerce
+   ========================================================= */
+.cvl-categories-menu{
+  position:relative;
+  min-width:190px;
+}
+.cvl-categories-menu>summary{
+  list-style:none;
+  cursor:pointer;
+}
+.cvl-categories-menu>summary::-webkit-details-marker{
+  display:none;
+}
+.cvl-categories-menu[open]>.cvl-categories-link{
+  background:#0b1117;
+}
+.cvl-categories-dropdown{
+  position:absolute;
+  z-index:80;
+  top:100%;
+  left:0;
+  width:min(360px,88vw);
+  max-height:min(70vh,620px);
+  overflow:auto;
+  border:1px solid var(--cvl-line);
+  border-top:0;
+  background:#fff;
+  box-shadow:0 18px 45px rgba(16,24,32,.15);
+}
+.cvl-categories-dropdown>a{
+  min-height:42px;
+  padding:9px 13px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  border-bottom:1px solid #edf0f1;
+  color:var(--cvl-ink);
+  font-size:11px;
+  font-weight:800;
+  text-transform:uppercase;
+}
+.cvl-categories-dropdown>a:hover{
+  background:var(--cvl-teal-soft);
+  color:var(--cvl-teal-dark);
+}
+.cvl-categories-dropdown>a small{
+  color:#8b959d;
+  font-size:9px;
+  font-weight:700;
+}
+.cvl-categories-dropdown .cvl-categories-all{
+  color:#fff;
+  background:var(--cvl-teal);
+}
+.cvl-categories-dropdown .cvl-categories-all:hover{
+  color:#fff;
+  background:var(--cvl-teal-dark);
+}
+
+@media(max-width:900px){
+  .cvl-categories-menu{
+    width:100%;
+  }
+  .cvl-categories-menu>.cvl-categories-link{
+    min-height:46px;
+  }
+  .cvl-categories-dropdown{
+    position:static;
+    width:100%;
+    max-height:none;
+    border:0;
+    box-shadow:none;
+  }
+}
