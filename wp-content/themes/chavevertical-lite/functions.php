@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.19' );
+define( 'CVL_VERSION', '0.16.20' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -874,6 +874,7 @@ function cvl_single_product_info_panel() {
     $class          = 'is-onbackorder';
     $label          = __( 'Disponível por encomenda', 'chavevertical-lite' );
     $delivery_label = __( 'Prazo sujeito a confirmação', 'chavevertical-lite' );
+    $availability_icon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5z"></path><path d="m4 7.5 8 4.5 8-4.5M12 12v9"></path></svg>';
 
     if ( 'instock' === $status ) {
         $class          = 'is-instock';
@@ -882,7 +883,8 @@ function cvl_single_product_info_panel() {
     } elseif ( 'outofstock' === $status ) {
         $class          = 'is-outofstock';
         $label          = __( 'Sob consulta', 'chavevertical-lite' );
-        $delivery_label = __( 'Consulte-nos para confirmar o prazo', 'chavevertical-lite' );
+        $delivery_label = __( 'Clique para consultar no WhatsApp', 'chavevertical-lite' );
+        $availability_icon = '<svg class="cvl-whatsapp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 11.7a8.3 8.3 0 0 1-12.3 7.2L3.5 20l1.2-4.5A8.3 8.3 0 1 1 20.5 11.7Z"></path><path d="M8.4 7.8c.2-.4.4-.4.7-.4h.5c.2 0 .4.1.5.4l.8 1.8c.1.3.1.5-.1.7l-.7.9c-.2.2-.1.4 0 .6.5.9 1.2 1.7 2.1 2.2.2.1.4.2.6 0l.9-1.1c.2-.2.4-.3.7-.2l1.9.9c.3.1.4.3.4.5 0 .3-.1 1.5-.8 2.1-.7.6-1.5.8-2.4.6-1.3-.3-2.9-1-4.4-2.4-1.2-1.1-2.2-2.5-2.6-3.8-.4-1.1-.1-2.1.4-2.8.4-.5.9-.7 1.5-.7Z"></path></svg>';
     }
 
     $sku      = $product->get_sku();
@@ -901,7 +903,7 @@ function cvl_single_product_info_panel() {
     echo '<section class="cvl-single-info-panel">';
     echo '<div class="cvl-single-availability-row">';
     echo '<a class="cvl-single-availability ' . esc_attr( $class ) . '" href="' . esc_url( $whatsapp_url ) . '" target="_blank" rel="noopener nofollow">';
-    echo '<span class="cvl-single-availability-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5z"></path><path d="m4 7.5 8 4.5 8-4.5M12 12v9"></path></svg></span>';
+    echo '<span class="cvl-single-availability-icon" aria-hidden="true">' . $availability_icon . '</span>';
     echo '<span class="cvl-single-availability-copy"><strong>' . esc_html( $label ) . '</strong><small>' . esc_html( $delivery_label ) . '</small></span>';
     echo '</a>';
     echo '</div>';
