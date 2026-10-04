@@ -128,98 +128,118 @@ $cvl_category_image = static function ( $term, $size = 'large', $loading = 'lazy
 ?>
 
 <?php
-$hero_primary_category   = $hero_categories[0] ?? null;
-$hero_secondary_category = $hero_categories[1] ?? null;
-$hero_primary_url        = $shop_url;
-$hero_secondary_url      = $shop_url;
-$hero_primary_image      = '';
-$hero_secondary_image    = '';
+$homepage_hero = function_exists( 'cvl_get_homepage_hero' )
+    ? cvl_get_homepage_hero()
+    : array();
 
-if ( $hero_primary_category instanceof WP_Term ) {
-    $primary_term_url = get_term_link( $hero_primary_category );
-    if ( ! is_wp_error( $primary_term_url ) ) {
-        $hero_primary_url = $primary_term_url;
-    }
-    $hero_primary_image = $cvl_category_image( $hero_primary_category, 'large', 'eager' );
-}
+$hero_main = isset( $homepage_hero['main'] ) ? $homepage_hero['main'] : array();
+$hero_side = isset( $homepage_hero['side'] ) ? $homepage_hero['side'] : array();
 
-if ( $hero_secondary_category instanceof WP_Term ) {
-    $secondary_term_url = get_term_link( $hero_secondary_category );
-    if ( ! is_wp_error( $secondary_term_url ) ) {
-        $hero_secondary_url = $secondary_term_url;
-    }
-    $hero_secondary_image = $cvl_category_image( $hero_secondary_category, 'large', 'eager' );
-}
+$hero_main_url      = ! empty( $hero_main['url'] ) ? $hero_main['url'] : $shop_url;
+$hero_side_url      = ! empty( $hero_side['url'] ) ? $hero_side['url'] : $shop_url;
+$hero_secondary_url = ! empty( $hero_main['secondary_url'] ) ? $hero_main['secondary_url'] : home_url( '/contactos/' );
 
-if ( ! $hero_primary_image && ! empty( $products[0] ) ) {
-    $hero_primary_image = $products[0]->get_image(
-        'woocommerce_single',
-        array(
-            'loading'       => 'eager',
-            'decoding'      => 'async',
-            'fetchpriority' => 'high',
-        )
-    );
-}
+$hero_main_image = function_exists( 'cvl_homepage_hero_image_url' )
+    ? cvl_homepage_hero_image_url( $hero_main )
+    : '';
+$hero_side_image = function_exists( 'cvl_homepage_hero_image_url' )
+    ? cvl_homepage_hero_image_url( $hero_side )
+    : '';
 
-if ( ! $hero_secondary_image && ! empty( $products[1] ) ) {
-    $hero_secondary_image = $products[1]->get_image(
-        'woocommerce_single',
-        array(
-            'loading'  => 'eager',
-            'decoding' => 'async',
-        )
-    );
-}
+$hero_main_style = sprintf(
+    '--cvl-hero-main-bg:%1$s;--cvl-hero-main-text:%2$s;--cvl-hero-main-accent:%3$s;',
+    esc_attr( $hero_main['background'] ?? '#0b4e46' ),
+    esc_attr( $hero_main['text_color'] ?? '#ffffff' ),
+    esc_attr( $hero_main['accent_color'] ?? '#a9d8a1' )
+);
+$hero_side_style = sprintf(
+    '--cvl-hero-side-bg:%1$s;--cvl-hero-side-text:%2$s;--cvl-hero-side-accent:%3$s;',
+    esc_attr( $hero_side['background'] ?? '#f0f2e7' ),
+    esc_attr( $hero_side['text_color'] ?? '#17302c' ),
+    esc_attr( $hero_side['accent_color'] ?? '#17302c' )
+);
 ?>
 
 <section class="cvl-ref-hero cvl-ref-hero-showcase">
     <div class="cvl-shell cvl-ref-hero-grid">
-        <article class="cvl-ref-hero-main">
+        <article class="cvl-ref-hero-main" style="<?php echo esc_attr( $hero_main_style ); ?>">
             <div class="cvl-ref-hero-main-copy">
-                <span class="cvl-ref-kicker">PARA QUEM FAZ ACONTECER</span>
-                <h1>O trabalho é exigente.<br><span>A escolha é simples.</span></h1>
-                <p>Máquinas, ferramentas e equipamento profissional para oficina, indústria, construção e manutenção — com apoio de quem conhece o produto.</p>
+                <?php if ( ! empty( $hero_main['eyebrow'] ) ) : ?>
+                    <span class="cvl-ref-kicker"><?php echo esc_html( $hero_main['eyebrow'] ); ?></span>
+                <?php endif; ?>
+
+                <h1>
+                    <?php echo esc_html( $hero_main['title'] ?? '' ); ?>
+                    <?php if ( ! empty( $hero_main['title_accent'] ) ) : ?>
+                        <br><span><?php echo esc_html( $hero_main['title_accent'] ); ?></span>
+                    <?php endif; ?>
+                </h1>
+
+                <?php if ( ! empty( $hero_main['description'] ) ) : ?>
+                    <p><?php echo esc_html( $hero_main['description'] ); ?></p>
+                <?php endif; ?>
 
                 <div class="cvl-ref-hero-actions">
-                    <a class="cvl-ref-button cvl-ref-button-primary" href="<?php echo esc_url( $shop_url ); ?>">
-                        EXPLORAR EQUIPAMENTOS <span aria-hidden="true">→</span>
-                    </a>
-                    <a class="cvl-ref-hero-help" href="<?php echo esc_url( home_url( '/contactos/' ) ); ?>">
-                        Precisa de ajuda? <span aria-hidden="true">→</span>
-                    </a>
+                    <?php if ( ! empty( $hero_main['cta'] ) ) : ?>
+                        <a class="cvl-ref-button cvl-ref-button-primary" href="<?php echo esc_url( $hero_main_url ); ?>">
+                            <?php echo esc_html( $hero_main['cta'] ); ?> <span aria-hidden="true">→</span>
+                        </a>
+                    <?php endif; ?>
+
+                    <?php if ( ! empty( $hero_main['secondary_cta'] ) ) : ?>
+                        <a class="cvl-ref-hero-help" href="<?php echo esc_url( $hero_secondary_url ); ?>">
+                            <?php echo esc_html( $hero_main['secondary_cta'] ); ?> <span aria-hidden="true">→</span>
+                        </a>
+                    <?php endif; ?>
                 </div>
             </div>
 
-            <a class="cvl-ref-hero-main-media" href="<?php echo esc_url( $hero_primary_url ); ?>" aria-label="<?php esc_attr_e( 'Explorar equipamento profissional', 'chavevertical-lite' ); ?>">
+            <a class="cvl-ref-hero-main-media" href="<?php echo esc_url( $hero_main_url ); ?>" aria-label="<?php echo esc_attr( $hero_main['cta'] ?? __( 'Explorar equipamento profissional', 'chavevertical-lite' ) ); ?>">
                 <span class="cvl-ref-hero-orbit" aria-hidden="true"></span>
-                <?php if ( $hero_primary_image ) : ?>
-                    <?php echo wp_kses_post( $hero_primary_image ); ?>
+                <?php if ( $hero_main_image ) : ?>
+                    <img src="<?php echo esc_url( $hero_main_image ); ?>" alt="<?php echo esc_attr( $hero_main['title'] ?? '' ); ?>" loading="eager" decoding="async" fetchpriority="high">
                 <?php else : ?>
                     <span class="cvl-ref-hero-media-fallback" aria-hidden="true">CV</span>
                 <?php endif; ?>
-                <span class="cvl-ref-hero-professional-badge">ESCOLHA<br>PROFISSIONAL</span>
+
+                <?php if ( ! empty( $hero_main['badge'] ) ) : ?>
+                    <span class="cvl-ref-hero-professional-badge"><?php echo esc_html( $hero_main['badge'] ); ?></span>
+                <?php endif; ?>
             </a>
 
             <span class="cvl-ref-hero-signature" aria-hidden="true">CHAVE VERTICAL — 01</span>
         </article>
 
-        <a class="cvl-ref-hero-side" href="<?php echo esc_url( $hero_secondary_url ); ?>">
+        <a class="cvl-ref-hero-side" href="<?php echo esc_url( $hero_side_url ); ?>" style="<?php echo esc_attr( $hero_side_style ); ?>">
             <span class="cvl-ref-hero-side-copy">
-                <small>CATÁLOGO PROFISSIONAL</small>
-                <strong>Tudo num só lugar.<br>Pronto a trabalhar.</strong>
-                <span>Mais de 30.000 referências para oficina, indústria e construção.</span>
+                <?php if ( ! empty( $hero_side['eyebrow'] ) ) : ?>
+                    <small><?php echo esc_html( $hero_side['eyebrow'] ); ?></small>
+                <?php endif; ?>
+
+                <strong>
+                    <?php echo esc_html( $hero_side['title'] ?? '' ); ?>
+                    <?php if ( ! empty( $hero_side['title_accent'] ) ) : ?>
+                        <br><span><?php echo esc_html( $hero_side['title_accent'] ); ?></span>
+                    <?php endif; ?>
+                </strong>
+
+                <?php if ( ! empty( $hero_side['description'] ) ) : ?>
+                    <span><?php echo esc_html( $hero_side['description'] ); ?></span>
+                <?php endif; ?>
             </span>
 
             <span class="cvl-ref-hero-side-media">
-                <?php if ( $hero_secondary_image ) : ?>
-                    <?php echo wp_kses_post( $hero_secondary_image ); ?>
+                <?php if ( $hero_side_image ) : ?>
+                    <img src="<?php echo esc_url( $hero_side_image ); ?>" alt="<?php echo esc_attr( $hero_side['title'] ?? '' ); ?>" loading="eager" decoding="async">
                 <?php else : ?>
                     <span class="cvl-ref-hero-media-fallback" aria-hidden="true">CV</span>
                 <?php endif; ?>
             </span>
 
-            <span class="cvl-ref-hero-side-arrow" aria-hidden="true">→</span>
+            <span class="cvl-ref-hero-side-cta" aria-hidden="true">
+                <span><?php echo esc_html( $hero_side['cta'] ?? '' ); ?></span>
+                <b>→</b>
+            </span>
         </a>
     </div>
 </section>

@@ -1,50 +1,85 @@
-[
-  {
-    "eyebrow": "MAIS PROCURADO",
-    "title": "Equipar uma oficina",
-    "description": "Carros de ferramentas, elevadores, máquinas e equipamentos para utilização profissional.",
-    "cta": "VER SOLUÇÕES →",
-    "url": "/?s=oficina&post_type=product",
-    "background": "#101820",
-    "text_color": "#ffffff",
-    "image_id": 0,
-    "image_url": "",
-    "fallback_category_slug": "oficina-automovel"
+{
+  "hero": {
+    "main": {
+      "eyebrow": "PARA QUEM FAZ ACONTECER",
+      "title": "O trabalho é exigente.",
+      "title_accent": "A escolha é simples.",
+      "description": "Máquinas, ferramentas e equipamento profissional para oficina, indústria, construção e manutenção — com apoio de quem conhece o produto.",
+      "cta": "EXPLORAR EQUIPAMENTOS",
+      "url": "",
+      "secondary_cta": "Precisa de ajuda?",
+      "secondary_url": "/contactos/",
+      "badge": "ESCOLHA PROFISSIONAL",
+      "background": "#0b4e46",
+      "text_color": "#ffffff",
+      "accent_color": "#a9d8a1",
+      "image_id": 0,
+      "image_url": "",
+      "fallback_category_slug": "oficina-automovel"
+    },
+    "side": {
+      "eyebrow": "CATÁLOGO PROFISSIONAL",
+      "title": "Tudo num só lugar.",
+      "title_accent": "Pronto a trabalhar.",
+      "description": "Mais de 30.000 referências para oficina, indústria e construção.",
+      "cta": "EXPLORAR",
+      "url": "",
+      "background": "#f0f2e7",
+      "text_color": "#17302c",
+      "accent_color": "#17302c",
+      "image_id": 0,
+      "image_url": "",
+      "fallback_category_slug": "ferramentas-electricas"
+    }
   },
-  {
-    "eyebrow": "AR COMPRIMIDO",
-    "title": "Produção e tratamento de ar",
-    "description": "Compressores, secadores, enroladores, reservatórios e acessórios pneumáticos.",
-    "cta": "EXPLORAR →",
-    "url": "/?s=compressor&post_type=product",
-    "background": "#006b62",
-    "text_color": "#ffffff",
-    "image_id": 0,
-    "image_url": "",
-    "fallback_category_slug": "ar-comprimido"
-  },
-  {
-    "eyebrow": "MOVIMENTAÇÃO",
-    "title": "Elevação e logística",
-    "description": "Porta-paletes, mesas elevatórias, gruas e soluções para armazém e oficina.",
-    "cta": "VER EQUIPAMENTO →",
-    "url": "/?s=porta-paletes&post_type=product",
-    "background": "#f5f7f7",
-    "text_color": "#182129",
-    "image_id": 0,
-    "image_url": "",
-    "fallback_category_slug": "elevacao-e-carga"
-  },
-  {
-    "eyebrow": "NÃO ENCONTRA?",
-    "title": "Tratamos da pesquisa por si.",
-    "description": "Indique a aplicação, referência ou características técnicas e ajudamos a encontrar a solução.",
-    "cta": "PEDIR ACONSELHAMENTO →",
-    "url": "/contactos/",
-    "background": "#b51f1f",
-    "text_color": "#ffffff",
-    "image_id": 0,
-    "image_url": "",
-    "fallback_category_slug": ""
-  }
-]
+  "highlights": [
+    {
+      "eyebrow": "MAIS PROCURADO",
+      "title": "Equipar uma oficina",
+      "description": "Carros de ferramentas, elevadores, máquinas e equipamentos para utilização profissional.",
+      "cta": "VER SOLUÇÕES →",
+      "url": "/?s=oficina&post_type=product",
+      "background": "#101820",
+      "text_color": "#ffffff",
+      "image_id": 0,
+      "image_url": "",
+      "fallback_category_slug": "oficina-automovel"
+    },
+    {
+      "eyebrow": "AR COMPRIMIDO",
+      "title": "Produção e tratamento de ar",
+      "description": "Compressores, secadores, enroladores, reservatórios e acessórios pneumáticos.",
+      "cta": "EXPLORAR →",
+      "url": "/?s=compressor&post_type=product",
+      "background": "#006b62",
+      "text_color": "#ffffff",
+      "image_id": 0,
+      "image_url": "",
+      "fallback_category_slug": "ar-comprimido"
+    },
+    {
+      "eyebrow": "MOVIMENTAÇÃO",
+      "title": "Elevação e logística",
+      "description": "Porta-paletes, mesas elevatórias, gruas e soluções para armazém e oficina.",
+      "cta": "VER EQUIPAMENTO →",
+      "url": "/?s=porta-paletes&post_type=product",
+      "background": "#f5f7f7",
+      "text_color": "#182129",
+      "image_id": 0,
+      "image_url": "",
+      "fallback_category_slug": "elevacao-e-carga"
+    },
+    {
+      "eyebrow": "NÃO ENCONTRA?",
+      "title": "Tratamos da pesquisa por si.",
+      "description": "Indique a aplicação, referência ou características técnicas e ajudamos a encontrar a solução.",
+      "cta": "PEDIR ACONSELHAMENTO →",
+      "url": "/contactos/",
+      "background": "#b51f1f",
+      "text_color": "#ffffff",
+      "image_id": 0,
+      "image_url": "",
+      "fallback_category_slug": ""
+    }
+  ]
+}

@@ -926,3 +926,49 @@ h1,h2,h3,h4,h5,h6,.woocommerce-loop-product__title{font-family:"Manrope","DM San
     bottom:20px;
   }
 }
+
+
+/* v0.15.0 — Hero and side card controlled by Destaques Homepage / GitHub */
+.cvl-ref-hero-main{
+  background:var(--cvl-hero-main-bg,#0b4e46)!important;
+  color:var(--cvl-hero-main-text,#fff)!important;
+}
+.cvl-ref-hero-main h1{color:var(--cvl-hero-main-text,#fff)!important}
+.cvl-ref-hero-main h1 span{color:var(--cvl-hero-main-accent,#a9d8a1)!important}
+.cvl-ref-hero-main p{color:color-mix(in srgb,var(--cvl-hero-main-text,#fff) 82%,transparent)!important}
+.cvl-ref-hero-main .cvl-ref-kicker{color:color-mix(in srgb,var(--cvl-hero-main-accent,#a9d8a1) 78%,#fff)!important}
+.cvl-ref-hero-side{
+  background:var(--cvl-hero-side-bg,#f0f2e7)!important;
+  color:var(--cvl-hero-side-text,#17302c)!important;
+}
+.cvl-ref-hero-side-copy small{color:color-mix(in srgb,var(--cvl-hero-side-text,#17302c) 65%,transparent)!important}
+.cvl-ref-hero-side-copy strong{color:var(--cvl-hero-side-text,#17302c)!important}
+.cvl-ref-hero-side-copy strong span{color:var(--cvl-hero-side-accent,#17302c)!important}
+.cvl-ref-hero-side-copy>span{color:color-mix(in srgb,var(--cvl-hero-side-text,#17302c) 68%,transparent)!important}
+.cvl-ref-hero-side-cta{
+  position:absolute;
+  left:28px;
+  bottom:22px;
+  z-index:4;
+  display:flex;
+  align-items:center;
+  gap:9px;
+  color:var(--cvl-hero-side-text,#17302c);
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.06em;
+}
+.cvl-ref-hero-side-cta b{
+  width:34px;
+  height:34px;
+  display:grid;
+  place-items:center;
+  border:1px solid color-mix(in srgb,var(--cvl-hero-side-text,#17302c) 28%,transparent);
+  border-radius:50%;
+  background:rgba(255,255,255,.45);
+  font-size:16px;
+}
+.cvl-ref-hero-side-arrow{display:none!important}
+@media(max-width:575.98px){
+  .cvl-ref-hero-side-cta{left:24px;bottom:18px}
+}

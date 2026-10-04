@@ -61,6 +61,99 @@ function cvl_homepage_highlights_fallback_cards() {
     );
 }
 
+function cvl_homepage_hero_fallback() {
+    return array(
+        'main' => array(
+            'eyebrow'                => 'PARA QUEM FAZ ACONTECER',
+            'title'                  => 'O trabalho é exigente.',
+            'title_accent'           => 'A escolha é simples.',
+            'description'            => 'Máquinas, ferramentas e equipamento profissional para oficina, indústria, construção e manutenção — com apoio de quem conhece o produto.',
+            'cta'                    => 'EXPLORAR EQUIPAMENTOS',
+            'url'                    => '',
+            'secondary_cta'          => 'Precisa de ajuda?',
+            'secondary_url'          => '/contactos/',
+            'badge'                  => 'ESCOLHA PROFISSIONAL',
+            'background'             => '#0b4e46',
+            'text_color'             => '#ffffff',
+            'accent_color'           => '#a9d8a1',
+            'image_id'               => 0,
+            'image_url'              => '',
+            'fallback_category_slug' => 'oficina-automovel',
+        ),
+        'side' => array(
+            'eyebrow'                => 'CATÁLOGO PROFISSIONAL',
+            'title'                  => 'Tudo num só lugar.',
+            'title_accent'           => 'Pronto a trabalhar.',
+            'description'            => 'Mais de 30.000 referências para oficina, indústria e construção.',
+            'cta'                    => 'EXPLORAR',
+            'url'                    => '',
+            'secondary_cta'          => '',
+            'secondary_url'          => '',
+            'badge'                  => '',
+            'background'             => '#f0f2e7',
+            'text_color'             => '#17302c',
+            'accent_color'           => '#17302c',
+            'image_id'               => 0,
+            'image_url'              => '',
+            'fallback_category_slug' => 'ferramentas-electricas',
+        ),
+    );
+}
+
+function cvl_normalize_homepage_hero_panel( $panel, $fallback = array() ) {
+    $base = wp_parse_args(
+        is_array( $fallback ) ? $fallback : array(),
+        array(
+            'eyebrow'                => '',
+            'title'                  => '',
+            'title_accent'           => '',
+            'description'            => '',
+            'cta'                    => '',
+            'url'                    => '',
+            'secondary_cta'          => '',
+            'secondary_url'          => '',
+            'badge'                  => '',
+            'background'             => '#0b4e46',
+            'text_color'             => '#ffffff',
+            'accent_color'           => '#a9d8a1',
+            'image_id'               => 0,
+            'image_url'              => '',
+            'fallback_category_slug' => '',
+        )
+    );
+
+    $panel = wp_parse_args( is_array( $panel ) ? $panel : array(), $base );
+
+    $image_url = isset( $panel['image_url'] ) ? trim( (string) $panel['image_url'] ) : '';
+    if ( 0 === strpos( $image_url, 'theme://' ) ) {
+        $image_url = sanitize_text_field( $image_url );
+    } else {
+        $image_url = esc_url_raw( $image_url );
+    }
+
+    $background   = sanitize_hex_color( $panel['background'] );
+    $text_color   = sanitize_hex_color( $panel['text_color'] );
+    $accent_color = sanitize_hex_color( $panel['accent_color'] );
+
+    return array(
+        'eyebrow'                => sanitize_text_field( $panel['eyebrow'] ),
+        'title'                  => sanitize_text_field( $panel['title'] ),
+        'title_accent'           => sanitize_text_field( $panel['title_accent'] ),
+        'description'            => sanitize_textarea_field( $panel['description'] ),
+        'cta'                    => sanitize_text_field( $panel['cta'] ),
+        'url'                    => esc_url_raw( $panel['url'] ),
+        'secondary_cta'          => sanitize_text_field( $panel['secondary_cta'] ),
+        'secondary_url'          => esc_url_raw( $panel['secondary_url'] ),
+        'badge'                  => sanitize_text_field( $panel['badge'] ),
+        'background'             => $background ? $background : $base['background'],
+        'text_color'             => $text_color ? $text_color : $base['text_color'],
+        'accent_color'           => $accent_color ? $accent_color : $base['accent_color'],
+        'image_id'               => absint( $panel['image_id'] ),
+        'image_url'              => $image_url,
+        'fallback_category_slug' => sanitize_title( $panel['fallback_category_slug'] ),
+    );
+}
+
 function cvl_normalize_homepage_highlight( $card, $fallback = array() ) {
     $base = wp_parse_args(
         is_array( $fallback ) ? $fallback : array(),
@@ -138,39 +231,88 @@ function cvl_normalize_homepage_highlight( $card, $fallback = array() ) {
     );
 }
 
+function cvl_homepage_highlights_github_payload() {
+    static $payload = null;
+
+    if ( null !== $payload ) {
+        return $payload;
+    }
+
+    $fallback_cards = cvl_homepage_highlights_fallback_cards();
+    $fallback_hero  = cvl_homepage_hero_fallback();
+    $payload        = array(
+        'hero'       => $fallback_hero,
+        'highlights' => $fallback_cards,
+    );
+
+    $path = cvl_homepage_highlights_config_path();
+
+    if ( ! is_readable( $path ) ) {
+        return $payload;
+    }
+
+    $decoded = json_decode( (string) file_get_contents( $path ), true );
+
+    if ( ! is_array( $decoded ) ) {
+        return $payload;
+    }
+
+    // Compatibilidade com o formato antigo: array simples com os quatro destaques.
+    if ( isset( $decoded['hero'] ) || isset( $decoded['highlights'] ) ) {
+        $raw_hero  = isset( $decoded['hero'] ) && is_array( $decoded['hero'] ) ? $decoded['hero'] : array();
+        $raw_cards = isset( $decoded['highlights'] ) && is_array( $decoded['highlights'] ) ? array_values( $decoded['highlights'] ) : array();
+    } else {
+        $raw_hero  = array();
+        $raw_cards = array_values( $decoded );
+    }
+
+    foreach ( array( 'main', 'side' ) as $hero_key ) {
+        $payload['hero'][ $hero_key ] = cvl_normalize_homepage_hero_panel(
+            isset( $raw_hero[ $hero_key ] ) ? $raw_hero[ $hero_key ] : array(),
+            $fallback_hero[ $hero_key ]
+        );
+    }
+
+    $payload['highlights'] = array();
+
+    for ( $i = 0; $i < 4; $i++ ) {
+        $payload['highlights'][] = cvl_normalize_homepage_highlight(
+            isset( $raw_cards[ $i ] ) ? $raw_cards[ $i ] : array(),
+            $fallback_cards[ $i ]
+        );
+    }
+
+    return $payload;
+}
+
 function cvl_homepage_highlights_github_cards() {
-    static $cards = null;
+    $payload = cvl_homepage_highlights_github_payload();
+    return $payload['highlights'];
+}
 
-    if ( null !== $cards ) {
-        return $cards;
+function cvl_homepage_highlights_github_hero() {
+    $payload = cvl_homepage_highlights_github_payload();
+    return $payload['hero'];
+}
+
+function cvl_get_homepage_hero() {
+    $github_hero = cvl_homepage_highlights_github_hero();
+
+    if ( 'admin' !== cvl_homepage_highlights_source() ) {
+        return apply_filters( 'cvl_homepage_hero', $github_hero );
     }
 
-    $fallback = cvl_homepage_highlights_fallback_cards();
-    $cards    = array();
-    $path     = cvl_homepage_highlights_config_path();
+    $saved = get_option( 'cvl_homepage_hero_admin', array() );
+    $hero  = array();
 
-    if ( is_readable( $path ) ) {
-        $decoded = json_decode( (string) file_get_contents( $path ), true );
-
-        if ( is_array( $decoded ) ) {
-            $decoded = array_values( $decoded );
-
-            for ( $i = 0; $i < 4; $i++ ) {
-                $cards[] = cvl_normalize_homepage_highlight(
-                    isset( $decoded[ $i ] ) ? $decoded[ $i ] : array(),
-                    $fallback[ $i ]
-                );
-            }
-        }
+    foreach ( array( 'main', 'side' ) as $hero_key ) {
+        $hero[ $hero_key ] = cvl_normalize_homepage_hero_panel(
+            isset( $saved[ $hero_key ] ) ? $saved[ $hero_key ] : array(),
+            $github_hero[ $hero_key ]
+        );
     }
 
-    if ( empty( $cards ) ) {
-        foreach ( $fallback as $card ) {
-            $cards[] = cvl_normalize_homepage_highlight( $card, $card );
-        }
-    }
-
-    return $cards;
+    return apply_filters( 'cvl_homepage_hero', $hero );
 }
 
 function cvl_homepage_highlights_source() {
@@ -286,6 +428,10 @@ function cvl_homepage_highlight_rotation_images( $card ) {
     return array_values( array_unique( array_filter( $images ) ) );
 }
 
+function cvl_homepage_hero_image_url( $panel ) {
+    return cvl_homepage_highlight_image_url( $panel );
+}
+
 add_action( 'admin_menu', function () {
     add_submenu_page(
         'woocommerce',
@@ -398,8 +544,18 @@ function cvl_render_homepage_highlights_admin() {
 
     $source       = cvl_homepage_highlights_source();
     $github_cards = cvl_homepage_highlights_github_cards();
+    $github_hero  = cvl_homepage_highlights_github_hero();
     $saved_cards  = get_option( 'cvl_homepage_highlights_admin', array() );
+    $saved_hero   = get_option( 'cvl_homepage_hero_admin', array() );
     $cards        = array();
+    $hero         = array();
+
+    foreach ( array( 'main', 'side' ) as $hero_key ) {
+        $hero[ $hero_key ] = cvl_normalize_homepage_hero_panel(
+            isset( $saved_hero[ $hero_key ] ) ? $saved_hero[ $hero_key ] : array(),
+            $github_hero[ $hero_key ]
+        );
+    }
 
     for ( $i = 0; $i < 4; $i++ ) {
         $cards[] = cvl_normalize_homepage_highlight(
@@ -415,7 +571,7 @@ function cvl_render_homepage_highlights_admin() {
             <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Destaques guardados.', 'chavevertical-lite' ); ?></p></div>
         <?php endif; ?>
 
-        <p><?php esc_html_e( 'Estes são os quatro quadrados apresentados imediatamente por baixo das categorias na homepage.', 'chavevertical-lite' ); ?></p>
+        <p><?php esc_html_e( 'Personalize o Hero principal, a caixa lateral e os quatro destaques da homepage. A mesma estrutura pode ser gerida pelo Admin ou pelo ficheiro do GitHub.', 'chavevertical-lite' ); ?></p>
 
         <div class="cvl-highlights-source-help">
             <strong><?php esc_html_e( 'Edição pelo GitHub:', 'chavevertical-lite' ); ?></strong>
@@ -432,6 +588,97 @@ function cvl_render_homepage_highlights_admin() {
                 <label><input type="radio" name="source" value="github" <?php checked( $source, 'github' ); ?>> <?php esc_html_e( 'Usar configuração do GitHub', 'chavevertical-lite' ); ?></label>
             </fieldset>
 
+            <h2 class="cvl-homepage-admin-section-title"><?php esc_html_e( 'Hero principal e caixa lateral', 'chavevertical-lite' ); ?></h2>
+            <div class="cvl-highlight-admin-grid cvl-hero-admin-grid">
+                <?php
+                $hero_admin_labels = array(
+                    'main' => __( 'Hero principal', 'chavevertical-lite' ),
+                    'side' => __( 'Caixa lateral', 'chavevertical-lite' ),
+                );
+                ?>
+                <?php foreach ( array( 'main', 'side' ) as $hero_key ) : ?>
+                    <?php
+                    $hero_panel   = $hero[ $hero_key ];
+                    $hero_preview = cvl_homepage_hero_image_url( $hero_panel );
+                    ?>
+                    <section class="cvl-highlight-admin-card cvl-hero-admin-card">
+                        <h2><?php echo esc_html( $hero_admin_labels[ $hero_key ] ); ?></h2>
+
+                        <div class="cvl-highlight-admin-preview">
+                            <img class="cvl-highlight-preview" src="<?php echo esc_url( $hero_preview ); ?>" alt="" <?php echo $hero_preview ? '' : 'style="display:none"'; ?>>
+                            <div class="cvl-highlight-preview-empty" <?php echo $hero_preview ? 'style="display:none"' : ''; ?>><?php esc_html_e( 'Sem imagem personalizada', 'chavevertical-lite' ); ?></div>
+                        </div>
+
+                        <input class="cvl-highlight-image-id" type="hidden" name="hero[<?php echo esc_attr( $hero_key ); ?>][image_id]" value="<?php echo esc_attr( $hero_panel['image_id'] ); ?>">
+                        <input class="cvl-highlight-image-url" type="hidden" name="hero[<?php echo esc_attr( $hero_key ); ?>][image_url]" value="<?php echo esc_attr( $hero_panel['image_url'] ); ?>">
+
+                        <p class="cvl-highlight-media-actions">
+                            <button type="button" class="button cvl-highlight-select-image"><?php esc_html_e( 'Escolher imagem', 'chavevertical-lite' ); ?></button>
+                            <button type="button" class="button-link-delete cvl-highlight-remove-image"><?php esc_html_e( 'Remover imagem personalizada', 'chavevertical-lite' ); ?></button>
+                        </p>
+
+                        <label>
+                            <span><?php esc_html_e( 'Texto superior', 'chavevertical-lite' ); ?></span>
+                            <input type="text" name="hero[<?php echo esc_attr( $hero_key ); ?>][eyebrow]" value="<?php echo esc_attr( $hero_panel['eyebrow'] ); ?>">
+                        </label>
+
+                        <label>
+                            <span><?php esc_html_e( 'Título — linha 1', 'chavevertical-lite' ); ?></span>
+                            <input type="text" name="hero[<?php echo esc_attr( $hero_key ); ?>][title]" value="<?php echo esc_attr( $hero_panel['title'] ); ?>">
+                        </label>
+
+                        <label>
+                            <span><?php esc_html_e( 'Título — linha 2', 'chavevertical-lite' ); ?></span>
+                            <input type="text" name="hero[<?php echo esc_attr( $hero_key ); ?>][title_accent]" value="<?php echo esc_attr( $hero_panel['title_accent'] ); ?>">
+                        </label>
+
+                        <label>
+                            <span><?php esc_html_e( 'Descrição', 'chavevertical-lite' ); ?></span>
+                            <textarea rows="4" name="hero[<?php echo esc_attr( $hero_key ); ?>][description]"><?php echo esc_textarea( $hero_panel['description'] ); ?></textarea>
+                        </label>
+
+                        <label>
+                            <span><?php esc_html_e( 'Texto do botão', 'chavevertical-lite' ); ?></span>
+                            <input type="text" name="hero[<?php echo esc_attr( $hero_key ); ?>][cta]" value="<?php echo esc_attr( $hero_panel['cta'] ); ?>">
+                        </label>
+
+                        <label>
+                            <span><?php esc_html_e( 'Link principal', 'chavevertical-lite' ); ?></span>
+                            <input type="text" name="hero[<?php echo esc_attr( $hero_key ); ?>][url]" value="<?php echo esc_attr( $hero_panel['url'] ); ?>" placeholder="<?php esc_attr_e( 'Vazio = catálogo', 'chavevertical-lite' ); ?>">
+                        </label>
+
+                        <?php if ( 'main' === $hero_key ) : ?>
+                            <label>
+                                <span><?php esc_html_e( 'Texto do segundo link', 'chavevertical-lite' ); ?></span>
+                                <input type="text" name="hero[main][secondary_cta]" value="<?php echo esc_attr( $hero_panel['secondary_cta'] ); ?>">
+                            </label>
+
+                            <label>
+                                <span><?php esc_html_e( 'Link do segundo botão', 'chavevertical-lite' ); ?></span>
+                                <input type="text" name="hero[main][secondary_url]" value="<?php echo esc_attr( $hero_panel['secondary_url'] ); ?>">
+                            </label>
+
+                            <label>
+                                <span><?php esc_html_e( 'Selo', 'chavevertical-lite' ); ?></span>
+                                <input type="text" name="hero[main][badge]" value="<?php echo esc_attr( $hero_panel['badge'] ); ?>">
+                            </label>
+                        <?php endif; ?>
+
+                        <label>
+                            <span><?php esc_html_e( 'Categoria de imagem fallback (slug)', 'chavevertical-lite' ); ?></span>
+                            <input type="text" name="hero[<?php echo esc_attr( $hero_key ); ?>][fallback_category_slug]" value="<?php echo esc_attr( $hero_panel['fallback_category_slug'] ); ?>">
+                        </label>
+
+                        <div class="cvl-highlight-color-row cvl-hero-color-row">
+                            <label><span><?php esc_html_e( 'Fundo', 'chavevertical-lite' ); ?></span><input type="color" name="hero[<?php echo esc_attr( $hero_key ); ?>][background]" value="<?php echo esc_attr( $hero_panel['background'] ); ?>"></label>
+                            <label><span><?php esc_html_e( 'Texto', 'chavevertical-lite' ); ?></span><input type="color" name="hero[<?php echo esc_attr( $hero_key ); ?>][text_color]" value="<?php echo esc_attr( $hero_panel['text_color'] ); ?>"></label>
+                            <label><span><?php esc_html_e( 'Destaque', 'chavevertical-lite' ); ?></span><input type="color" name="hero[<?php echo esc_attr( $hero_key ); ?>][accent_color]" value="<?php echo esc_attr( $hero_panel['accent_color'] ); ?>"></label>
+                        </div>
+                    </section>
+                <?php endforeach; ?>
+            </div>
+
+            <h2 class="cvl-homepage-admin-section-title"><?php esc_html_e( 'Destaques abaixo das categorias', 'chavevertical-lite' ); ?></h2>
             <div class="cvl-highlight-admin-grid">
                 <?php foreach ( $cards as $index => $card ) : ?>
                     <?php $preview = cvl_homepage_highlight_image_url( $card ); ?>
@@ -532,7 +779,7 @@ function cvl_render_homepage_highlights_admin() {
                 <?php endforeach; ?>
             </div>
 
-            <?php submit_button( __( 'Guardar destaques', 'chavevertical-lite' ) ); ?>
+            <?php submit_button( __( 'Guardar homepage', 'chavevertical-lite' ) ); ?>
         </form>
     </div>
 
@@ -540,7 +787,7 @@ function cvl_render_homepage_highlights_admin() {
         .cvl-highlights-source-help{margin:16px 0;padding:12px 14px;background:#fff;border-left:4px solid #17820f}
         .cvl-highlights-source{margin:18px 0;padding:14px;background:#fff;border:1px solid #dcdcde}
         .cvl-highlights-source label{margin-right:24px}
-        .cvl-highlight-admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;max-width:1200px}
+        .cvl-homepage-admin-section-title{margin:28px 0 12px}.cvl-highlight-admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;max-width:1200px}
         .cvl-highlight-admin-card{padding:18px;background:#fff;border:1px solid #dcdcde;border-radius:8px}
         .cvl-highlight-admin-card h2{margin-top:0}
         .cvl-highlight-admin-preview{height:180px;margin-bottom:12px;display:grid;place-items:center;overflow:hidden;background:#f3f5f5;border:1px solid #e3e6e6}
@@ -556,7 +803,7 @@ function cvl_render_homepage_highlights_admin() {
         .cvl-highlight-rotation-preview img{width:100%;aspect-ratio:1/1;object-fit:cover;border:1px solid #dcdcde;border-radius:5px;background:#fff}
         .cvl-highlight-rotation-empty{margin:10px 0;padding:12px;text-align:center;color:#6b7377;background:#fff;border:1px dashed #c9cecf}
         .cvl-highlight-rotation-box input[type="number"]{width:110px}
-        .cvl-highlight-color-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+        .cvl-highlight-color-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cvl-hero-color-row{grid-template-columns:repeat(3,1fr)}
         .cvl-highlight-color-row input[type="color"]{width:100%;height:38px;padding:2px}
         @media(max-width:800px){.cvl-highlight-admin-grid{grid-template-columns:1fr}}
     </style>
@@ -574,8 +821,18 @@ add_action( 'admin_post_cvl_save_homepage_highlights', function () {
     $source = in_array( $source, array( 'github', 'admin' ), true ) ? $source : 'github';
 
     $posted_cards = isset( $_POST['cards'] ) && is_array( $_POST['cards'] ) ? wp_unslash( $_POST['cards'] ) : array();
+    $posted_hero  = isset( $_POST['hero'] ) && is_array( $_POST['hero'] ) ? wp_unslash( $_POST['hero'] ) : array();
     $github_cards = cvl_homepage_highlights_github_cards();
+    $github_hero  = cvl_homepage_highlights_github_hero();
     $cards        = array();
+    $hero         = array();
+
+    foreach ( array( 'main', 'side' ) as $hero_key ) {
+        $hero[ $hero_key ] = cvl_normalize_homepage_hero_panel(
+            isset( $posted_hero[ $hero_key ] ) ? $posted_hero[ $hero_key ] : array(),
+            $github_hero[ $hero_key ]
+        );
+    }
 
     for ( $i = 0; $i < 4; $i++ ) {
         $cards[] = cvl_normalize_homepage_highlight(
@@ -586,6 +843,7 @@ add_action( 'admin_post_cvl_save_homepage_highlights', function () {
 
     update_option( 'cvl_homepage_highlights_source', $source, false );
     update_option( 'cvl_homepage_highlights_admin', $cards, false );
+    update_option( 'cvl_homepage_hero_admin', $hero, false );
 
     wp_safe_redirect(
         add_query_arg(
