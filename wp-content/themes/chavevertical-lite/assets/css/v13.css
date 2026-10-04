@@ -703,3 +703,29 @@ body.single-product.woocommerce .cvl-product-summary form.cart .single_add_to_ca
   border-color:var(--cvl-commercial-green-dark)!important;
   color:#fff!important;
 }
+
+
+/* Brands heading aligned with Novidades */
+.cvl-brand-carousel-section .cvl-brand-carousel-header{
+  margin-bottom:22px!important;
+  text-align:left!important;
+  display:block!important;
+}
+
+.cvl-brand-carousel-section .cvl-brand-carousel-kicker{
+  display:block!important;
+  margin:0!important;
+  color:var(--cvl-ref-teal)!important;
+  font-size:18px!important;
+  font-weight:900!important;
+  line-height:1.15!important;
+  letter-spacing:.07em!important;
+  text-align:left!important;
+  text-transform:uppercase!important;
+}
+
+@media(max-width:767.98px){
+  .cvl-brand-carousel-section .cvl-brand-carousel-kicker{
+    font-size:16px!important;
+  }
+}
