@@ -38,6 +38,7 @@ function cvl_brand_archive_category_facets( int $brand_term_id, float $min_price
             terms.term_id,
             terms.slug,
             terms.name,
+            category_tax.parent,
             COUNT(DISTINCT products.ID) AS product_count
         FROM {$wpdb->posts} products
         INNER JOIN {$wpdb->term_relationships} brand_rel
@@ -58,13 +59,107 @@ function cvl_brand_archive_category_facets( int $brand_term_id, float $min_price
         WHERE products.post_type = 'product'
           AND products.post_status = 'publish'
           {$price_sql}
-        GROUP BY terms.term_id, terms.slug, terms.name
+        GROUP BY terms.term_id, terms.slug, terms.name, category_tax.parent
         ORDER BY product_count DESC, terms.name ASC
     ";
 
     $rows = $wpdb->get_results( $wpdb->prepare( $sql, $params ), ARRAY_A );
 
     return is_array( $rows ) ? $rows : array();
+}
+
+/**
+ * Builds a hierarchical category tree from the categories actually used by
+ * products of the current brand. Missing ancestors are added so only root
+ * categories are visible initially and children can be expanded progressively.
+ */
+function cvl_brand_archive_category_tree( array $facets ): array {
+    $nodes = array();
+
+    foreach ( $facets as $facet ) {
+        $term_id = absint( $facet['term_id'] ?? 0 );
+
+        if ( ! $term_id ) {
+            continue;
+        }
+
+        $nodes[ $term_id ] = array(
+            'term_id'       => $term_id,
+            'slug'          => sanitize_title( (string) ( $facet['slug'] ?? '' ) ),
+            'name'          => (string) ( $facet['name'] ?? '' ),
+            'parent'        => absint( $facet['parent'] ?? 0 ),
+            'product_count' => absint( $facet['product_count'] ?? 0 ),
+            'children'      => array(),
+        );
+    }
+
+    if ( ! $nodes ) {
+        return array();
+    }
+
+    // Ensure every ancestor exists, even if no product is directly assigned to it.
+    $seed_ids = array_keys( $nodes );
+
+    foreach ( $seed_ids as $seed_id ) {
+        $parent_id = absint( $nodes[ $seed_id ]['parent'] ?? 0 );
+
+        while ( $parent_id > 0 ) {
+            if ( ! isset( $nodes[ $parent_id ] ) ) {
+                $parent_term = get_term( $parent_id, 'product_cat' );
+
+                if ( ! $parent_term instanceof WP_Term ) {
+                    break;
+                }
+
+                $nodes[ $parent_id ] = array(
+                    'term_id'       => (int) $parent_term->term_id,
+                    'slug'          => $parent_term->slug,
+                    'name'          => $parent_term->name,
+                    'parent'        => (int) $parent_term->parent,
+                    'product_count' => 0,
+                    'children'      => array(),
+                );
+            }
+
+            $parent_id = absint( $nodes[ $parent_id ]['parent'] ?? 0 );
+        }
+    }
+
+    // Stable alphabetical ordering before the hierarchy is assembled.
+    uasort(
+        $nodes,
+        static fn( array $a, array $b ): int => strnatcasecmp( $a['name'], $b['name'] )
+    );
+
+    $roots = array();
+
+    foreach ( array_keys( $nodes ) as $term_id ) {
+        $parent_id = absint( $nodes[ $term_id ]['parent'] ?? 0 );
+
+        if ( $parent_id > 0 && isset( $nodes[ $parent_id ] ) ) {
+            $nodes[ $parent_id ]['children'][] = &$nodes[ $term_id ];
+        } else {
+            $roots[] = &$nodes[ $term_id ];
+        }
+    }
+
+    $sort_children = static function ( array &$items ) use ( &$sort_children ): void {
+        usort(
+            $items,
+            static fn( array $a, array $b ): int => strnatcasecmp( $a['name'], $b['name'] )
+        );
+
+        foreach ( $items as &$item ) {
+            if ( ! empty( $item['children'] ) ) {
+                $sort_children( $item['children'] );
+            }
+        }
+        unset( $item );
+    };
+
+    $sort_children( $roots );
+
+    return $roots;
 }
 
 /**
@@ -154,6 +249,7 @@ function cvl_product_brand_search_layout(): void {
         $min_price,
         $max_price
     );
+    $category_tree = cvl_brand_archive_category_tree( $category_facets );
 
     list( $price_floor_raw, $price_ceil_raw ) = cvl_brand_archive_price_bounds(
         (int) $brand->term_id,
@@ -305,29 +401,78 @@ function cvl_product_brand_search_layout(): void {
                     <?php endif; ?>
                 </div>
 
-                <?php if ( $category_facets ) : ?>
-                    <section class="cvl-search-filter-group">
+                <?php if ( $category_tree ) : ?>
+                    <?php
+                    $selected_category_id = $selected_category instanceof WP_Term
+                        ? (int) $selected_category->term_id
+                        : 0;
+                    $selected_ancestor_ids = $selected_category_id
+                        ? array_map( 'absint', get_ancestors( $selected_category_id, 'product_cat', 'taxonomy' ) )
+                        : array();
+
+                    $render_brand_category_nodes = static function ( array $items, int $depth = 0 ) use (
+                        &$render_brand_category_nodes,
+                        $filter_url,
+                        $selected_category_id,
+                        $selected_ancestor_ids
+                    ): void {
+                        foreach ( $items as $item ) {
+                            $term_id = absint( $item['term_id'] ?? 0 );
+                            $slug    = sanitize_title( (string) ( $item['slug'] ?? '' ) );
+                            $name    = (string) ( $item['name'] ?? '' );
+
+                            if ( ! $term_id || ! $slug || '' === $name ) {
+                                continue;
+                            }
+
+                            $children = is_array( $item['children'] ?? null )
+                                ? $item['children']
+                                : array();
+                            $active   = $selected_category_id === $term_id;
+                            $expanded = $active || in_array( $term_id, $selected_ancestor_ids, true );
+                            $panel_id = 'cvl-brand-category-children-' . $term_id;
+                            ?>
+                            <div class="cvl-category-filter-item<?php echo $expanded ? ' is-expanded' : ''; ?>" style="--cvl-cat-depth:<?php echo esc_attr( $depth ); ?>">
+                                <div class="cvl-category-filter-row">
+                                    <a
+                                        class="cvl-category-filter-link<?php echo $active ? ' is-active' : ''; ?>"
+                                        href="<?php echo esc_url( $filter_url( array( 'categoria' => $active ? '' : $slug ) ) ); ?>"
+                                    >
+                                        <span><?php echo esc_html( $name ); ?></span>
+                                    </a>
+
+                                    <?php if ( $children ) : ?>
+                                        <button
+                                            type="button"
+                                            class="cvl-category-filter-toggle"
+                                            data-cvl-category-tree-toggle
+                                            aria-expanded="<?php echo $expanded ? 'true' : 'false'; ?>"
+                                            aria-controls="<?php echo esc_attr( $panel_id ); ?>"
+                                            aria-label="<?php echo esc_attr( sprintf( __( 'Expandir %s', 'chavevertical-lite' ), $name ) ); ?>"
+                                        ><span aria-hidden="true">›</span></button>
+                                    <?php endif; ?>
+                                </div>
+
+                                <?php if ( $children ) : ?>
+                                    <div
+                                        id="<?php echo esc_attr( $panel_id ); ?>"
+                                        class="cvl-category-filter-children"
+                                        data-cvl-category-tree-children
+                                        <?php echo $expanded ? '' : 'hidden'; ?>
+                                    >
+                                        <?php $render_brand_category_nodes( $children, $depth + 1 ); ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                            <?php
+                        }
+                    };
+                    ?>
+
+                    <section class="cvl-search-filter-group cvl-category-filter-group">
                         <h2><?php esc_html_e( 'CATEGORIAS', 'chavevertical-lite' ); ?></h2>
-                        <div class="cvl-search-filter-list">
-                            <?php foreach ( $category_facets as $facet ) : ?>
-                                <?php
-                                $slug = sanitize_title( (string) ( $facet['slug'] ?? '' ) );
-
-                                if ( ! $slug ) {
-                                    continue;
-                                }
-
-                                $selected = $selected_category instanceof WP_Term
-                                    && $slug === $selected_category->slug;
-                                ?>
-                                <a
-                                    class="<?php echo $selected ? 'is-active' : ''; ?>"
-                                    href="<?php echo esc_url( $filter_url( array( 'categoria' => $selected ? '' : $slug ) ) ); ?>"
-                                >
-                                    <span><?php echo esc_html( $facet['name'] ?? $slug ); ?></span>
-                                    <small><?php echo esc_html( number_format_i18n( (int) ( $facet['product_count'] ?? 0 ) ) ); ?></small>
-                                </a>
-                            <?php endforeach; ?>
+                        <div class="cvl-category-filter-tree" data-cvl-category-filter-tree>
+                            <?php $render_brand_category_nodes( $category_tree ); ?>
                         </div>
                     </section>
                 <?php endif; ?>
