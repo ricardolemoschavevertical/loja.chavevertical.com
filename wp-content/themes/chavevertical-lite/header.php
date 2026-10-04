@@ -137,8 +137,8 @@ defined( 'ABSPATH' ) || exit;
                     'badge_class' => 'is-best',
                 ),
                 array(
-                    'label' => 'PEDIDO DE CONTACTO',
-                    'url'   => 'https://chavevertical.com/contacto-pedido-de-cotacao/',
+                    'label' => 'WHATSAPP',
+                    'url'   => 'https://api.whatsapp.com/send?phone=351914580410',
                     'contact' => true,
                 ),
             );
@@ -150,8 +150,12 @@ defined( 'ABSPATH' ) || exit;
                         <li class="is-contact-item">
                             <details class="cvl-contact-menu">
                                 <summary class="cvl-contact-menu-trigger">
-                                    <span class="cvl-contact-menu-icon" aria-hidden="true">▣</span>
-                                    <span><?php echo esc_html( $cvl_menu_item['label'] ); ?></span>
+                                    <a class="cvl-contact-menu-direct" href="<?php echo esc_url( $cvl_menu_item['url'] ); ?>" target="_blank" rel="noopener noreferrer" aria-label="<?php esc_attr_e( 'Abrir WhatsApp', 'chavevertical-lite' ); ?>">
+                                        <span class="cvl-contact-menu-icon" aria-hidden="true">
+                                            <svg viewBox="0 0 24 24"><path d="M12.04 2a9.91 9.91 0 0 0-8.59 14.86L2.05 22l5.25-1.38A9.9 9.9 0 1 0 12.04 2Zm5.79 14.1c-.24.68-1.4 1.25-1.92 1.32-.5.07-1.14.1-3.32-.8-2.79-1.15-4.58-4.01-4.72-4.2-.14-.19-1.13-1.5-1.13-2.86 0-1.36.71-2.03.96-2.31.25-.28.56-.35.75-.35.19 0 .37 0 .53.01.17.01.4.06.61.57.24.57.81 1.98.88 2.12.07.14.12.31.02.5-.09.19-.14.31-.28.47-.14.17-.3.37-.43.5-.14.14-.29.3-.12.59.16.28.73 1.2 1.56 1.94 1.07.95 1.97 1.25 2.25 1.39.28.14.45.12.61-.07.17-.19.72-.84.91-1.13.19-.28.38-.24.64-.14.26.09 1.66.78 1.95.92.28.14.47.21.54.33.07.12.07.7-.17 1.38Z"></path></svg>
+                                        </span>
+                                        <span><?php echo esc_html( $cvl_menu_item['label'] ); ?></span>
+                                    </a>
                                     <span class="cvl-contact-menu-chevron" aria-hidden="true">⌄</span>
                                 </summary>
 
