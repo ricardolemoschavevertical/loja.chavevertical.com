@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.53' );
+define( 'CVL_VERSION', '0.16.54' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -2075,29 +2075,27 @@ function cvl_product_category_search_layout(): void {
     $brand_facets = cvl_category_archive_brand_facets( $facet_category_ids, $min_price, $max_price );
     list( $price_floor_raw, $price_ceil_raw ) = cvl_category_archive_price_bounds( $facet_category_ids, $selected_brand );
 
+    /*
+     * Categorias disponíveis no nível atual.
+     * Numa categoria final não existem filhas, por isso desaparece o filtro
+     * "CATEGORIAS" e ficam apenas MARCAS + PREÇO.
+     */
+    $navigation_parent = $selected_category instanceof WP_Term ? $selected_category : $base_term;
+
     $category_terms = get_terms(
         array(
             'taxonomy'   => 'product_cat',
             'hide_empty' => true,
-            'child_of'   => (int) $base_term->term_id,
+            'parent'     => (int) $navigation_parent->term_id,
             'orderby'    => 'name',
             'order'      => 'ASC',
         )
     );
     $category_terms = is_wp_error( $category_terms ) ? array() : $category_terms;
 
-    // Carrossel visual para navegar progressivamente pela árvore da categoria.
-    $carousel_parent = $selected_category instanceof WP_Term ? $selected_category : $base_term;
-    $carousel_terms = get_terms(
-        array(
-            'taxonomy'   => 'product_cat',
-            'hide_empty' => true,
-            'parent'     => (int) $carousel_parent->term_id,
-            'orderby'    => 'name',
-            'order'      => 'ASC',
-        )
-    );
-    $carousel_terms = is_wp_error( $carousel_terms ) ? array() : $carousel_terms;
+    // O carrossel usa exatamente o mesmo nível hierárquico dos filtros.
+    $carousel_parent = $navigation_parent;
+    $carousel_terms  = $category_terms;
 
     $base_url = get_term_link( $base_term );
     if ( is_wp_error( $base_url ) ) {
@@ -2131,7 +2129,7 @@ function cvl_product_category_search_layout(): void {
     global $wp_query;
     $found = (int) $wp_query->found_posts;
     ?>
-    <div class="cvl-shell cvl-content cvl-search-page cvl-category-catalog-page">
+    <div class="cvl-shell cvl-content cvl-search-page cvl-category-catalog-page<?php echo empty( $category_terms ) ? ' is-final-category' : ' is-parent-category'; ?>">
         <header class="cvl-search-heading cvl-search-heading-compact">
             <span><?php esc_html_e( 'CATEGORIA', 'chavevertical-lite' ); ?></span>
             <h1><?php echo esc_html( $base_term->name ); ?></h1>
