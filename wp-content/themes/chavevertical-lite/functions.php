@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.62' );
+define( 'CVL_VERSION', '0.16.63' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -2360,6 +2360,19 @@ function cvl_product_category_search_layout(): void {
                             <?php if ( $max_price > 0 ) : ?>
                                 <input type="hidden" name="max_price" value="<?php echo esc_attr( wc_format_decimal( $max_price, 2 ) ); ?>">
                             <?php endif; ?>
+
+                            <div class="cvl-final-brand-search">
+                                <input
+                                    type="search"
+                                    class="cvl-final-brand-search-input"
+                                    data-cvl-brand-search
+                                    placeholder="<?php esc_attr_e( 'Pesquisar marca…', 'chavevertical-lite' ); ?>"
+                                    aria-label="<?php esc_attr_e( 'Pesquisar marca', 'chavevertical-lite' ); ?>"
+                                    autocomplete="off"
+                                    spellcheck="false"
+                                >
+                            </div>
+                            <p class="cvl-final-brand-search-empty" data-cvl-brand-search-empty hidden><?php esc_html_e( 'Nenhuma marca encontrada.', 'chavevertical-lite' ); ?></p>
 
                             <div class="cvl-final-brand-chips">
                                 <?php foreach ( $brand_facets as $facet ) : ?>
