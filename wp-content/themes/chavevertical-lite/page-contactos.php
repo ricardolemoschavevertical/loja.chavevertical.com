@@ -8,6 +8,17 @@ defined( 'ABSPATH' ) || exit;
 
 get_header();
 
+$contact_status = isset( $_GET['contact_status'] )
+    ? sanitize_key( wp_unslash( $_GET['contact_status'] ) )
+    : '';
+
+$contact_messages = array(
+    'sent'    => array( 'success', '✅ Pedido enviado com sucesso. Enviámos também uma confirmação para o seu email.' ),
+    'partial' => array( 'warning', '⚠️ O pedido foi recebido, mas não foi possível enviar a confirmação por email. A equipa irá contactá-lo.' ),
+    'invalid' => array( 'error', '⚠️ Verifique os campos obrigatórios e tente novamente.' ),
+    'error'   => array( 'error', '❌ Não foi possível enviar o pedido. Tente novamente ou contacte-nos por telefone/WhatsApp.' ),
+);
+
 $locations = array(
     array(
         'name'    => 'Loja / Armazém Aveiro',
@@ -23,17 +34,85 @@ $locations = array(
 ?>
 <div class="cvl-shell cvl-contact-page">
     <section class="cvl-contact-hero">
-        <div>
+        <div class="cvl-contact-hero-copy">
             <span class="cvl-contact-kicker"><span aria-hidden="true">💬</span> <?php esc_html_e( 'Apoio Chave Vertical', 'chavevertical-lite' ); ?></span>
             <h1><?php esc_html_e( 'Contactos', 'chavevertical-lite' ); ?></h1>
             <p><?php esc_html_e( 'Fale diretamente com a equipa certa para encomendas online, apoio comercial, pós-venda ou assuntos administrativos.', 'chavevertical-lite' ); ?></p>
+
+            <div class="cvl-contact-hero-actions">
+                <a class="cvl-contact-action is-primary" href="tel:+351234020500"><span aria-hidden="true">📞</span><?php esc_html_e( 'Ligar 234 020 500', 'chavevertical-lite' ); ?></a>
+                <a class="cvl-contact-action is-whatsapp" href="https://wa.me/351914580410" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">💬</span><?php esc_html_e( 'WhatsApp', 'chavevertical-lite' ); ?></a>
+                <a class="cvl-contact-action is-email" href="mailto:geral@chavevertical.pt"><span aria-hidden="true">✉️</span><?php esc_html_e( 'Email geral', 'chavevertical-lite' ); ?></a>
+            </div>
         </div>
 
-        <div class="cvl-contact-hero-actions">
-            <a class="cvl-contact-action is-primary" href="tel:+351234020500"><span aria-hidden="true">📞</span><?php esc_html_e( 'Ligar 234 020 500', 'chavevertical-lite' ); ?></a>
-            <a class="cvl-contact-action is-whatsapp" href="https://wa.me/351914580410" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">💬</span><?php esc_html_e( 'WhatsApp', 'chavevertical-lite' ); ?></a>
-            <a class="cvl-contact-action is-email" href="mailto:geral@chavevertical.pt"><span aria-hidden="true">✉️</span><?php esc_html_e( 'Email geral', 'chavevertical-lite' ); ?></a>
-        </div>
+        <aside class="cvl-contact-form-card" aria-label="<?php esc_attr_e( 'Formulário de contacto', 'chavevertical-lite' ); ?>">
+            <div class="cvl-contact-form-heading">
+                <span aria-hidden="true">📝</span>
+                <div>
+                    <strong><?php esc_html_e( 'Envie-nos uma mensagem', 'chavevertical-lite' ); ?></strong>
+                    <small><?php esc_html_e( 'Respondemos para o email indicado.', 'chavevertical-lite' ); ?></small>
+                </div>
+            </div>
+
+            <?php if ( isset( $contact_messages[ $contact_status ] ) ) : ?>
+                <?php $contact_message = $contact_messages[ $contact_status ]; ?>
+                <div class="cvl-contact-form-alert is-<?php echo esc_attr( $contact_message[0] ); ?>" role="status">
+                    <?php echo esc_html( $contact_message[1] ); ?>
+                </div>
+            <?php endif; ?>
+
+            <form class="cvl-contact-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+                <input type="hidden" name="action" value="cvl_contact_submit">
+                <input type="hidden" name="cvl_started" value="<?php echo esc_attr( (string) time() ); ?>">
+                <?php wp_nonce_field( 'cvl_contact_submit', 'cvl_contact_nonce' ); ?>
+
+                <div class="cvl-contact-hp" aria-hidden="true">
+                    <label>Website<input type="text" name="website" value="" tabindex="-1" autocomplete="off"></label>
+                </div>
+
+                <div class="cvl-contact-form-row">
+                    <label>
+                        <span>👤 <?php esc_html_e( 'Nome', 'chavevertical-lite' ); ?> *</span>
+                        <input type="text" name="name" required autocomplete="name">
+                    </label>
+                    <label>
+                        <span>✉️ <?php esc_html_e( 'Email', 'chavevertical-lite' ); ?> *</span>
+                        <input type="email" name="email" required autocomplete="email">
+                    </label>
+                </div>
+
+                <div class="cvl-contact-form-row">
+                    <label>
+                        <span>📞 <?php esc_html_e( 'Telefone', 'chavevertical-lite' ); ?></span>
+                        <input type="tel" name="phone" autocomplete="tel">
+                    </label>
+                    <label>
+                        <span>🏷️ <?php esc_html_e( 'Assunto', 'chavevertical-lite' ); ?> *</span>
+                        <input type="text" name="subject" required>
+                    </label>
+                </div>
+
+                <label class="cvl-contact-form-message">
+                    <span>💬 <?php esc_html_e( 'Mensagem', 'chavevertical-lite' ); ?> *</span>
+                    <textarea name="message" rows="5" required></textarea>
+                </label>
+
+                <label class="cvl-contact-consent">
+                    <input type="checkbox" name="consent" value="1" required>
+                    <span><?php esc_html_e( 'Autorizo o tratamento destes dados para resposta ao meu pedido.', 'chavevertical-lite' ); ?></span>
+                </label>
+
+                <button class="cvl-contact-submit" type="submit">
+                    <span aria-hidden="true">📨</span>
+                    <?php esc_html_e( 'Enviar pedido', 'chavevertical-lite' ); ?>
+                </button>
+
+                <p class="cvl-contact-form-note">
+                    <?php esc_html_e( 'Receberá uma confirmação por email após o envio.', 'chavevertical-lite' ); ?>
+                </p>
+            </form>
+        </aside>
     </section>
 
     <section class="cvl-contact-section">

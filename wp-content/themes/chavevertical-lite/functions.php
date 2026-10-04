@@ -1,11 +1,16 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.12.0' );
+define( 'CVL_VERSION', '0.12.1' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
     require_once $cvl_homepage_highlights_file;
+}
+
+$cvl_contact_form_file = get_template_directory() . '/inc/contact-form.php';
+if ( file_exists( $cvl_contact_form_file ) ) {
+    require_once $cvl_contact_form_file;
 }
 
 add_action( 'after_setup_theme', function () {

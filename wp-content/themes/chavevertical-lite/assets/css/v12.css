@@ -296,3 +296,229 @@
     box-shadow:inset 0 0 0 1px rgba(0,0,0,.06);
   }
 }
+
+
+/* v0.12.1 — contact form on the right side of the Contactos hero */
+.cvl-contact-hero{
+  grid-template-columns:minmax(0,1fr) minmax(370px,460px);
+  align-items:start;
+}
+
+.cvl-contact-hero-copy{
+  min-width:0;
+  padding-top:8px;
+}
+
+.cvl-contact-hero-actions{
+  margin-top:22px;
+  justify-content:flex-start;
+}
+
+.cvl-contact-form-card{
+  position:relative;
+  z-index:1;
+  min-width:0;
+  padding:20px;
+  border:1px solid #dfe6e1;
+  border-top:4px solid #17820f;
+  border-radius:16px;
+  background:#fff;
+  box-shadow:0 12px 30px rgba(30,55,40,.10);
+}
+
+.cvl-contact-form-heading{
+  margin-bottom:16px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.cvl-contact-form-heading>span{
+  width:42px;
+  height:42px;
+  flex:0 0 42px;
+  display:grid;
+  place-items:center;
+  border-radius:12px;
+  background:#edf8ee;
+  font-size:21px;
+}
+
+.cvl-contact-form-heading>div{
+  min-width:0;
+  display:grid;
+  gap:2px;
+}
+
+.cvl-contact-form-heading strong{
+  color:#252a2d;
+  font-size:17px;
+}
+
+.cvl-contact-form-heading small{
+  color:#748077;
+  font-size:11.5px;
+}
+
+.cvl-contact-form-alert{
+  margin:0 0 14px;
+  padding:10px 12px;
+  border:1px solid transparent;
+  border-radius:9px;
+  font-size:12px;
+  font-weight:700;
+  line-height:1.45;
+}
+
+.cvl-contact-form-alert.is-success{
+  border-color:#b9e1c2;
+  background:#effaf2;
+  color:#176d32;
+}
+
+.cvl-contact-form-alert.is-warning{
+  border-color:#f2d49f;
+  background:#fff8e8;
+  color:#946316;
+}
+
+.cvl-contact-form-alert.is-error{
+  border-color:#efc2c2;
+  background:#fff1f1;
+  color:#a32626;
+}
+
+.cvl-contact-form{
+  display:grid;
+  gap:12px;
+}
+
+.cvl-contact-form-row{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+
+.cvl-contact-form label{
+  min-width:0;
+  display:grid;
+  gap:5px;
+  color:#465049;
+  font-size:11.5px;
+  font-weight:800;
+}
+
+.cvl-contact-form input[type="text"],
+.cvl-contact-form input[type="email"],
+.cvl-contact-form input[type="tel"],
+.cvl-contact-form textarea{
+  width:100%;
+  min-width:0;
+  padding:10px 11px;
+  border:1px solid #d8dfda;
+  border-radius:8px;
+  background:#fbfdfb;
+  color:#252a2d;
+  font:inherit;
+  font-size:13px;
+  font-weight:500;
+  outline:none;
+  transition:border-color .15s ease,box-shadow .15s ease,background .15s ease;
+}
+
+.cvl-contact-form input[type="text"],
+.cvl-contact-form input[type="email"],
+.cvl-contact-form input[type="tel"]{
+  min-height:42px;
+}
+
+.cvl-contact-form textarea{
+  min-height:120px;
+  resize:vertical;
+}
+
+.cvl-contact-form input:focus,
+.cvl-contact-form textarea:focus{
+  border-color:#17820f;
+  background:#fff;
+  box-shadow:0 0 0 3px rgba(23,130,15,.10);
+}
+
+.cvl-contact-consent{
+  grid-template-columns:auto 1fr!important;
+  align-items:start;
+  gap:8px!important;
+  color:#667169!important;
+  font-size:10.5px!important;
+  font-weight:600!important;
+  line-height:1.45;
+}
+
+.cvl-contact-consent input{
+  margin-top:2px;
+  accent-color:#17820f;
+}
+
+.cvl-contact-submit{
+  min-height:44px;
+  padding:0 16px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  border:1px solid #17820f;
+  border-radius:9px;
+  background:#17820f;
+  color:#fff;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.02em;
+  text-transform:uppercase;
+  cursor:pointer;
+  box-shadow:0 7px 16px rgba(23,130,15,.16);
+  transition:background .15s ease,transform .15s ease,box-shadow .15s ease;
+}
+
+.cvl-contact-submit:hover,
+.cvl-contact-submit:focus-visible{
+  background:#106d0b;
+  transform:translateY(-1px);
+  box-shadow:0 10px 20px rgba(23,130,15,.22);
+}
+
+.cvl-contact-form-note{
+  margin:0;
+  color:#7a857e;
+  font-size:10.5px;
+  line-height:1.45;
+  text-align:center;
+}
+
+.cvl-contact-hp{
+  position:absolute!important;
+  left:-9999px!important;
+  width:1px!important;
+  height:1px!important;
+  overflow:hidden!important;
+}
+
+@media(max-width:991.98px){
+  .cvl-contact-hero{
+    grid-template-columns:1fr;
+  }
+
+  .cvl-contact-form-card{
+    width:100%;
+    max-width:620px;
+  }
+}
+
+@media(max-width:639.98px){
+  .cvl-contact-form-card{
+    padding:17px;
+  }
+
+  .cvl-contact-form-row{
+    grid-template-columns:1fr;
+  }
+}
