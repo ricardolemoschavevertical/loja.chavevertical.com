@@ -5,6 +5,18 @@
 
 defined( 'ABSPATH' ) || exit;
 
+
+/**
+ * Canonical promotions URL used by the catalogue and the main navigation.
+ */
+function cvl_promotions_url(): string {
+    $shop_url = function_exists( 'wc_get_page_permalink' )
+        ? wc_get_page_permalink( 'shop' )
+        : home_url( '/shop/' );
+
+    return add_query_arg( 'on_sale', '1', $shop_url );
+}
+
 /**
  * True only for the dedicated promotions view in the WooCommerce shop.
  */
@@ -68,6 +80,96 @@ function cvl_promotion_product_ids(): array {
     $ids = array_values( array_unique( array_filter( array_map( 'absint', $ids ) ) ) );
 
     return $ids;
+}
+
+/**
+ * Brands used by promotion products after the current category/price filters.
+ * The selected brand itself is intentionally ignored here so users can switch
+ * or combine brands without losing the available facet list.
+ */
+function cvl_promotion_brand_facets(
+    array $sale_product_ids,
+    ?WP_Term $category = null,
+    float $min_price = 0.0,
+    float $max_price = 0.0
+): array {
+    if ( ! $sale_product_ids || ! taxonomy_exists( 'product_brand' ) ) {
+        return array();
+    }
+
+    $args = array(
+        'post_type'              => 'product',
+        'post_status'            => 'publish',
+        'post__in'               => $sale_product_ids,
+        'posts_per_page'         => -1,
+        'fields'                 => 'ids',
+        'orderby'                => 'none',
+        'no_found_rows'          => true,
+        'update_post_meta_cache' => false,
+        'update_post_term_cache' => false,
+    );
+
+    $tax_query = array();
+
+    if ( $category instanceof WP_Term ) {
+        $tax_query[] = array(
+            'taxonomy'         => 'product_cat',
+            'field'            => 'term_id',
+            'terms'            => array( (int) $category->term_id ),
+            'include_children' => true,
+            'operator'         => 'IN',
+        );
+    }
+
+    if ( $tax_query ) {
+        $args['tax_query'] = $tax_query;
+    }
+
+    if ( $min_price > 0 || $max_price > 0 ) {
+        $price_rule = array(
+            'key'  => '_price',
+            'type' => 'NUMERIC',
+        );
+
+        if ( $min_price > 0 && $max_price > 0 ) {
+            $price_rule['value']   = array( $min_price, $max_price );
+            $price_rule['compare'] = 'BETWEEN';
+        } elseif ( $min_price > 0 ) {
+            $price_rule['value']   = $min_price;
+            $price_rule['compare'] = '>=';
+        } else {
+            $price_rule['value']   = $max_price;
+            $price_rule['compare'] = '<=';
+        }
+
+        $args['meta_query'] = array( $price_rule );
+    }
+
+    $ids = get_posts( $args );
+
+    if ( ! $ids ) {
+        return array();
+    }
+
+    $terms = wp_get_object_terms(
+        $ids,
+        'product_brand',
+        array(
+            'orderby' => 'name',
+            'order'   => 'ASC',
+        )
+    );
+
+    if ( is_wp_error( $terms ) || ! $terms ) {
+        return array();
+    }
+
+    return array_values(
+        array_filter(
+            $terms,
+            static fn( $term ): bool => $term instanceof WP_Term
+        )
+    );
 }
 
 /**
@@ -272,6 +374,17 @@ function cvl_promotion_catalog_layout(): void {
         }
     }
 
+    $selected_brands = isset( $_GET['marca'] )
+        ? (array) wc_clean( wp_unslash( $_GET['marca'] ) )
+        : array();
+    $selected_brands = array_values(
+        array_unique(
+            array_filter(
+                array_map( 'sanitize_title', $selected_brands )
+            )
+        )
+    );
+
     $min_price = isset( $_GET['min_price'] )
         ? max( 0, (float) wc_format_decimal( wp_unslash( $_GET['min_price'] ) ) )
         : 0.0;
@@ -279,6 +392,12 @@ function cvl_promotion_catalog_layout(): void {
         ? max( 0, (float) wc_format_decimal( wp_unslash( $_GET['max_price'] ) ) )
         : 0.0;
 
+    $brand_terms = cvl_promotion_brand_facets(
+        $sale_product_ids,
+        $selected_category,
+        $min_price,
+        $max_price
+    );
     $category_terms = cvl_promotion_category_facets( $sale_product_ids );
     $category_tree  = cvl_promotion_category_tree( $category_terms );
 
@@ -291,16 +410,18 @@ function cvl_promotion_catalog_layout(): void {
         ? wc_get_page_permalink( 'shop' )
         : home_url( '/shop/' );
 
-    $base_url = add_query_arg( 'on_sale', '1', $shop_url );
+    $base_url = cvl_promotions_url();
 
     $filter_url = static function ( array $overrides = array() ) use (
         $base_url,
         $selected_category,
+        $selected_brands,
         $min_price,
         $max_price
     ): string {
         $state = array(
             'on_sale'   => '1',
+            'marca'     => $selected_brands,
             'categoria' => $selected_category instanceof WP_Term ? $selected_category->slug : '',
             'min_price' => $min_price > 0 ? $min_price : '',
             'max_price' => $max_price > 0 ? $max_price : '',
@@ -334,6 +455,15 @@ function cvl_promotion_catalog_layout(): void {
             'terms'            => array( (int) $selected_category->term_id ),
             'include_children' => true,
             'operator'         => 'IN',
+        );
+    }
+
+    if ( $selected_brands && taxonomy_exists( 'product_brand' ) ) {
+        $tax_query[] = array(
+            'taxonomy' => 'product_brand',
+            'field'    => 'slug',
+            'terms'    => $selected_brands,
+            'operator' => 'IN',
         );
     }
 
@@ -422,10 +552,69 @@ function cvl_promotion_catalog_layout(): void {
             <aside class="cvl-search-filters" aria-label="<?php esc_attr_e( 'Filtros das promoções', 'chavevertical-lite' ); ?>">
                 <div class="cvl-search-filters-head">
                     <strong><?php esc_html_e( 'FILTRAR PRODUTOS', 'chavevertical-lite' ); ?></strong>
-                    <?php if ( $selected_category || $min_price > 0 || $max_price > 0 ) : ?>
+                    <?php if ( $selected_brands || $selected_category || $min_price > 0 || $max_price > 0 ) : ?>
                         <a href="<?php echo esc_url( $base_url ); ?>"><?php esc_html_e( 'Limpar', 'chavevertical-lite' ); ?></a>
                     <?php endif; ?>
                 </div>
+
+                <?php if ( $brand_terms ) : ?>
+                    <section class="cvl-search-filter-group cvl-promotion-brand-filter" aria-label="<?php esc_attr_e( 'Filtrar por marcas', 'chavevertical-lite' ); ?>">
+                        <h2><?php esc_html_e( 'MARCAS', 'chavevertical-lite' ); ?></h2>
+
+                        <form class="cvl-final-brand-filter-form" method="get" action="<?php echo esc_url( $shop_url ); ?>" data-cvl-brand-auto-filter>
+                            <input type="hidden" name="on_sale" value="1">
+                            <?php if ( $selected_category instanceof WP_Term ) : ?>
+                                <input type="hidden" name="categoria" value="<?php echo esc_attr( $selected_category->slug ); ?>">
+                            <?php endif; ?>
+                            <?php foreach ( $selected_brands as $selected_brand_slug ) : ?>
+                                <input type="hidden" name="marca[]" value="<?php echo esc_attr( $selected_brand_slug ); ?>">
+                            <?php endforeach; ?>
+                            <?php if ( $min_price > 0 ) : ?>
+                                <input type="hidden" name="min_price" value="<?php echo esc_attr( wc_format_decimal( $min_price, 2 ) ); ?>">
+                            <?php endif; ?>
+                            <?php if ( $max_price > 0 ) : ?>
+                                <input type="hidden" name="max_price" value="<?php echo esc_attr( wc_format_decimal( $max_price, 2 ) ); ?>">
+                            <?php endif; ?>
+
+                            <div class="cvl-final-brand-search">
+                                <input
+                                    type="search"
+                                    class="cvl-final-brand-search-input"
+                                    data-cvl-brand-search
+                                    placeholder="<?php esc_attr_e( 'Pesquisar marca…', 'chavevertical-lite' ); ?>"
+                                    aria-label="<?php esc_attr_e( 'Pesquisar marca', 'chavevertical-lite' ); ?>"
+                                    autocomplete="off"
+                                    spellcheck="false"
+                                >
+                            </div>
+                            <p class="cvl-final-brand-search-empty" data-cvl-brand-search-empty hidden><?php esc_html_e( 'Nenhuma marca encontrada.', 'chavevertical-lite' ); ?></p>
+
+                            <div class="cvl-final-brand-chips">
+                                <?php foreach ( $brand_terms as $brand_term ) : ?>
+                                    <?php
+                                    if ( ! $brand_term instanceof WP_Term ) {
+                                        continue;
+                                    }
+
+                                    $brand_slug = sanitize_title( $brand_term->slug );
+                                    $active     = in_array( $brand_slug, $selected_brands, true );
+                                    $input_id   = 'cvl-promotion-brand-' . sanitize_html_class( $brand_slug );
+                                    ?>
+                                    <label class="cvl-final-brand-chip<?php echo $active ? ' is-active' : ''; ?>" for="<?php echo esc_attr( $input_id ); ?>">
+                                        <input
+                                            id="<?php echo esc_attr( $input_id ); ?>"
+                                            type="checkbox"
+                                            name="marca[]"
+                                            value="<?php echo esc_attr( $brand_slug ); ?>"
+                                            <?php checked( $active ); ?>
+                                        >
+                                        <span><?php echo esc_html( $brand_term->name ); ?></span>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                        </form>
+                    </section>
+                <?php endif; ?>
 
                 <?php if ( $category_tree ) : ?>
                     <?php
