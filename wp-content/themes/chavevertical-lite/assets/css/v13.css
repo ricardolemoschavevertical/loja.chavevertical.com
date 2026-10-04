@@ -6,7 +6,7 @@
  */
 :is(.woocommerce,.cvl-v4-products) ul.products{
   display:grid!important;
-  grid-template-columns:repeat(6,minmax(0,1fr))!important;
+  grid-template-columns:repeat(8,minmax(0,1fr))!important;
   gap:8px!important;
 }
 
@@ -392,7 +392,7 @@
 /* Breakpoints iguais à densidade da storefront de referência. */
 @media(max-width:1599.98px) and (min-width:1200px){
   :is(.woocommerce,.cvl-v4-products) ul.products{
-    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+    grid-template-columns:repeat(6,minmax(0,1fr))!important;
   }
 }
 
@@ -479,5 +479,15 @@
   .cvl-home-product-strip .products{
     grid-template-columns:repeat(2,minmax(0,1fr))!important;
     gap:10px!important;
+  }
+}
+
+
+/* Product archive density — 8 cards per row on wide desktop. */
+@media(min-width:1600px){
+  .tax-product_cat .woocommerce ul.products,
+  .post-type-archive-product .woocommerce ul.products,
+  body.search-results.woocommerce ul.products{
+    grid-template-columns:repeat(8,minmax(0,1fr))!important;
   }
 }
