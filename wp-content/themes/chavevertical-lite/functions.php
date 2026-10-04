@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.43' );
+define( 'CVL_VERSION', '0.16.44' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -465,8 +465,8 @@ add_action( 'woocommerce_after_shop_loop_item_title', 'cvl_loop_product_meta', 4
  * - restantes estados mantêm promoção / stock.
  *
  * Clientes só veem quantidade exata quando existe 1 unidade.
- * Utilizadores com gestão WooCommerce veem sempre a quantidade real
- * quando o produto gere stock diretamente.
+ * Utilizadores com gestão WooCommerce veem a quantidade real quando
+ * existe stock gerido; com stock zero não aparece qualquer etiqueta.
  */
 function cvl_product_image_badge_data( WC_Product $product ) {
     $status         = $product->get_stock_status();
@@ -475,13 +475,6 @@ function cvl_product_image_badge_data( WC_Product $product ) {
     $can_manage     = is_user_logged_in() && current_user_can( 'manage_woocommerce' );
 
     if ( 'outofstock' === $status ) {
-        if ( $can_manage && null !== $stock_quantity ) {
-            return array(
-                'class' => 'is-unavailable',
-                'label' => sprintf( __( '%d EM STOCK', 'chavevertical-lite' ), $stock_quantity ),
-            );
-        }
-
         return null;
     }
 
