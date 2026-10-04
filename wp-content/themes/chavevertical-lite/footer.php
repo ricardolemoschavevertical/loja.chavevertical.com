@@ -1,5 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
+
+$cvl_footer_assets = trailingslashit( get_template_directory_uri() ) . 'assets/images/footer/';
 ?>
 </main>
 
@@ -7,7 +9,7 @@ defined( 'ABSPATH' ) || exit;
     <div class="cvl-shell cvl-footer-v2-grid">
         <section class="cvl-footer-v2-brand" aria-label="<?php esc_attr_e( 'Chave Vertical', 'chavevertical-lite' ); ?>">
             <a href="<?php echo esc_url( home_url( '/' ) ); ?>" class="cvl-footer-v2-logo">
-                <img src="https://astro.chavevertical.com/logo-footer.webp?v=20260927-3" alt="Chave Vertical" loading="lazy">
+                <img src="<?php echo esc_url( $cvl_footer_assets . 'logo-footer.png' ); ?>" alt="Chave Vertical" loading="lazy">
             </a>
 
             <p class="cvl-footer-v2-intro">Máquinas, ferramentas e equipamentos profissionais para oficina, indústria, construção e logística.</p>
@@ -87,14 +89,14 @@ defined( 'ABSPATH' ) || exit;
     <div class="cvl-footer-v2-trust">
         <div class="cvl-shell cvl-footer-v2-trust-grid">
             <div class="cvl-footer-v2-badges" aria-label="<?php esc_attr_e( 'Confiança e segurança', 'chavevertical-lite' ); ?>">
-                <img src="https://astro.chavevertical.com/livro-reclamacoes.webp?v=20260927-3" alt="Livro de Reclamações" loading="lazy">
-                <img src="https://astro.chavevertical.com/shopmania-badge.png?v=20260927-3" alt="ShopMania" loading="lazy">
-                <img src="https://astro.chavevertical.com/google-site-seguro.png?v=20260927-3" alt="Google Site Seguro" loading="lazy">
+                <img src="<?php echo esc_url( $cvl_footer_assets . 'livro-reclamacoes.png' ); ?>" alt="Livro de Reclamações" loading="lazy">
+                <img src="<?php echo esc_url( $cvl_footer_assets . 'shopmania-badge.png' ); ?>" alt="ShopMania" loading="lazy">
+                <img src="<?php echo esc_url( $cvl_footer_assets . 'google-site-seguro.png' ); ?>" alt="Google Site Seguro" loading="lazy">
             </div>
 
             <div class="cvl-footer-v2-payments">
                 <span>PAGAMENTOS SEGUROS</span>
-                <img src="https://astro.chavevertical.com/pagamentos.webp?v=20260927-3" alt="Métodos de pagamento seguros" loading="lazy">
+                <img src="<?php echo esc_url( $cvl_footer_assets . 'pagamentos.png' ); ?>" alt="Métodos de pagamento seguros" loading="lazy">
             </div>
 
             <div class="cvl-footer-social" aria-label="Redes sociais">
