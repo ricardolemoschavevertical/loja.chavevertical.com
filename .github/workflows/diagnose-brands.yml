@@ -1,0 +1,35 @@
+name: Diagnose Brands Page
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/diagnose-brands.yml"
+      - "ops/diagnose-brands.php"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Inspect WordPress brands page
+        shell: bash
+        run: |
+          set -euo pipefail
+          php ops/diagnose-brands.php | tee "$RUNNER_TEMP/brands-diagnostic.json"
+
+      - name: Upload diagnostic
+        uses: actions/upload-artifact@v4
+        with:
+          name: brands-diagnostic
+          path: ${{ runner.temp }}/brands-diagnostic.json
+          if-no-files-found: error
+          retention-days: 1
