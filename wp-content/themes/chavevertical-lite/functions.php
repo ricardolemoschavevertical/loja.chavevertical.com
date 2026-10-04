@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.51' );
+define( 'CVL_VERSION', '0.16.52' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -379,7 +379,11 @@ function cvl_get_product_primary_category( $product_id ) {
 }
 
 /**
- * Card de produto: categoria por cima do título.
+ * Card de produto: categoria clicável por cima do título.
+ *
+ * O WooCommerce abre o link do produto antes da imagem. Para evitar um <a>
+ * dentro de outro <a>, fechamos esse link após a imagem, mostramos a categoria
+ * como link próprio e reabrimos o link do produto para o restante conteúdo.
  */
 function cvl_loop_product_category() {
     global $product;
@@ -393,15 +397,32 @@ function cvl_loop_product_category() {
         return;
     }
 
-    $category = cvl_get_product_primary_category( $product->get_id() );
+    $category     = cvl_get_product_primary_category( $product->get_id() );
+    $product_url  = $product->get_permalink();
 
-    if ( ! $category ) {
-        return;
+    // Fecha o link do produto que envolve a imagem.
+    echo '</a>';
+
+    if ( $category instanceof WP_Term ) {
+        $category_url = get_term_link( $category );
+
+        if ( ! is_wp_error( $category_url ) ) {
+            echo '<a class="cvl-product-category" href="' . esc_url( $category_url ) . '">' . esc_html( $category->name ) . '</a>';
+        }
     }
 
-    echo '<span class="cvl-product-category">' . esc_html( $category->name ) . '</span>';
+    // Reabre o link do produto para título, marca, referência e preço.
+    echo '<a class="woocommerce-LoopProduct-link woocommerce-loop-product__link cvl-product-content-link" href="' . esc_url( $product_url ) . '">';
 }
 add_action( 'woocommerce_before_shop_loop_item_title', 'cvl_loop_product_category', 20 );
+
+add_filter( 'woocommerce_post_class', function ( $classes, $product ) {
+    if ( ! is_search() && class_exists( 'WC_Product' ) && $product instanceof WC_Product ) {
+        $classes[] = 'cvl-product-split-card';
+    }
+
+    return $classes;
+}, 10, 2 );
 
 /**
  * Card de produto: marca/logótipo centrado e referência numa linha própria,

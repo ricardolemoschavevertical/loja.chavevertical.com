@@ -927,3 +927,29 @@ body.tax-product_cat .cvl-category-catalog-page .cvl-search-products li.product-
     font-size:10px;
   }
 }
+
+
+/* Product card category as a real link */
+:is(.woocommerce,.cvl-v4-products) ul.products li.product.cvl-product-split-card>a.woocommerce-LoopProduct-link:not(.cvl-product-content-link){
+  flex:0 0 auto!important;
+  display:block!important;
+}
+
+:is(.woocommerce,.cvl-v4-products) ul.products li.product.cvl-product-split-card>a.cvl-product-content-link{
+  min-width:0!important;
+  flex:1 1 auto!important;
+  display:flex!important;
+  flex-direction:column!important;
+}
+
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category)>a.cvl-product-category{
+  color:#7a838b!important;
+  text-decoration:none!important;
+  cursor:pointer!important;
+}
+
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category)>a.cvl-product-category:hover,
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category)>a.cvl-product-category:focus{
+  color:var(--cvl-ref-red)!important;
+  text-decoration:none!important;
+}
