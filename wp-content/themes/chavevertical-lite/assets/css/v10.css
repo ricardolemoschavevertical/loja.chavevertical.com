@@ -483,13 +483,22 @@ body.admin-bar.single-product .cvl-product-gallery-wrap{top:204px}
 .single-product .cvl-single-stock-state{
   display:inline-flex;
   align-items:center;
-  gap:0;
+  gap:7px;
   max-width:100%;
   color:#4d5961;
   font-weight:700;
   line-height:1.35;
   white-space:normal;
 }
+.single-product .cvl-single-stock-state i{
+  width:8px;
+  height:8px;
+  flex:0 0 8px;
+  border-radius:50%;
+  background:#c67b00;
+}
+.single-product .cvl-single-stock-state.is-instock i{background:#08a05c}
+.single-product .cvl-single-stock-state.is-outofstock i{background:#b72828}
 .single-product .cvl-single-fact-reference-value{
   padding:3px 8px;display:inline-flex;align-items:center;border:1px solid #e2e7ea;border-radius:5px;
   background:#f8fafb;color:#4a5962;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:10.5px;

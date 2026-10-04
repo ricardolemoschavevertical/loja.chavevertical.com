@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.35' );
+define( 'CVL_VERSION', '0.16.36' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -931,7 +931,7 @@ function cvl_single_product_info_panel() {
     echo '</div>';
 
     echo '<div class="cvl-single-facts"><table><tbody>';
-    echo '<tr><th scope="row">' . esc_html__( 'Disponibilidade:', 'chavevertical-lite' ) . '</th><td><span class="cvl-single-stock-state ' . esc_attr( $class ) . '">' . esc_html( $availability_detail ) . '</span></td></tr>';
+    echo '<tr><th scope="row">' . esc_html__( 'Disponibilidade:', 'chavevertical-lite' ) . '</th><td><span class="cvl-single-stock-state ' . esc_attr( $class ) . '"><i aria-hidden="true"></i>' . esc_html( $availability_detail ) . '</span></td></tr>';
     echo '<tr><th scope="row">' . esc_html__( 'Prazo de entrega:', 'chavevertical-lite' ) . '</th><td>';
 
     if ( 'instock' === $status ) {
