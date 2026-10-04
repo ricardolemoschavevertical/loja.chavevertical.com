@@ -953,3 +953,94 @@ body.tax-product_cat .cvl-category-catalog-page .cvl-search-products li.product-
   color:var(--cvl-ref-red)!important;
   text-decoration:none!important;
 }
+
+
+/* Expandable category filter tree */
+.cvl-category-filter-tree{
+  display:grid;
+  gap:2px;
+}
+.cvl-category-filter-item{
+  min-width:0;
+}
+.cvl-category-filter-row{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:2px;
+  padding-left:calc(var(--cvl-cat-depth,0) * 12px);
+}
+.cvl-category-filter-link{
+  min-width:0;
+  min-height:32px;
+  padding:7px 8px;
+  flex:1 1 auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  border-radius:5px;
+  color:#334149;
+  font-size:11px;
+  line-height:1.25;
+  text-decoration:none!important;
+}
+.cvl-category-filter-link:hover,
+.cvl-category-filter-link.is-active{
+  background:#eef8f6;
+  color:var(--cvl-ref-teal-dark);
+}
+.cvl-category-filter-link.is-active{
+  font-weight:800;
+}
+.cvl-category-filter-link span{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.cvl-category-filter-link small{
+  min-width:24px;
+  flex:0 0 auto;
+  color:#8b959b;
+  font-size:9px;
+  text-align:right;
+}
+.cvl-category-filter-toggle{
+  width:28px;
+  height:28px;
+  padding:0;
+  flex:0 0 28px;
+  display:grid;
+  place-items:center;
+  border:0;
+  border-radius:5px;
+  background:transparent;
+  color:#7f8a90;
+  cursor:pointer;
+}
+.cvl-category-filter-toggle:hover,
+.cvl-category-filter-toggle:focus{
+  background:#eef8f6;
+  color:var(--cvl-ref-teal-dark);
+}
+.cvl-category-filter-toggle span{
+  display:block;
+  font-size:19px;
+  line-height:1;
+  transition:transform .16s ease;
+}
+.cvl-category-filter-item.is-expanded>.cvl-category-filter-row .cvl-category-filter-toggle span{
+  transform:rotate(90deg);
+}
+.cvl-category-filter-children[hidden]{
+  display:none!important;
+}
+.cvl-category-filter-children{
+  display:grid;
+  gap:2px;
+}
+@media(max-width:991.98px){
+  .cvl-category-filter-row{
+    padding-left:calc(var(--cvl-cat-depth,0) * 10px);
+  }
+}

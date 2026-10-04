@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.55' );
+define( 'CVL_VERSION', '0.16.56' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -2200,21 +2200,70 @@ function cvl_product_category_search_layout(): void {
                 </div>
 
                 <?php if ( $category_terms ) : ?>
-                    <section class="cvl-search-filter-group">
+                    <?php
+                    $render_category_nodes = static function ( array $terms, int $depth = 0 ) use ( &$render_category_nodes, $filter_url, $selected_category ): void {
+                        foreach ( $terms as $term ) {
+                            if ( ! $term instanceof WP_Term ) {
+                                continue;
+                            }
+
+                            $children = get_terms(
+                                array(
+                                    'taxonomy'   => 'product_cat',
+                                    'hide_empty' => false,
+                                    'pad_counts' => true,
+                                    'parent'     => (int) $term->term_id,
+                                    'orderby'    => 'name',
+                                    'order'      => 'ASC',
+                                )
+                            );
+                            $children = is_wp_error( $children ) ? array() : $children;
+
+                            $active = $selected_category instanceof WP_Term
+                                && (int) $selected_category->term_id === (int) $term->term_id;
+                            $panel_id = 'cvl-category-children-' . (int) $term->term_id;
+                            ?>
+                            <div class="cvl-category-filter-item" style="--cvl-cat-depth:<?php echo esc_attr( $depth ); ?>">
+                                <div class="cvl-category-filter-row">
+                                    <a
+                                        class="cvl-category-filter-link<?php echo $active ? ' is-active' : ''; ?>"
+                                        href="<?php echo esc_url( $filter_url( array( 'categoria' => $term->slug ) ) ); ?>"
+                                    >
+                                        <span><?php echo esc_html( $term->name ); ?></span>
+                                        <small><?php echo esc_html( number_format_i18n( (int) $term->count ) ); ?></small>
+                                    </a>
+
+                                    <?php if ( $children ) : ?>
+                                        <button
+                                            type="button"
+                                            class="cvl-category-filter-toggle"
+                                            data-cvl-category-tree-toggle
+                                            aria-expanded="false"
+                                            aria-controls="<?php echo esc_attr( $panel_id ); ?>"
+                                            aria-label="<?php echo esc_attr( sprintf( __( 'Expandir %s', 'chavevertical-lite' ), $term->name ) ); ?>"
+                                        ><span aria-hidden="true">›</span></button>
+                                    <?php endif; ?>
+                                </div>
+
+                                <?php if ( $children ) : ?>
+                                    <div
+                                        id="<?php echo esc_attr( $panel_id ); ?>"
+                                        class="cvl-category-filter-children"
+                                        data-cvl-category-tree-children
+                                        hidden
+                                    >
+                                        <?php $render_category_nodes( $children, $depth + 1 ); ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                            <?php
+                        }
+                    };
+                    ?>
+                    <section class="cvl-search-filter-group cvl-category-filter-group">
                         <h2><?php esc_html_e( 'CATEGORIAS', 'chavevertical-lite' ); ?></h2>
-                        <div class="cvl-search-filter-list">
-                            <?php foreach ( $category_terms as $term ) : ?>
-                                <?php
-                                if ( ! $term instanceof WP_Term ) {
-                                    continue;
-                                }
-                                $active = $selected_category instanceof WP_Term && (int) $selected_category->term_id === (int) $term->term_id;
-                                ?>
-                                <a class="<?php echo $active ? 'is-active' : ''; ?>" href="<?php echo esc_url( $filter_url( array( 'categoria' => $active ? '' : $term->slug ) ) ); ?>">
-                                    <span><?php echo esc_html( $term->name ); ?></span>
-                                    <small><?php echo esc_html( number_format_i18n( (int) $term->count ) ); ?></small>
-                                </a>
-                            <?php endforeach; ?>
+                        <div class="cvl-category-filter-tree" data-cvl-category-filter-tree>
+                            <?php $render_category_nodes( $category_terms ); ?>
                         </div>
                     </section>
                 <?php endif; ?>
