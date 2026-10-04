@@ -7,7 +7,14 @@ get_header();
     <?php if ( function_exists( 'woocommerce_content' ) ) : ?>
         <?php if ( function_exists( 'is_product_category' ) && is_product_category() && function_exists( 'cvl_backup_category_layout_open' ) && function_exists( 'cvl_backup_category_layout_close' ) ) : ?>
             <?php cvl_backup_category_layout_open(); ?>
-            <?php woocommerce_content(); ?>
+            <?php
+            $cvl_has_subcategories = function_exists( 'cvl_backup_category_subcategory_grid' )
+                ? cvl_backup_category_subcategory_grid()
+                : false;
+            ?>
+            <?php if ( ! $cvl_has_subcategories ) : ?>
+                <?php woocommerce_content(); ?>
+            <?php endif; ?>
             <?php cvl_backup_category_layout_close(); ?>
         <?php else : ?>
             <?php woocommerce_content(); ?>

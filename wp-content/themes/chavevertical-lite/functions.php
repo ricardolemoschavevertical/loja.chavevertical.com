@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.11.1' );
+define( 'CVL_VERSION', '0.11.2' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -1135,6 +1135,78 @@ function cvl_backup_category_sidebar_nodes( array $tree, int $parent_id, int $cu
     }
 
     echo '</ul>';
+}
+
+/**
+ * Grelha central de subcategorias, equivalente aos cartões que o Porto
+ * apresenta nas categorias com filhos. Quando existem subcategorias,
+ * a categoria atua como landing page e não mostra a mensagem
+ * "nenhum produto encontrado".
+ *
+ * @return bool True quando a grelha foi renderizada.
+ */
+function cvl_backup_category_subcategory_grid() {
+    $term = get_queried_object();
+
+    if ( ! $term instanceof WP_Term || 'product_cat' !== $term->taxonomy ) {
+        return false;
+    }
+
+    $children = get_terms(
+        array(
+            'taxonomy'   => 'product_cat',
+            'parent'     => (int) $term->term_id,
+            'hide_empty' => false,
+            'orderby'    => 'name',
+            'order'      => 'ASC',
+            'number'     => 0,
+        )
+    );
+
+    if ( is_wp_error( $children ) || empty( $children ) ) {
+        return false;
+    }
+
+    echo '<div class="archive-products cvl-backup-subcategories">';
+    echo '<ul class="products cvl-backup-subcategory-products" role="list">';
+
+    foreach ( $children as $child ) {
+        $url = get_term_link( $child );
+
+        if ( is_wp_error( $url ) ) {
+            continue;
+        }
+
+        $thumbnail_id = absint( get_term_meta( $child->term_id, 'thumbnail_id', true ) );
+
+        echo '<li class="product-category product-col" role="listitem">';
+        echo '<a href="' . esc_url( $url ) . '" aria-label="' . esc_attr( sprintf( __( 'Abrir categoria %s', 'chavevertical-lite' ), $child->name ) ) . '">';
+
+        if ( $thumbnail_id ) {
+            echo wp_kses_post(
+                wp_get_attachment_image(
+                    $thumbnail_id,
+                    'woocommerce_thumbnail',
+                    false,
+                    array(
+                        'loading' => 'lazy',
+                        'alt'     => $child->name,
+                    )
+                )
+            );
+        } else {
+            echo '<img src="' . esc_url( cvl_product_placeholder_url() ) . '" alt="' . esc_attr( $child->name ) . '" loading="lazy">';
+        }
+
+        echo '<h2 class="woocommerce-loop-category__title">' . esc_html( $child->name ) . '</h2>';
+        echo '</a>';
+        echo '</li>';
+    }
+
+    echo '</ul>';
+    echo '</div>';
+
+    return true;
 }
 
 /**
