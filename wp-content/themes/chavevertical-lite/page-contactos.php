@@ -28,7 +28,7 @@ $locations = array(
     array(
         'name'    => 'Loja Condeixa - Coimbra',
         'address' => "R. Dona Maria Elsa Franco Sotto Mayor\nEdifício Conímbriga, Loja 21\n3150-133 Condeixa",
-        'maps'    => 'R. Dona Maria Elsa Franco Sotto Mayor Edifício Conímbriga Loja 21 3150-133 Condeixa',
+        'maps'    => 'Rua Dona Maria Elsa Franco Sotto Mayor 38, Edifício Conímbriga, Loja 21, 3150-133 Condeixa-a-Nova, Portugal',
     ),
 );
 ?>
