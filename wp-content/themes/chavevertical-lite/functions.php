@@ -1,11 +1,16 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.67' );
+define( 'CVL_VERSION', '0.16.68' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
     require_once $cvl_homepage_highlights_file;
+}
+
+$cvl_brand_archive_file = get_template_directory() . '/inc/brand-archive.php';
+if ( file_exists( $cvl_brand_archive_file ) ) {
+    require_once $cvl_brand_archive_file;
 }
 
 $cvl_contact_form_file = get_template_directory() . '/inc/contact-form.php';
@@ -177,7 +182,10 @@ add_action( 'wp_enqueue_scripts', function () {
         true
     );
 
-    if ( is_search() && 'product' === get_query_var( 'post_type' ) ) {
+    if (
+        ( is_search() && 'product' === get_query_var( 'post_type' ) )
+        || ( taxonomy_exists( 'product_brand' ) && is_tax( 'product_brand' ) )
+    ) {
         wp_enqueue_script(
             'cvl-search-results',
             get_template_directory_uri() . '/assets/js/search-results.js',
