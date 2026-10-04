@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.9.14' );
+define( 'CVL_VERSION', '0.10.0' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -81,6 +81,23 @@ add_action( 'wp_enqueue_scripts', function () {
         array( 'cvl-v08' ),
         CVL_VERSION
     );
+
+    if ( function_exists( 'is_product' ) && is_product() ) {
+        wp_enqueue_style(
+            'cvl-v10',
+            get_template_directory_uri() . '/assets/css/v10.css',
+            array( 'cvl-v09' ),
+            CVL_VERSION
+        );
+
+        wp_enqueue_script(
+            'cvl-product',
+            get_template_directory_uri() . '/assets/js/product.js',
+            array(),
+            CVL_VERSION,
+            true
+        );
+    }
 
     wp_enqueue_script(
         'cvl-main',
@@ -394,7 +411,54 @@ add_filter( 'woocommerce_loop_add_to_cart_link', function ( $html, $product ) {
 }, 20, 2 );
 
 /**
- * Ficha de produto: referência e marca imediatamente abaixo do título.
+ * Ficha de produto — apresentação alinhada com o storefront Shopware.
+ *
+ * Mantém os hooks e a lógica comercial nativos do WooCommerce; apenas
+ * reorganiza a apresentação e acrescenta informação de leitura.
+ */
+add_action( 'wp', function () {
+    if ( ! function_exists( 'is_product' ) || ! is_product() ) {
+        return;
+    }
+
+    remove_action( 'woocommerce_before_single_product_summary', 'woocommerce_show_product_sale_flash', 10 );
+    remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_rating', 10 );
+    remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_price', 10 );
+    remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_meta', 40 );
+    remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_sharing', 50 );
+}, 20 );
+
+/**
+ * Badge comercial por cima da galeria.
+ */
+function cvl_single_product_badge() {
+    global $product;
+
+    if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product ) {
+        return;
+    }
+
+    $status = $product->get_stock_status();
+    $class  = 'is-backorder';
+    $label  = __( 'SOB ENCOMENDA', 'chavevertical-lite' );
+
+    if ( $product->is_on_sale() ) {
+        $class = 'is-sale';
+        $label = __( 'PROMOÇÃO', 'chavevertical-lite' );
+    } elseif ( 'instock' === $status ) {
+        $class = 'is-stock';
+        $label = __( 'EM STOCK', 'chavevertical-lite' );
+    } elseif ( 'outofstock' === $status ) {
+        $class = 'is-danger';
+        $label = __( 'SOB CONSULTA', 'chavevertical-lite' );
+    }
+
+    echo '<span class="cvl-single-image-badge ' . esc_attr( $class ) . '">' . esc_html( $label ) . '</span>';
+}
+add_action( 'woocommerce_before_single_product_summary', 'cvl_single_product_badge', 5 );
+
+/**
+ * Referência imediatamente abaixo do título, com ação de copiar.
  */
 function cvl_single_product_meta_top() {
     global $product;
@@ -403,44 +467,316 @@ function cvl_single_product_meta_top() {
         return;
     }
 
-    $sku   = $product->get_sku();
-    $brand = cvl_get_product_brand( $product->get_id() );
+    $sku = $product->get_sku();
 
-    if ( ! $sku && ! $brand ) {
+    if ( ! $sku ) {
         return;
     }
 
-    echo '<div class="cvl-single-meta-top">';
+    echo '<div class="cvl-single-reference">';
+    echo '<span class="cvl-single-barcode" aria-hidden="true"></span>';
+    echo '<span class="cvl-single-reference-code">' . esc_html( $sku ) . '</span>';
+    echo '<button class="cvl-single-copy-sku" type="button" data-cvl-copy-sku="' . esc_attr( $sku ) . '" aria-label="' . esc_attr__( 'Copiar referência', 'chavevertical-lite' ) . '" title="' . esc_attr__( 'Copiar referência', 'chavevertical-lite' ) . '">';
+    echo '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8h10v10H8z"></path><path d="M5 5h10v2H7v8H5z"></path></svg>';
+    echo '</button>';
+    echo '</div>';
+}
+add_action( 'woocommerce_single_product_summary', 'cvl_single_product_meta_top', 7 );
 
-    if ( $sku ) {
-        echo '<div class="cvl-single-sku"><small>' . esc_html__( 'Referência', 'chavevertical-lite' ) . '</small><strong>' . esc_html( $sku ) . '</strong></div>';
+/**
+ * Rating no mesmo formato visual da referência Shopware.
+ */
+function cvl_single_product_rating_row() {
+    global $product;
+
+    if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product ) {
+        return;
     }
 
-    if ( $brand ) {
-        echo '<div class="cvl-single-brand">';
+    $average = (float) $product->get_average_rating();
+    $count   = (int) $product->get_review_count();
+    $filled  = (int) round( $average );
 
-        if ( $brand['thumbnail_id'] ) {
-            echo wp_kses_post(
-                wp_get_attachment_image(
-                    $brand['thumbnail_id'],
-                    'medium',
-                    false,
-                    array(
-                        'class' => 'cvl-single-brand-logo',
-                        'alt'   => $brand['name'],
-                    )
-                )
-            );
-        } else {
-            echo '<strong>' . esc_html( $brand['name'] ) . '</strong>';
-        }
+    echo '<div class="cvl-single-rating-row" aria-label="' . esc_attr( sprintf( __( 'Avaliação média: %s em 5', 'chavevertical-lite' ), wc_format_decimal( $average, 1 ) ) ) . '">';
+    echo '<span class="cvl-single-stars" aria-hidden="true">';
 
-        echo '</div>';
+    for ( $i = 1; $i <= 5; $i++ ) {
+        echo $i <= $filled ? '★' : '☆';
+    }
+
+    echo '</span>';
+
+    if ( $count > 0 ) {
+        echo '<span>(' . esc_html( sprintf( _n( '%d avaliação', '%d avaliações', $count, 'chavevertical-lite' ), $count ) ) . ')</span>';
+    } else {
+        echo '<span>(' . esc_html__( 'Ainda não existem avaliações.', 'chavevertical-lite' ) . ')</span>';
     }
 
     echo '</div>';
 }
-add_action( 'woocommerce_single_product_summary', 'cvl_single_product_meta_top', 7 );
+add_action( 'woocommerce_single_product_summary', 'cvl_single_product_rating_row', 10 );
+
+/**
+ * Marca / logótipo numa linha própria.
+ */
+function cvl_single_product_brand_block() {
+    global $product;
+
+    if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product ) {
+        return;
+    }
+
+    $brand = cvl_get_product_brand( $product->get_id() );
+
+    if ( ! $brand ) {
+        return;
+    }
+
+    echo '<div class="cvl-single-brand-block">';
+
+    if ( $brand['thumbnail_id'] ) {
+        echo wp_kses_post(
+            wp_get_attachment_image(
+                $brand['thumbnail_id'],
+                'medium',
+                false,
+                array(
+                    'class' => 'cvl-single-brand-logo',
+                    'alt'   => $brand['name'],
+                )
+            )
+        );
+    } else {
+        echo '<strong>' . esc_html( $brand['name'] ) . '</strong>';
+    }
+
+    echo '</div>';
+}
+add_action( 'woocommerce_single_product_summary', 'cvl_single_product_brand_block', 12 );
+
+/**
+ * Devolve a primeira taxa de imposto aplicável ao produto.
+ */
+function cvl_single_product_tax_rate( WC_Product $product ) {
+    if ( ! class_exists( 'WC_Tax' ) || ! function_exists( 'wc_tax_enabled' ) || ! wc_tax_enabled() ) {
+        return 0.0;
+    }
+
+    $rates = WC_Tax::get_rates( $product->get_tax_class() );
+
+    if ( empty( $rates ) ) {
+        return 0.0;
+    }
+
+    $first = reset( $rates );
+
+    return isset( $first['rate'] ) ? (float) $first['rate'] : 0.0;
+}
+
+/**
+ * Caixa de preço: preço WooCommerce + IVA + referência líquida.
+ */
+function cvl_single_product_price_box() {
+    global $product;
+
+    if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product ) {
+        return;
+    }
+
+    $price_html = $product->get_price_html();
+
+    if ( '' === trim( wp_strip_all_tags( $price_html ) ) ) {
+        return;
+    }
+
+    $tax_rate    = cvl_single_product_tax_rate( $product );
+    $tax_display = get_option( 'woocommerce_tax_display_shop', 'incl' );
+    $vat_label   = '';
+
+    if ( $tax_rate > 0 ) {
+        $vat_label = 'incl' === $tax_display
+            ? sprintf( __( 'INCLUI IVA %s%%', 'chavevertical-lite' ), wc_format_decimal( $tax_rate, 0 ) )
+            : sprintf( __( '+ IVA %s%%', 'chavevertical-lite' ), wc_format_decimal( $tax_rate, 0 ) );
+    }
+
+    $raw_min = $product->is_type( 'variable' )
+        ? (float) $product->get_variation_price( 'min', false )
+        : (float) $product->get_price();
+
+    $raw_max = $product->is_type( 'variable' )
+        ? (float) $product->get_variation_price( 'max', false )
+        : $raw_min;
+
+    $net_html = '';
+
+    if ( $raw_min > 0 && function_exists( 'wc_get_price_excluding_tax' ) ) {
+        $net_min = wc_get_price_excluding_tax(
+            $product,
+            array(
+                'qty'   => 1,
+                'price' => $raw_min,
+            )
+        );
+        $net_max = wc_get_price_excluding_tax(
+            $product,
+            array(
+                'qty'   => 1,
+                'price' => $raw_max,
+            )
+        );
+
+        $net_html = wc_price( $net_min );
+
+        if ( $net_max > $net_min ) {
+            $net_html .= ' – ' . wc_price( $net_max );
+        }
+    }
+
+    echo '<div class="cvl-single-price-box">';
+    echo '<div class="cvl-single-price-row">';
+    echo '<span class="cvl-single-price">' . wp_kses_post( $price_html ) . '</span>';
+
+    if ( $vat_label ) {
+        echo '<span class="cvl-single-vat">' . esc_html( $vat_label ) . '</span>';
+    }
+
+    echo '</div>';
+
+    if ( $net_html ) {
+        echo '<div class="cvl-single-price-net">' . esc_html__( 'Preço sem IVA:', 'chavevertical-lite' ) . ' <strong>' . wp_kses_post( $net_html ) . '</strong> <span>(+ IVA)</span></div>';
+    }
+
+    echo '</div>';
+}
+add_action( 'woocommerce_single_product_summary', 'cvl_single_product_price_box', 15 );
+
+/**
+ * Painel de disponibilidade e dados comerciais.
+ */
+function cvl_single_product_info_panel() {
+    global $product;
+
+    if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product ) {
+        return;
+    }
+
+    $status = $product->get_stock_status();
+    $class  = 'is-onbackorder';
+    $label  = __( 'Disponível por encomenda', 'chavevertical-lite' );
+
+    if ( 'instock' === $status ) {
+        $class = 'is-instock';
+        $label = __( 'Disponível para entrega imediata', 'chavevertical-lite' );
+    } elseif ( 'outofstock' === $status ) {
+        $class = 'is-outofstock';
+        $label = __( 'Sob consulta', 'chavevertical-lite' );
+    }
+
+    $sku      = $product->get_sku();
+    $category = cvl_get_product_primary_category( $product->get_id() );
+    $tags     = wp_get_post_terms( $product->get_id(), 'product_tag', array( 'fields' => 'names' ) );
+    $tag_text = ! is_wp_error( $tags ) && ! empty( $tags ) ? implode( ', ', $tags ) : '—';
+
+    $message = sprintf(
+        'Olá, pretendo consultar o prazo de entrega do produto %1$s%2$s. %3$s',
+        $product->get_name(),
+        $sku ? ' (Ref: ' . $sku . ')' : '',
+        $product->get_permalink()
+    );
+    $whatsapp_url = 'https://wa.me/351914580410?text=' . rawurlencode( $message );
+
+    echo '<section class="cvl-single-info-panel">';
+    echo '<div class="cvl-single-availability-row">';
+    echo '<a class="cvl-single-availability ' . esc_attr( $class ) . '" href="' . esc_url( $whatsapp_url ) . '" target="_blank" rel="noopener nofollow">';
+    echo '<span class="cvl-single-wa" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.91 9.91 0 1 0 4.74-18.62Zm5.79 14.1c-.24.68-1.4 1.25-1.92 1.32-.5.07-1.14.1-3.32-.8-2.79-1.15-4.58-4.01-4.72-4.2-.14-.19-1.13-1.5-1.13-2.86 0-1.36.71-2.03.96-2.31.25-.28.56-.35.75-.35.19 0 .37 0 .53.01.17.01.4.06.61.57.24.57.81 1.98.88 2.12.07.14.12.31.02.5-.09.19-.14.31-.28.47-.14.17-.3.37-.43.5-.14.14-.29.3-.12.59.16.28.73 1.2 1.56 1.94 1.07.95 1.97 1.25 2.25 1.39.28.14.45.12.61-.07.17-.19.72-.84.91-1.13.19-.28.38-.24.64-.14.26.09 1.66.78 1.95.92.28.14.47.21.54.33.07.12.07.7-.17 1.38Z"></path></svg></span>';
+    echo '<span class="cvl-single-availability-copy"><strong>' . esc_html( $label ) . '</strong><small>' . esc_html__( 'Consulte aqui o prazo de entrega', 'chavevertical-lite' ) . '</small></span>';
+    echo '</a>';
+    echo '</div>';
+
+    echo '<div class="cvl-single-facts"><table><tbody>';
+    echo '<tr><th scope="row">' . esc_html__( 'Disponibilidade:', 'chavevertical-lite' ) . '</th><td><span class="cvl-single-stock-state ' . esc_attr( $class ) . '"><i aria-hidden="true"></i>' . esc_html( $label ) . '</span></td></tr>';
+
+    if ( 'onbackorder' === $status ) {
+        echo '<tr><th scope="row">' . esc_html__( 'Prazo de entrega:', 'chavevertical-lite' ) . '</th><td><a href="' . esc_url( $whatsapp_url ) . '" target="_blank" rel="noopener nofollow">' . esc_html__( 'Sujeito a confirmação do fornecedor', 'chavevertical-lite' ) . '</a></td></tr>';
+    }
+
+    if ( $sku ) {
+        echo '<tr><th scope="row">' . esc_html__( 'Referência:', 'chavevertical-lite' ) . '</th><td>' . esc_html( $sku ) . '</td></tr>';
+    }
+
+    if ( $category ) {
+        echo '<tr><th scope="row">' . esc_html__( 'Categorias:', 'chavevertical-lite' ) . '</th><td>' . esc_html( $category->name ) . '</td></tr>';
+    }
+
+    echo '<tr><th scope="row">' . esc_html__( 'Etiquetas:', 'chavevertical-lite' ) . '</th><td>' . esc_html( $tag_text ) . '</td></tr>';
+    echo '</tbody></table></div>';
+    echo '</section>';
+}
+add_action( 'woocommerce_single_product_summary', 'cvl_single_product_info_panel', 25 );
+
+/**
+ * Partilha da ficha, posicionada pelo template junto à galeria.
+ */
+function cvl_single_product_share() {
+    global $product;
+
+    if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product ) {
+        return;
+    }
+
+    $url   = $product->get_permalink();
+    $title = $product->get_name();
+
+    echo '<div class="cvl-single-share">';
+    echo '<span class="cvl-single-share-label">' . esc_html__( 'Partilhar:', 'chavevertical-lite' ) . '</span>';
+
+    echo '<a class="is-facebook" href="' . esc_url( 'https://www.facebook.com/sharer.php?u=' . rawurlencode( $url ) ) . '" target="_blank" rel="noopener" aria-label="' . esc_attr__( 'Partilhar no Facebook', 'chavevertical-lite' ) . '">';
+    echo '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.7 21v-8.2h2.8l.4-3.2h-3.2V7.5c0-.9.3-1.6 1.6-1.6H17V3.1c-.3 0-1.4-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.4H7.5v3.2h2.8V21h3.4z"></path></svg><span>Facebook</span></a>';
+
+    echo '<a class="is-whatsapp" href="' . esc_url( 'https://wa.me/?text=' . rawurlencode( $title . ' ' . $url ) ) . '" target="_blank" rel="noopener" aria-label="' . esc_attr__( 'Partilhar no WhatsApp', 'chavevertical-lite' ) . '">';
+    echo '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.04 2a9.91 9.91 0 0 0-8.59 14.86L2.05 22l5.25-1.38A9.9 9.9 0 1 0 12.04 2Zm5.79 14.1c-.24.68-1.4 1.25-1.92 1.32-.5.07-1.14.1-3.32-.8-2.79-1.15-4.58-4.01-4.72-4.2-.14-.19-1.13-1.5-1.13-2.86 0-1.36.71-2.03.96-2.31.25-.28.56-.35.75-.35.19 0 .37 0 .53.01.17.01.4.06.61.57.24.57.81 1.98.88 2.12.07.14.12.31.02.5-.09.19-.14.31-.28.47-.14.17-.3.37-.43.5-.14.14-.29.3-.12.59.16.28.73 1.2 1.56 1.94 1.07.95 1.97 1.25 2.25 1.39.28.14.45.12.61-.07.17-.19.72-.84.91-1.13.19-.28.38-.24.64-.14.26.09 1.66.78 1.95.92.28.14.47.21.54.33.07.12.07.7-.17 1.38Z"></path></svg><span>WhatsApp</span></a>';
+
+    $mailto = 'mailto:?subject=' . rawurlencode( $title ) . '&body=' . rawurlencode( $url );
+    echo '<a class="is-email" href="' . esc_attr( $mailto ) . '" aria-label="' . esc_attr__( 'Partilhar por email', 'chavevertical-lite' ) . '">';
+    echo '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5h18v13H3z"></path><path d="m4.5 7 7.5 6 7.5-6"></path></svg><span>Email</span></a>';
+
+    echo '</div>';
+}
+
+/**
+ * Tab comercial equivalente ao layout de referência.
+ */
+add_filter( 'woocommerce_product_tabs', function ( $tabs ) {
+    $tabs['cvl_contact'] = array(
+        'title'    => __( 'Solicitar Contacto / Orçamento', 'chavevertical-lite' ),
+        'priority' => 25,
+        'callback' => 'cvl_single_product_contact_tab_content',
+    );
+
+    return $tabs;
+}, 20 );
+
+function cvl_single_product_contact_tab_content() {
+    global $product;
+
+    if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product ) {
+        return;
+    }
+
+    $url = add_query_arg(
+        array(
+            'produto' => $product->get_name(),
+            'sku'     => $product->get_sku(),
+        ),
+        'https://chavevertical.com/contacto-pedido-de-cotacao/'
+    );
+
+    echo '<div class="cvl-single-contact-tab">';
+    echo '<h3>' . esc_html__( 'Solicitar Orçamento ou Informação Adicional', 'chavevertical-lite' ) . '</h3>';
+    echo '<p>' . esc_html__( 'Tem dúvidas sobre as características técnicas ou pretende encomendar em quantidade? A equipa comercial prepara uma proposta adequada ao seu pedido.', 'chavevertical-lite' ) . '</p>';
+    echo '<a class="cvl-single-contact-cta" href="' . esc_url( $url ) . '">' . esc_html__( 'SOLICITAR ORÇAMENTO', 'chavevertical-lite' ) . '</a>';
+    echo '</div>';
+}
 
 add_filter( 'loop_shop_columns', function () {
     return 6;
