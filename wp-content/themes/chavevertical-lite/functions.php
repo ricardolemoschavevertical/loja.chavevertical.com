@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.9.7' );
+define( 'CVL_VERSION', '0.9.8' );
 
 add_action( 'after_setup_theme', function () {
     load_theme_textdomain( 'chavevertical-lite', get_template_directory() . '/languages' );
@@ -118,6 +118,16 @@ function cvl_brands_page_url() {
     }
 
     return home_url( '/?pagename=marcas' );
+}
+
+function cvl_contact_page_url() {
+    $page = get_page_by_path( 'contactos', OBJECT, 'page' );
+
+    if ( $page instanceof WP_Post ) {
+        return get_permalink( $page->ID );
+    }
+
+    return home_url( '/?pagename=contactos' );
 }
 
 function cvl_cart_count() {

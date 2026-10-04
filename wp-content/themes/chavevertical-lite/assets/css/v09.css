@@ -520,3 +520,311 @@
 .cvl-v4-categories-section .cvl-v4-category-name{
   display:none!important;
 }
+
+
+/* v0.9.8 — contacts page */
+.cvl-contact-page{
+  padding-top:38px;
+  padding-bottom:68px;
+}
+
+.cvl-contact-hero{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:28px;
+  align-items:end;
+  padding-bottom:30px;
+  border-bottom:1px solid #e4e8ea;
+}
+
+.cvl-contact-kicker{
+  display:block;
+  margin:0 0 8px;
+  color:#17820f;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.cvl-contact-hero h1{
+  margin:0 0 10px;
+  color:#252a2d;
+  font-size:38px;
+  line-height:1.05;
+}
+
+.cvl-contact-hero p{
+  max-width:720px;
+  margin:0;
+  color:#667076;
+  font-size:15px;
+  line-height:1.65;
+}
+
+.cvl-contact-hero-actions{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  gap:8px;
+}
+
+.cvl-contact-action{
+  min-height:42px;
+  padding:0 16px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  border:1px solid #d8dedf;
+  background:#fff;
+  color:#343b3f;
+  font-size:11px;
+  font-weight:800;
+  text-transform:uppercase;
+}
+
+.cvl-contact-action:hover,
+.cvl-contact-action:focus-visible{
+  border-color:#17820f;
+  color:#17820f;
+}
+
+.cvl-contact-action.is-primary{
+  border-color:#17820f;
+  background:#17820f;
+  color:#fff;
+}
+
+.cvl-contact-action.is-primary:hover,
+.cvl-contact-action.is-primary:focus-visible{
+  border-color:#106d0b;
+  background:#106d0b;
+  color:#fff;
+}
+
+.cvl-contact-section{
+  margin-top:38px;
+}
+
+.cvl-contact-section-head{
+  margin-bottom:16px;
+}
+
+.cvl-contact-section-head span{
+  display:block;
+  margin-bottom:5px;
+  color:#17820f;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.cvl-contact-section-head h2{
+  margin:0;
+  color:#252a2d;
+  font-size:24px;
+  line-height:1.15;
+}
+
+.cvl-contact-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+}
+
+.cvl-contact-card{
+  min-width:0;
+  padding:20px;
+  border:1px solid #e2e7e8;
+  background:#fff;
+  box-shadow:0 4px 14px rgba(25,35,40,.045);
+}
+
+.cvl-contact-card.is-online{
+  border-top:3px solid #17820f;
+}
+
+.cvl-contact-card-icon{
+  width:38px;
+  height:38px;
+  margin-bottom:14px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  background:#f1f7f0;
+  color:#17820f;
+  font-size:17px;
+  font-weight:800;
+}
+
+.cvl-contact-card h3{
+  margin:0 0 6px;
+  color:#252a2d;
+  font-size:16px;
+  line-height:1.25;
+}
+
+.cvl-contact-card-name{
+  margin:0 0 14px;
+  color:#7a8388;
+  font-size:12px;
+}
+
+.cvl-contact-card-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin:0;
+  padding:0;
+  list-style:none;
+}
+
+.cvl-contact-card-list li{
+  color:#596268;
+  font-size:13px;
+  line-height:1.4;
+}
+
+.cvl-contact-card-list a{
+  color:#3a4246;
+  overflow-wrap:anywhere;
+}
+
+.cvl-contact-card-list a:hover,
+.cvl-contact-card-list a:focus-visible{
+  color:#17820f;
+}
+
+.cvl-contact-card-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  margin-top:16px;
+}
+
+.cvl-contact-card-actions a{
+  min-height:34px;
+  padding:0 11px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:1px solid #dce1e2;
+  background:#f8fafa;
+  color:#3b4448;
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+}
+
+.cvl-contact-card-actions a:hover,
+.cvl-contact-card-actions a:focus-visible{
+  border-color:#17820f;
+  color:#17820f;
+}
+
+.cvl-contact-locations{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+}
+
+.cvl-contact-location{
+  padding:24px;
+  border:1px solid #e2e7e8;
+  background:#f8fafa;
+}
+
+.cvl-contact-location h3{
+  margin:0 0 12px;
+  color:#252a2d;
+  font-size:18px;
+}
+
+.cvl-contact-location p{
+  margin:0 0 12px;
+  color:#596268;
+  font-size:13px;
+  line-height:1.65;
+}
+
+.cvl-contact-hours{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  margin-bottom:16px;
+  color:#3f484c;
+  font-size:12px;
+  font-weight:700;
+}
+
+.cvl-contact-note{
+  margin-top:38px;
+  padding:26px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:24px;
+  align-items:center;
+  background:#2f2f2f;
+  color:#fff;
+}
+
+.cvl-contact-note h2{
+  margin:0 0 6px;
+  color:#fff;
+  font-size:22px;
+}
+
+.cvl-contact-note p{
+  margin:0;
+  color:#d8dddd;
+  font-size:13px;
+  line-height:1.55;
+}
+
+.cvl-contact-note .cvl-contact-action{
+  border-color:#fff;
+  background:#fff;
+  color:#252a2d;
+}
+
+@media(max-width:991.98px){
+  .cvl-contact-page{
+    padding-top:28px;
+  }
+
+  .cvl-contact-hero{
+    grid-template-columns:1fr;
+    align-items:start;
+  }
+
+  .cvl-contact-hero-actions{
+    justify-content:flex-start;
+  }
+
+  .cvl-contact-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+@media(max-width:639.98px){
+  .cvl-contact-hero h1{
+    font-size:31px;
+  }
+
+  .cvl-contact-grid,
+  .cvl-contact-locations,
+  .cvl-contact-note{
+    grid-template-columns:1fr;
+  }
+
+  .cvl-contact-card,
+  .cvl-contact-location{
+    padding:18px;
+  }
+
+  .cvl-contact-note{
+    padding:20px;
+  }
+}

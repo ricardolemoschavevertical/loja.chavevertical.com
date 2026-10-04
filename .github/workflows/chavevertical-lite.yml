@@ -8,6 +8,7 @@ on:
       - ".github/workflows/chavevertical-lite.yml"
       - "ops/deploy-theme.sh"
       - "ops/ensure-brands-page.php"
+      - "ops/ensure-contactos-page.php"
   workflow_dispatch:
 
 permissions:
@@ -35,6 +36,7 @@ jobs:
           test -f "$THEME/index.php"
           find "$THEME" -type f -name '*.php' -print0 | xargs -0 -n1 php -l
           php -l ops/ensure-brands-page.php
+          php -l ops/ensure-contactos-page.php
 
       - name: Build installable ZIP
         shell: bash
@@ -77,3 +79,7 @@ jobs:
       - name: Ensure brands page
         shell: bash
         run: php ops/ensure-brands-page.php
+
+      - name: Ensure contacts page
+        shell: bash
+        run: php ops/ensure-contactos-page.php

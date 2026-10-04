@@ -48,7 +48,7 @@ defined( 'ABSPATH' ) || exit;
             <div class="cvl-footer-card">
                 <h3>🌐 Outros canais</h3>
                 <ul class="cvl-footer-links">
-                    <li><a href="<?php echo esc_url( home_url( '/contactos/' ) ); ?>">Pedido de cotação</a></li>
+                    <li><a href="<?php echo esc_url( cvl_contact_page_url() ); ?>">Pedido de cotação</a></li>
                     <li><a href="https://wa.me/351914580410" target="_blank" rel="noopener">WhatsApp</a></li>
                     <li><a href="mailto:ricardo@chavevertical.pt">Email Loja Online</a></li>
                     <li><a href="mailto:comercial@chavevertical.pt">Email Comercial</a></li>
@@ -60,7 +60,7 @@ defined( 'ABSPATH' ) || exit;
             <div class="cvl-footer-card">
                 <h3>A CHAVE VERTICAL</h3>
                 <ul class="cvl-footer-links">
-                    <li><a href="<?php echo esc_url( home_url( '/contactos/' ) ); ?>">Contactos</a></li>
+                    <li><a href="<?php echo esc_url( cvl_contact_page_url() ); ?>">Contactos</a></li>
                     <li><a href="<?php echo esc_url( home_url( '/quem-somos/' ) ); ?>">Sobre Nós</a></li>
                     <li><a href="<?php echo esc_url( home_url( '/entregas-ao-domicilio/' ) ); ?>">Entregas ao Domicílio</a></li>
                     <li><a href="<?php echo esc_url( home_url( '/termos-e-condicoes/' ) ); ?>">Termos e Condições</a></li>

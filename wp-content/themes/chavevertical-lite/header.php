@@ -116,7 +116,7 @@ defined( 'ABSPATH' ) || exit;
                 ),
                 array(
                     'label' => 'CONTACTOS',
-                    'url'   => 'https://chavevertical.com/onde-estamos/',
+                    'url'   => cvl_contact_page_url(),
                 ),
                 array(
                     'label' => 'FOLHETOS',
