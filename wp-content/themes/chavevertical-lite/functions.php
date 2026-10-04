@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.20' );
+define( 'CVL_VERSION', '0.16.21' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -883,7 +883,7 @@ function cvl_single_product_info_panel() {
     } elseif ( 'outofstock' === $status ) {
         $class          = 'is-outofstock';
         $label          = __( 'Sob consulta', 'chavevertical-lite' );
-        $delivery_label = __( 'Clique para consultar no WhatsApp', 'chavevertical-lite' );
+        $delivery_label = __( 'Consulte-nos para confirmar o prazo', 'chavevertical-lite' );
         $availability_icon = '<svg class="cvl-whatsapp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 11.7a8.3 8.3 0 0 1-12.3 7.2L3.5 20l1.2-4.5A8.3 8.3 0 1 1 20.5 11.7Z"></path><path d="M8.4 7.8c.2-.4.4-.4.7-.4h.5c.2 0 .4.1.5.4l.8 1.8c.1.3.1.5-.1.7l-.7.9c-.2.2-.1.4 0 .6.5.9 1.2 1.7 2.1 2.2.2.1.4.2.6 0l.9-1.1c.2-.2.4-.3.7-.2l1.9.9c.3.1.4.3.4.5 0 .3-.1 1.5-.8 2.1-.7.6-1.5.8-2.4.6-1.3-.3-2.9-1-4.4-2.4-1.2-1.1-2.2-2.5-2.6-3.8-.4-1.1-.1-2.1.4-2.8.4-.5.9-.7 1.5-.7Z"></path></svg>';
     }
 
@@ -1096,6 +1096,34 @@ function cvl_single_product_contact_tab_content() {
     echo '<a class="cvl-single-contact-cta" href="' . esc_url( $url ) . '">' . esc_html__( 'SOLICITAR ORÇAMENTO', 'chavevertical-lite' ) . '</a>';
     echo '</div>';
 }
+
+/**
+ * Produto individual: mostrar 8 produtos relacionados.
+ */
+add_filter( 'woocommerce_output_related_products_args', function ( $args ) {
+    $args['posts_per_page'] = 8;
+    $args['columns']        = 8;
+
+    return $args;
+} );
+
+/**
+ * O painel comercial já apresenta "Sob consulta"; evita o "Esgotado"
+ * nativo do WooCommerce na mesma ficha.
+ */
+add_filter( 'woocommerce_get_stock_html', function ( $html, $product ) {
+    if (
+        function_exists( 'is_product' )
+        && is_product()
+        && $product instanceof WC_Product
+        && 'outofstock' === $product->get_stock_status()
+    ) {
+        return '';
+    }
+
+    return $html;
+}, 20, 2 );
+
 
 add_filter( 'loop_shop_columns', function () {
     return 6;
