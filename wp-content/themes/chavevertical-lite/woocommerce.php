@@ -4,6 +4,16 @@ defined( 'ABSPATH' ) || exit;
 get_header();
 
 if (
+    function_exists( 'cvl_is_best_price_catalog_request' )
+    && cvl_is_best_price_catalog_request()
+    && function_exists( 'cvl_best_price_catalog_layout' )
+) {
+    cvl_best_price_catalog_layout();
+    get_footer();
+    return;
+}
+
+if (
     function_exists( 'cvl_is_promotion_catalog_request' )
     && cvl_is_promotion_catalog_request()
     && function_exists( 'cvl_promotion_catalog_layout' )
