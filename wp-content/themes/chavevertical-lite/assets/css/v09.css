@@ -490,6 +490,88 @@
 }
 
 
+
+
+/* v0.9.8 — brands live search */
+.cvl-brands-search{
+  position:relative;
+  max-width:620px;
+  margin:0 0 18px;
+}
+
+.cvl-brands-search-icon{
+  position:absolute;
+  top:50%;
+  left:15px;
+  width:18px;
+  height:18px;
+  display:grid;
+  place-items:center;
+  color:#748087;
+  pointer-events:none;
+  transform:translateY(-50%);
+}
+
+.cvl-brands-search-icon svg{
+  width:18px;
+  height:18px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+}
+
+.cvl-brands-search input[type="search"]{
+  width:100%;
+  height:48px;
+  margin:0;
+  padding:0 44px;
+  border:1px solid #d8dfe2;
+  border-radius:6px;
+  background:#fff;
+  color:#252a2d;
+  box-shadow:0 2px 8px rgba(25,35,40,.04);
+  font:600 13px/1.2 "DM Sans",system-ui,sans-serif;
+  outline:none;
+  transition:border-color .15s ease,box-shadow .15s ease;
+}
+
+.cvl-brands-search input[type="search"]::placeholder{
+  color:#8a9499;
+  opacity:1;
+}
+
+.cvl-brands-search input[type="search"]:focus{
+  border-color:#17820f;
+  box-shadow:0 0 0 3px rgba(23,130,15,.10);
+}
+
+.cvl-brands-search-empty{
+  margin:0 0 18px;
+  padding:14px 16px;
+  border:1px solid #e4e8ea;
+  background:#f8fafa;
+  color:#596268;
+  font-size:13px;
+}
+
+.cvl-brand-card[hidden],
+.cvl-brand-group[hidden],
+.cvl-brands-index a[hidden]{
+  display:none!important;
+}
+
+@media(max-width:767.98px){
+  .cvl-brands-search{
+    max-width:none;
+  }
+
+  .cvl-brands-search input[type="search"]{
+    height:46px;
+  }
+}
+
+
 /* v0.9.7 — ten homepage categories without visible labels */
 @media(min-width:992px){
   .cvl-v4-categories-section .cvl-v4-category-grid{
