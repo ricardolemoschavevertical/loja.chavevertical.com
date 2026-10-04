@@ -40,7 +40,8 @@ $locations = array(
             <p><?php esc_html_e( 'Fale diretamente com a equipa certa para encomendas online, apoio comercial, pós-venda ou assuntos administrativos.', 'chavevertical-lite' ); ?></p>
 
             <div class="cvl-contact-hero-actions">
-                <a class="cvl-contact-action is-primary" href="tel:+351234020500"><span aria-hidden="true">📞</span><?php esc_html_e( 'Ligar 234 020 500', 'chavevertical-lite' ); ?></a>
+                <a class="cvl-contact-action is-primary cvl-contact-call-desktop" href="tel:+351234020500"><span aria-hidden="true">📞</span><?php esc_html_e( 'Ligar 234 020 500', 'chavevertical-lite' ); ?></a>
+                <a class="cvl-contact-action is-primary cvl-contact-call-mobile" href="tel:+351914580410"><span aria-hidden="true">📞</span><?php esc_html_e( 'Ligar agora', 'chavevertical-lite' ); ?></a>
                 <a class="cvl-contact-action is-whatsapp" href="https://wa.me/351914580410" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">💬</span><?php esc_html_e( 'WhatsApp', 'chavevertical-lite' ); ?></a>
                 <a class="cvl-contact-action is-email" href="mailto:geral@chavevertical.pt"><span aria-hidden="true">✉️</span><?php esc_html_e( 'Email geral', 'chavevertical-lite' ); ?></a>
             </div>
@@ -163,9 +164,7 @@ $locations = array(
                 <h3><span class="cvl-contact-card-emoji" aria-hidden="true">🧾</span><?php esc_html_e( 'Contabilidade', 'chavevertical-lite' ); ?></h3>
                 <p class="cvl-contact-card-name">João Colaço</p>
                 <ul class="cvl-contact-card-list">
-                    <li><span aria-hidden="true">☎️</span><a href="tel:+351300529937">300 529 937</a></li>
                     <li><span aria-hidden="true">☎️</span><a href="tel:+351234020500">234 020 500</a></li>
-                    <li><span aria-hidden="true">✉️</span><a href="mailto:contabilidade@chavevertical.pt">contabilidade@chavevertical.pt</a></li>
                 </ul>
             </article>
 

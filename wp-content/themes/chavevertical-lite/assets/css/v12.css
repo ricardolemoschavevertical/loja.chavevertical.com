@@ -522,3 +522,19 @@
     grid-template-columns:1fr;
   }
 }
+
+
+/* v0.12.3 — mobile call CTA */
+.cvl-contact-call-mobile{
+  display:none;
+}
+
+@media(max-width:639.98px){
+  .cvl-contact-call-desktop{
+    display:none;
+  }
+
+  .cvl-contact-call-mobile{
+    display:inline-flex;
+  }
+}
