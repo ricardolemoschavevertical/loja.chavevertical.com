@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.52' );
+define( 'CVL_VERSION', '0.16.53' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -1931,6 +1931,45 @@ function cvl_category_archive_price_bounds( array $category_ids, string $brand_s
     );
 }
 
+/**
+ * Remove de uma tax_query qualquer cláusula de uma determinada taxonomia,
+ * preservando as restantes (visibilidade, marcas, etc.).
+ */
+function cvl_category_archive_without_taxonomy( array $tax_query, string $taxonomy ): array {
+    $filtered = array();
+
+    foreach ( $tax_query as $key => $clause ) {
+        if ( 'relation' === $key ) {
+            $filtered['relation'] = $clause;
+            continue;
+        }
+
+        if ( ! is_array( $clause ) ) {
+            continue;
+        }
+
+        if ( isset( $clause['taxonomy'] ) ) {
+            if ( $taxonomy !== (string) $clause['taxonomy'] ) {
+                $filtered[] = $clause;
+            }
+            continue;
+        }
+
+        $nested = cvl_category_archive_without_taxonomy( $clause, $taxonomy );
+        $nested_clauses = array_filter(
+            $nested,
+            static fn( $nested_key ): bool => 'relation' !== $nested_key,
+            ARRAY_FILTER_USE_KEY
+        );
+
+        if ( $nested_clauses ) {
+            $filtered[] = $nested;
+        }
+    }
+
+    return $filtered;
+}
+
 add_action( 'pre_get_posts', function ( WP_Query $query ) {
     if ( is_admin() || ! $query->is_main_query() || ! $query->is_tax( 'product_cat' ) ) {
         return;
@@ -1943,7 +1982,15 @@ add_action( 'pre_get_posts', function ( WP_Query $query ) {
         return;
     }
 
-    $tax_query = (array) $query->get( 'tax_query' );
+    /*
+     * Mantém os filtros WooCommerce já aplicados (por exemplo visibilidade),
+     * mas elimina qualquer cláusula product_cat anterior. Assim evitamos que o
+     * filtro nativo do URL intersecte a árvore explícita definida abaixo.
+     */
+    $tax_query = cvl_category_archive_without_taxonomy(
+        (array) $query->get( 'tax_query' ),
+        'product_cat'
+    );
 
     /*
      * A categoria mãe agrega explicitamente todos os produtos da sua árvore.
@@ -1963,6 +2010,23 @@ add_action( 'pre_get_posts', function ( WP_Query $query ) {
             'operator'         => 'IN',
         );
     }
+
+    /*
+     * O WordPress voltaria a criar automaticamente outra cláusula product_cat
+     * a partir do slug do arquivo. Limpamos apenas essa query var e guardamos a
+     * categoria original para o template/SEO da página.
+     */
+    $query->set( 'cvl_base_product_cat_id', (int) $base_term->term_id );
+    $query->set( 'product_cat', '' );
+
+    if ( 'product_cat' === (string) $query->get( 'taxonomy' ) ) {
+        $query->set( 'taxonomy', '' );
+        $query->set( 'term', '' );
+    }
+
+    // Preserva explicitamente o objeto consultado como sendo a categoria mãe do URL.
+    $query->queried_object    = $base_term;
+    $query->queried_object_id = (int) $base_term->term_id;
 
     $brand_slug = isset( $_GET['marca'] ) ? sanitize_title( wp_unslash( $_GET['marca'] ) ) : '';
     if ( $brand_slug && taxonomy_exists( 'product_brand' ) ) {
@@ -1987,7 +2051,14 @@ add_action( 'pre_get_posts', function ( WP_Query $query ) {
 }, 25 );
 
 function cvl_product_category_search_layout(): void {
-    $base_term = get_queried_object();
+    global $wp_query;
+
+    $base_term_id = $wp_query instanceof WP_Query
+        ? absint( $wp_query->get( 'cvl_base_product_cat_id' ) )
+        : 0;
+    $base_term = $base_term_id
+        ? get_term( $base_term_id, 'product_cat' )
+        : get_queried_object();
 
     if ( ! $base_term instanceof WP_Term || 'product_cat' !== $base_term->taxonomy ) {
         return;
