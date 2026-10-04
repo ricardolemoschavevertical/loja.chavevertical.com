@@ -250,6 +250,122 @@ if ( function_exists( 'wc_get_product_id_by_sku' ) ) {
     }
 }
 
+
+/* Exact live product-width probe for the reported product page. */
+$result['exact_product_width_probe'] = array();
+$exact_product_url = add_query_arg(
+    'cvl_width_probe',
+    (string) time(),
+    home_url( '/produto/serra-de-mesa-circular-deslizante-holzmann-kf315vf2600/' )
+);
+$exact_product_response = wp_remote_get(
+    $exact_product_url,
+    array(
+        'timeout' => 25,
+        'redirection' => 5,
+        'headers' => array(
+            'Cache-Control' => 'no-cache',
+            'Pragma' => 'no-cache',
+        ),
+    )
+);
+
+if ( is_wp_error( $exact_product_response ) ) {
+    $result['exact_product_width_probe']['error'] = $exact_product_response->get_error_message();
+} else {
+    $exact_body = (string) wp_remote_retrieve_body( $exact_product_response );
+    $result['exact_product_width_probe']['url'] = $exact_product_url;
+    $result['exact_product_width_probe']['status'] = (int) wp_remote_retrieve_response_code( $exact_product_response );
+    $result['exact_product_width_probe']['theme_version'] = defined( 'CVL_VERSION' ) ? CVL_VERSION : null;
+
+    foreach ( array( 'v05.css', 'v10.css' ) as $probe_css_file ) {
+        if ( preg_match( '/<link[^>]+href=["\\']([^"\\']*' . preg_quote( $probe_css_file, '/' ) . '[^"\\']*)["\\']/i', $exact_body, $m ) ) {
+            $css_href = html_entity_decode( $m[1], ENT_QUOTES );
+            $result['exact_product_width_probe'][ str_replace( '.', '_', $probe_css_file ) . '_href' ] = $css_href;
+            $css_response = wp_remote_get(
+                $css_href,
+                array(
+                    'timeout' => 20,
+                    'redirection' => 3,
+                    'headers' => array(
+                        'Cache-Control' => 'no-cache',
+                        'Pragma' => 'no-cache',
+                    ),
+                )
+            );
+
+            if ( ! is_wp_error( $css_response ) ) {
+                $css_body = (string) wp_remote_retrieve_body( $css_response );
+                $key = str_replace( '.', '_', $probe_css_file );
+                $result['exact_product_width_probe'][ $key . '_status' ] = (int) wp_remote_retrieve_response_code( $css_response );
+                $result['exact_product_width_probe'][ $key . '_bytes' ] = strlen( $css_body );
+                if ( 'v05.css' === $probe_css_file ) {
+                    $result['exact_product_width_probe']['v05_global_shell_unlimited'] =
+                        false !== strpos( $css_body, '.cvl-shell{width:var(--cvl-shell);max-width:none;margin-inline:auto}' );
+                }
+                if ( 'v10.css' === $probe_css_file ) {
+                    $result['exact_product_width_probe']['v10_product_shell_shared'] =
+                        false !== strpos( $css_body, 'width:var(--cvl-shell)!important' )
+                        && false !== strpos( $css_body, 'max-width:var(--cvl-ref-site)!important' );
+                    $result['exact_product_width_probe']['v10_grid_full_width'] =
+                        false !== strpos( $css_body, '.single-product .cvl-product-detail-grid{' )
+                        && false !== strpos( $css_body, 'width:100%!important' );
+                }
+            }
+        }
+    }
+
+    if ( class_exists( 'DOMDocument' ) ) {
+        $dom = new DOMDocument();
+        libxml_use_internal_errors( true );
+        $dom->loadHTML( $exact_body );
+        libxml_clear_errors();
+        $xpath = new DOMXPath( $dom );
+
+        $product_nodes = $xpath->query( '//*[starts-with(@id,"product-") and contains(concat(" ", normalize-space(@class), " "), " cvl-product-detail ")]' );
+        $related_nodes = $xpath->query( '//*[contains(concat(" ", normalize-space(@class), " "), " related ") and contains(concat(" ", normalize-space(@class), " "), " products ")]' );
+        $shell_nodes = $xpath->query( '//*[contains(concat(" ", normalize-space(@class), " "), " cvl-woocommerce-shell ")]' );
+        $grid_nodes = $xpath->query( '//*[contains(concat(" ", normalize-space(@class), " "), " cvl-product-detail-grid ")]' );
+
+        $result['exact_product_width_probe']['product_nodes'] = $product_nodes ? $product_nodes->length : 0;
+        $result['exact_product_width_probe']['related_nodes'] = $related_nodes ? $related_nodes->length : 0;
+        $result['exact_product_width_probe']['shell_nodes'] = $shell_nodes ? $shell_nodes->length : 0;
+        $result['exact_product_width_probe']['grid_nodes'] = $grid_nodes ? $grid_nodes->length : 0;
+
+        if ( $product_nodes && $product_nodes->length ) {
+            $node = $product_nodes->item( 0 );
+            $ancestors = array();
+            $parent = $node->parentNode;
+            $depth = 0;
+            while ( $parent && $depth < 8 ) {
+                if ( XML_ELEMENT_NODE === $parent->nodeType ) {
+                    $ancestors[] = array(
+                        'tag' => strtolower( $parent->nodeName ),
+                        'id' => $parent->attributes && $parent->attributes->getNamedItem( 'id' )
+                            ? $parent->attributes->getNamedItem( 'id' )->nodeValue
+                            : '',
+                        'class' => $parent->attributes && $parent->attributes->getNamedItem( 'class' )
+                            ? $parent->attributes->getNamedItem( 'class' )->nodeValue
+                            : '',
+                    );
+                    $depth++;
+                }
+                $parent = $parent->parentNode;
+            }
+            $result['exact_product_width_probe']['product_ancestors'] = $ancestors;
+
+            if ( $related_nodes && $related_nodes->length ) {
+                $related = $related_nodes->item( 0 );
+                $result['exact_product_width_probe']['related_inside_product'] = $node->contains( $related );
+                $result['exact_product_width_probe']['related_parent_class'] =
+                    $related->parentNode && $related->parentNode->attributes && $related->parentNode->attributes->getNamedItem( 'class' )
+                    ? $related->parentNode->attributes->getNamedItem( 'class' )->nodeValue
+                    : '';
+            }
+        }
+    }
+}
+
 $response = wp_remote_get($target, array('timeout' => 20, 'redirection' => 3));
 
 if (is_wp_error($response)) {
