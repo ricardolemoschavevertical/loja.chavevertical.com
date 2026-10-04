@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.23' );
+define( 'CVL_VERSION', '0.16.24' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -613,6 +613,16 @@ function cvl_single_product_service_strip() {
     echo '<span>';
     echo '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"></path><circle cx="7" cy="18" r="2"></circle><circle cx="18" cy="18" r="2"></circle></svg>';
     echo '<span class="cvl-single-service-copy"><strong>' . esc_html__( 'Envio para todo o país', 'chavevertical-lite' ) . '</strong><small>' . esc_html__( 'Consulte as condições de entrega', 'chavevertical-lite' ) . '</small></span>';
+    echo '</span>';
+
+    echo '<span>';
+    echo '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5c0 4.9 3 8.2 7.5 10 4.5-1.8 7.5-5.1 7.5-10V6z"></path><path d="m9 12 2 2 4-4"></path></svg>';
+    echo '<span class="cvl-single-service-copy"><strong>' . esc_html__( 'Compra online', 'chavevertical-lite' ) . '</strong><small>' . esc_html__( 'Processo de compra integrado', 'chavevertical-lite' ) . '</small></span>';
+    echo '</span>';
+
+    echo '<span>';
+    echo '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 10h18M7 15h4"></path></svg>';
+    echo '<span class="cvl-single-service-copy"><strong>' . esc_html__( 'Pagamento', 'chavevertical-lite' ) . '</strong><small>' . esc_html__( 'Opções disponíveis no checkout', 'chavevertical-lite' ) . '</small></span>';
     echo '</span>';
     echo '</div>';
 }
