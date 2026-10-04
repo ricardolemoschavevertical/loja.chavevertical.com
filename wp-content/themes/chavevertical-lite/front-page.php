@@ -103,6 +103,24 @@ if ( function_exists( 'wc_get_products' ) ) {
         'return'  => 'objects',
     ) );
 
+    $recent_product_ids = array_values(
+        array_filter(
+            array_map(
+                static function ( $product ) {
+                    return $product instanceof WC_Product ? absint( $product->get_id() ) : 0;
+                },
+                $recent_products
+            )
+        )
+    );
+
+    /*
+     * A faixa promocional privilegia promoções reais. Quando ainda não existem
+     * 16 sale_price ativos, completa a grelha com produtos destacados e depois
+     * com catálogo publicado, sem repetir os 8 produtos da fila de novidades.
+     */
+    $promo_product_ids = array();
+
     if ( function_exists( 'wc_get_product_ids_on_sale' ) ) {
         $sale_product_ids = array_values(
             array_filter(
@@ -114,7 +132,7 @@ if ( function_exists( 'wc_get_products' ) ) {
         );
 
         if ( ! empty( $sale_product_ids ) ) {
-            $promo_products = wc_get_products( array(
+            $sale_products = wc_get_products( array(
                 'status'  => 'publish',
                 'include' => $sale_product_ids,
                 'limit'   => 16,
@@ -122,6 +140,74 @@ if ( function_exists( 'wc_get_products' ) ) {
                 'order'   => 'DESC',
                 'return'  => 'objects',
             ) );
+
+            foreach ( $sale_products as $sale_product ) {
+                if ( $sale_product instanceof WC_Product ) {
+                    $promo_products[]    = $sale_product;
+                    $promo_product_ids[] = $sale_product->get_id();
+                }
+            }
+        }
+    }
+
+    if ( count( $promo_products ) < 16 ) {
+        $featured_products = wc_get_products( array(
+            'status'   => 'publish',
+            'featured' => true,
+            'limit'    => 16 - count( $promo_products ),
+            'exclude'  => array_values( array_unique( array_merge( $promo_product_ids, $recent_product_ids ) ) ),
+            'orderby'  => 'date',
+            'order'    => 'DESC',
+            'return'   => 'objects',
+        ) );
+
+        foreach ( $featured_products as $featured_product ) {
+            if ( ! $featured_product instanceof WC_Product ) {
+                continue;
+            }
+
+            $product_id = $featured_product->get_id();
+
+            if ( in_array( $product_id, $promo_product_ids, true ) ) {
+                continue;
+            }
+
+            $promo_products[]    = $featured_product;
+            $promo_product_ids[] = $product_id;
+
+            if ( count( $promo_products ) >= 16 ) {
+                break;
+            }
+        }
+    }
+
+    if ( count( $promo_products ) < 16 ) {
+        $fallback_products = wc_get_products( array(
+            'status'  => 'publish',
+            'limit'   => 16 - count( $promo_products ),
+            'exclude' => array_values( array_unique( array_merge( $promo_product_ids, $recent_product_ids ) ) ),
+            'orderby' => 'date',
+            'order'   => 'DESC',
+            'return'  => 'objects',
+        ) );
+
+        foreach ( $fallback_products as $fallback_product ) {
+            if ( ! $fallback_product instanceof WC_Product ) {
+                continue;
+            }
+
+            $product_id = $fallback_product->get_id();
+
+            if ( in_array( $product_id, $promo_product_ids, true ) ) {
+                continue;
+            }
+
+            $promo_products[]    = $fallback_product;
+            $promo_product_ids[] = $product_id;
+
+            if ( count( $promo_products ) >= 16 ) {
+                break;
+            }
         }
     }
 }
