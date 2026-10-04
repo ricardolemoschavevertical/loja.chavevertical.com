@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.9.5' );
+define( 'CVL_VERSION', '0.9.6' );
 
 add_action( 'after_setup_theme', function () {
     load_theme_textdomain( 'chavevertical-lite', get_template_directory() . '/languages' );
@@ -108,6 +108,16 @@ function cvl_account_url() {
 
 function cvl_shop_url() {
     return function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'shop' ) : home_url( '/shop/' );
+}
+
+function cvl_brands_page_url() {
+    $page = get_page_by_path( 'marcas', OBJECT, 'page' );
+
+    if ( $page instanceof WP_Post ) {
+        return get_permalink( $page->ID );
+    }
+
+    return home_url( '/?pagename=marcas' );
 }
 
 function cvl_cart_count() {
