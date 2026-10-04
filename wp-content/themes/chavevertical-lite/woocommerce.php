@@ -3,6 +3,12 @@ defined( 'ABSPATH' ) || exit;
 
 get_header();
 
+if ( taxonomy_exists( 'product_brand' ) && is_tax( 'product_brand' ) && function_exists( 'cvl_product_brand_search_layout' ) ) {
+    cvl_product_brand_search_layout();
+    get_footer();
+    return;
+}
+
 if ( function_exists( 'is_product_category' ) && is_product_category() && function_exists( 'cvl_product_category_search_layout' ) ) {
     cvl_product_category_search_layout();
     get_footer();
