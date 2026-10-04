@@ -90,6 +90,9 @@ jobs:
           HEALTH_CODE=$(curl --connect-timeout 10 --max-time 30 -sS -o /tmp/cvos-health.json -w '%{http_code}' 'https://loja.chavevertical.com/wp-json/cv-opensearch/v1/health' || true)
           SUGGEST_CODE=$(curl --connect-timeout 10 --max-time 30 -sS -o /tmp/cvos-suggest.json -w '%{http_code}' 'https://loja.chavevertical.com/wp-json/cv-opensearch/v1/suggest?q=powered&limit=3' || true)
           HOME_CODE=$(curl --connect-timeout 10 --max-time 30 -sS -o /tmp/cvos-home.html -w '%{http_code}' 'https://loja.chavevertical.com/' || true)
+          CATALOG_CODE=$(curl --connect-timeout 10 --max-time 30 -sS -o /tmp/cvos-catalog.json -w '%{http_code}' 'https://loja.chavevertical.com/wp-json/cv-opensearch/v1/catalog/products?s=insonorizados&per_page=5' || true)
+          SEARCH_CODE=$(curl --connect-timeout 10 --max-time 30 -sS -o /tmp/cvos-search.html -w '%{http_code}' 'https://loja.chavevertical.com/?s=insonorizados&post_type=product' || true)
+          FILTER_CODE=$(curl --connect-timeout 10 --max-time 30 -sS -o /tmp/cvos-filter.html -w '%{http_code}' 'https://loja.chavevertical.com/?s=powered&post_type=product&min_price=100&max_price=5000' || true)
 
           {
             echo "public_health_http=$HEALTH_CODE"
@@ -107,6 +110,38 @@ jobs:
             echo -n "homepage_cvos_script_src="
             grep -oE 'https?[^" ]*cv-opensearch/assets/search\.js[^" ]*' /tmp/cvos-home.html | head -n1 || true
             echo
+
+            echo "catalog_http=$CATALOG_CODE"
+            echo -n "catalog_summary="
+            php -r '
+              $d=json_decode(file_get_contents("/tmp/cvos-catalog.json"),true);
+              $first=$d["items"][0]??array();
+              echo json_encode(array(
+                "ok"=>$d["ok"]??false,
+                "source"=>$d["source"]??null,
+                "total"=>$d["total"]??null,
+                "first_id"=>$first["id"]??null,
+                "first_name"=>$first["name"]??null,
+                "first_category_match"=>in_array("insonorizados",$first["category_slugs"]??array(),true),
+                "has_brand_facets"=>!empty($d["facets"]["brands"]??array()),
+                "has_category_facets"=>!empty($d["facets"]["categories"]??array()),
+                "has_price_facet"=>isset($d["facets"]["price"]) && is_array($d["facets"]["price"]),
+              ), JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+            ' 2>/dev/null || true
+            echo
+
+            echo "search_page_http=$SEARCH_CODE"
+            echo "search_has_filter_panel=$(grep -q 'cvl-search-filters' /tmp/cvos-search.html && echo yes || echo no)"
+            echo "search_has_brand_filter=$(grep -q '>MARCAS<' /tmp/cvos-search.html && echo yes || echo no)"
+            echo "search_has_category_filter=$(grep -q '>CATEGORIAS<' /tmp/cvos-search.html && echo yes || echo no)"
+            echo "search_has_price_filter=$(grep -q '>PREÇO<' /tmp/cvos-search.html && echo yes || echo no)"
+            echo "search_has_category_label_in_product_card=$(grep -q 'cvl-product-category' /tmp/cvos-search.html && echo yes || echo no)"
+            echo -n "search_first_product_id="
+            grep -oE 'class="[^"]*post-[0-9]+[^"]*product[^"]*"' /tmp/cvos-search.html | head -n1 | grep -oE 'post-[0-9]+' | cut -d- -f2 || true
+            echo
+
+            echo "price_filtered_page_http=$FILTER_CODE"
+            echo "price_filter_values_present=$(grep -q 'name="min_price" value="100.00"' /tmp/cvos-filter.html && grep -q 'name="max_price" value="5000.00"' /tmp/cvos-filter.html && echo yes || echo no)"
           } >> "$OUT"
 
           sed -E 's/(password|secret)[^,}]*/\1=REDACTED/Ig' "$OUT"
