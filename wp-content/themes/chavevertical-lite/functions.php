@@ -1,11 +1,16 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.70' );
+define( 'CVL_VERSION', '0.16.71' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
     require_once $cvl_homepage_highlights_file;
+}
+
+$cvl_promotion_catalog_file = get_template_directory() . '/inc/promotion-catalog.php';
+if ( file_exists( $cvl_promotion_catalog_file ) ) {
+    require_once $cvl_promotion_catalog_file;
 }
 
 $cvl_brand_archive_file = get_template_directory() . '/inc/brand-archive.php';
@@ -112,6 +117,7 @@ add_action( 'wp_enqueue_scripts', function () {
     if (
         ( function_exists( 'is_product_category' ) && is_product_category() )
         || ( taxonomy_exists( 'product_brand' ) && is_tax( 'product_brand' ) )
+        || ( function_exists( 'cvl_is_promotion_catalog_request' ) && cvl_is_promotion_catalog_request() )
     ) {
         wp_enqueue_script(
             'cvl-search-results',
@@ -188,6 +194,7 @@ add_action( 'wp_enqueue_scripts', function () {
     if (
         ( is_search() && 'product' === get_query_var( 'post_type' ) )
         || ( taxonomy_exists( 'product_brand' ) && is_tax( 'product_brand' ) )
+        || ( function_exists( 'cvl_is_promotion_catalog_request' ) && cvl_is_promotion_catalog_request() )
     ) {
         wp_enqueue_script(
             'cvl-search-results',
