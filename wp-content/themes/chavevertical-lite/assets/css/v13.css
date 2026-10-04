@@ -4,13 +4,13 @@
  * Mantém o markup e a lógica comercial nativos do WooCommerce.
  * Esta camada trata apenas a apresentação da listagem de produtos.
  */
-.woocommerce ul.products{
+:is(.woocommerce,.cvl-v4-products) ul.products{
   display:grid!important;
   grid-template-columns:repeat(6,minmax(0,1fr))!important;
   gap:8px!important;
 }
 
-.woocommerce ul.products li.product:not(.product-category){
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category){
   position:relative!important;
   z-index:1!important;
   min-width:0!important;
@@ -27,14 +27,14 @@
   transition:transform .3s ease,border-color .3s ease,box-shadow .3s ease!important;
 }
 
-.woocommerce ul.products li.product:not(.product-category):hover{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category):hover{
   z-index:20!important;
   border-color:var(--cvl-ref-red)!important;
   box-shadow:0 12px 24px rgba(0,0,0,.10)!important;
   transform:translateY(-4px)!important;
 }
 
-.woocommerce ul.products li.product:not(.product-category)>a.woocommerce-LoopProduct-link{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category)>a.woocommerce-LoopProduct-link{
   min-width:0!important;
   flex:1 1 auto!important;
   padding:0!important;
@@ -45,7 +45,7 @@
 }
 
 /* Imagem 1:1 */
-.woocommerce ul.products li.product:not(.product-category) a img{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) a img{
   width:100%!important;
   max-width:100%!important;
   height:auto!important;
@@ -60,12 +60,12 @@
   transition:transform .3s ease!important;
 }
 
-.woocommerce ul.products li.product:not(.product-category):hover a img{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category):hover a img{
   transform:scale(1.025)!important;
 }
 
 /* Badge comercial */
-.woocommerce ul.products li.product:not(.product-category) .cvl-product-badge{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-badge{
   position:absolute!important;
   z-index:3!important;
   top:8px!important;
@@ -88,16 +88,16 @@
   white-space:nowrap!important;
 }
 
-.woocommerce ul.products li.product:not(.product-category) .cvl-product-badge.is-sale{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-badge.is-sale{
   background:var(--cvl-ref-red)!important;
 }
 
-.woocommerce ul.products li.product:not(.product-category) .cvl-product-badge.is-unavailable{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-badge.is-unavailable{
   background:#6b7280!important;
 }
 
 /* Categoria + título */
-.woocommerce ul.products li.product:not(.product-category) .cvl-product-category{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-category{
   min-height:0!important;
   margin:0 10px 6px!important;
   display:block!important;
@@ -113,7 +113,7 @@
   white-space:nowrap!important;
 }
 
-.woocommerce ul.products li.product:not(.product-category) .woocommerce-loop-product__title{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .woocommerce-loop-product__title{
   min-height:2.6em!important;
   height:2.6em!important;
   max-height:2.6em!important;
@@ -132,7 +132,7 @@
   -webkit-line-clamp:2!important;
 }
 
-.woocommerce ul.products li.product:not(.product-category):hover .woocommerce-loop-product__title{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category):hover .woocommerce-loop-product__title{
   display:-webkit-box!important;
   height:2.6em!important;
   max-height:2.6em!important;
@@ -142,7 +142,7 @@
 }
 
 /* Marca — logótipo quando existe; nome quando não existe */
-.woocommerce ul.products li.product:not(.product-category) .cvl-product-brand-row{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-brand-row{
   min-height:30px!important;
   margin:1px 10px 0!important;
   display:flex!important;
@@ -150,7 +150,7 @@
   justify-content:center!important;
 }
 
-.woocommerce ul.products li.product:not(.product-category) .cvl-product-brand{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-brand{
   width:100%!important;
   max-width:100%!important;
   min-width:0!important;
@@ -161,7 +161,7 @@
   overflow:hidden!important;
 }
 
-.woocommerce ul.products li.product:not(.product-category) .cvl-product-brand-logo{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-brand-logo{
   display:block!important;
   width:auto!important;
   max-width:96px!important;
@@ -171,7 +171,7 @@
   object-fit:contain!important;
 }
 
-.woocommerce ul.products li.product:not(.product-category) .cvl-product-brand-name{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-brand-name{
   width:auto!important;
   max-width:100%!important;
   overflow:hidden!important;
@@ -187,7 +187,7 @@
 }
 
 /* Referência */
-.woocommerce ul.products li.product:not(.product-category) .cvl-product-sku-row{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-sku-row{
   min-height:28px!important;
   margin:0 10px!important;
   padding:5px 0 7px!important;
@@ -197,7 +197,7 @@
   border-bottom:1px solid #eef1f2!important;
 }
 
-.woocommerce ul.products li.product:not(.product-category) .cvl-product-sku{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-sku{
   width:auto!important;
   min-width:0!important;
   max-width:100%!important;
@@ -216,7 +216,7 @@
   white-space:nowrap!important;
 }
 
-.woocommerce ul.products li.product:not(.product-category) .cvl-product-sku i{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-sku i{
   width:15px!important;
   height:10px!important;
   flex:0 0 15px!important;
@@ -225,13 +225,13 @@
 }
 
 /* A versão final da listagem Shopware não mostra rating/stock no card. */
-.woocommerce ul.products li.product:not(.product-category) .star-rating,
-.woocommerce ul.products li.product:not(.product-category) .cvl-product-stock{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .star-rating,
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-stock{
   display:none!important;
 }
 
 /* Preço */
-.woocommerce ul.products li.product:not(.product-category) .price{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .price{
   width:auto!important;
   min-height:48px!important;
   margin:auto 10px 0!important;
@@ -251,7 +251,7 @@
   text-align:center!important;
 }
 
-.woocommerce ul.products li.product:not(.product-category) .price del{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .price del{
   width:100%!important;
   margin:0 0 2px!important;
   display:block!important;
@@ -264,13 +264,13 @@
   text-decoration-thickness:1px!important;
 }
 
-.woocommerce ul.products li.product:not(.product-category) .price ins{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .price ins{
   color:inherit!important;
   font-weight:inherit!important;
   text-decoration:none!important;
 }
 
-.woocommerce ul.products li.product:not(.product-category) .price::after{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .price::after{
   content:"c/ IVA";
   margin-left:0;
   display:inline-block;
@@ -284,7 +284,7 @@
 }
 
 /* Ações: carrinho compacto à esquerda + VER à direita */
-.woocommerce ul.products li.product:not(.product-category) .cvl-product-actions{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-actions{
   width:calc(100% - 20px)!important;
   margin:10px 10px 12px!important;
   padding:0!important;
@@ -294,7 +294,7 @@
   gap:12px!important;
 }
 
-.woocommerce ul.products li.product:not(.product-category) .cvl-product-actions .button{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-actions .button{
   height:36px!important;
   min-height:36px!important;
   margin:0!important;
@@ -307,7 +307,7 @@
   text-transform:none!important;
 }
 
-.woocommerce ul.products li.product:not(.product-category) .cvl-product-actions .cvl-cart-icon-button{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-actions .cvl-cart-icon-button{
   width:40px!important;
   min-width:40px!important;
   flex:0 0 40px!important;
@@ -320,14 +320,14 @@
   color:#fff!important;
 }
 
-.woocommerce ul.products li.product:not(.product-category) .cvl-product-actions .cvl-cart-icon-button:hover,
-.woocommerce ul.products li.product:not(.product-category) .cvl-product-actions .cvl-cart-icon-button:focus{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-actions .cvl-cart-icon-button:hover,
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-actions .cvl-cart-icon-button:focus{
   border-color:var(--cvl-ref-teal-dark)!important;
   background:var(--cvl-ref-teal-dark)!important;
   color:#fff!important;
 }
 
-.woocommerce ul.products li.product:not(.product-category) .cvl-cart-button-icon{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-cart-button-icon{
   width:17px!important;
   height:17px!important;
   flex:0 0 17px!important;
@@ -338,7 +338,7 @@
   stroke-linejoin:round!important;
 }
 
-.woocommerce ul.products li.product:not(.product-category) .cvl-view-product{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-view-product{
   width:auto!important;
   min-width:64px!important;
   flex:0 0 auto!important;
@@ -353,12 +353,12 @@
   color:#344149!important;
 }
 
-.woocommerce ul.products li.product:not(.product-category) .cvl-view-product::before{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-view-product::before{
   content:none!important;
   display:none!important;
 }
 
-.woocommerce ul.products li.product:not(.product-category) .cvl-view-product-icon{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-view-product-icon{
   width:14px!important;
   height:14px!important;
   flex:0 0 14px!important;
@@ -367,15 +367,15 @@
   stroke-width:1.7!important;
 }
 
-.woocommerce ul.products li.product:not(.product-category) .cvl-view-product:hover,
-.woocommerce ul.products li.product:not(.product-category) .cvl-view-product:focus{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-view-product:hover,
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-view-product:focus{
   border-color:var(--cvl-ref-teal)!important;
   background:var(--cvl-ref-teal-soft)!important;
   color:var(--cvl-ref-teal-dark)!important;
 }
 
 /* Link "Ver carrinho" que o WooCommerce pode injetar após AJAX. */
-.woocommerce ul.products li.product:not(.product-category) .cvl-product-actions .added_to_cart{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-actions .added_to_cart{
   align-self:center;
   color:var(--cvl-ref-teal-dark);
   font-size:8px;
@@ -384,51 +384,51 @@
 
 /* Breakpoints iguais à densidade da storefront de referência. */
 @media(max-width:1599.98px) and (min-width:1200px){
-  .woocommerce ul.products{
+  :is(.woocommerce,.cvl-v4-products) ul.products{
     grid-template-columns:repeat(5,minmax(0,1fr))!important;
   }
 }
 
 @media(max-width:1199.98px){
-  .woocommerce ul.products{
+  :is(.woocommerce,.cvl-v4-products) ul.products{
     grid-template-columns:repeat(4,minmax(0,1fr))!important;
   }
 }
 
 @media(max-width:991.98px){
-  .woocommerce ul.products{
+  :is(.woocommerce,.cvl-v4-products) ul.products{
     grid-template-columns:repeat(3,minmax(0,1fr))!important;
   }
 }
 
 @media(max-width:767.98px){
-  .woocommerce ul.products{
+  :is(.woocommerce,.cvl-v4-products) ul.products{
     grid-template-columns:repeat(2,minmax(0,1fr))!important;
     gap:10px!important;
   }
 
-  .woocommerce ul.products li.product:not(.product-category) .cvl-product-actions{
+  :is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-actions{
     gap:8px!important;
   }
 }
 
 @media(max-width:420px){
-  .woocommerce ul.products li.product:not(.product-category) .cvl-product-category{
+  :is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-category{
     font-size:7.5px!important;
   }
 
-  .woocommerce ul.products li.product:not(.product-category) .woocommerce-loop-product__title{
+  :is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .woocommerce-loop-product__title{
     font-size:10.5px!important;
   }
 
-  .woocommerce ul.products li.product:not(.product-category) .price{
+  :is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .price{
     font-size:17px!important;
   }
 }
 
 @media(prefers-reduced-motion:reduce){
-  .woocommerce ul.products li.product:not(.product-category),
-  .woocommerce ul.products li.product:not(.product-category) a img{
+  :is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category),
+  :is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) a img{
     transition:none!important;
   }
 }
