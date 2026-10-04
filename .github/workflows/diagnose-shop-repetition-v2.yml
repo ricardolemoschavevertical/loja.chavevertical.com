@@ -25,17 +25,23 @@ jobs:
 
           curl -L --connect-timeout 10 --max-time 60 -sS             'https://loja.chavevertical.com/shop/?cvdiag=1'             -o /tmp/cv-shop.html
 
+          echo "=== PRODUCTS HTML SNIPPET ==="
+          grep -n -m1 -A35 '<ul class="products' /tmp/cv-shop.html || true
+
+          echo "=== FIRST PRODUCT TAGS ==="
+          grep -oE '<li[^>]*class="[^"]*product[^"]*"[^>]*>' /tmp/cv-shop.html | head -30 || true
+
           echo "=== LIVE SHOP SUMMARY ==="
           echo "http_bytes=$(wc -c < /tmp/cv-shop.html)"
           echo "products_ul_count=$(grep -o '<ul class=\"products[^\"]*\"' /tmp/cv-shop.html | wc -l)"
-          echo "product_li_count=$(grep -oE 'class=\"[^\"]*post-[0-9]+[^\"]*product[^\"]*\"' /tmp/cv-shop.html | wc -l)"
-          echo "unique_product_ids=$(grep -oE 'class=\"[^\"]*post-[0-9]+[^\"]*product[^\"]*\"' /tmp/cv-shop.html | grep -oE 'post-[0-9]+' | sort -u | wc -l)"
+          echo "product_li_count=$(grep -oE '<li[^>]*class=\"[^\"]*product[^\"]*\"[^>]*>' /tmp/cv-shop.html | wc -l)"
+          echo "unique_product_ids=$(grep -oE '<li[^>]*class=\"[^\"]*product[^\"]*\"[^>]*>' /tmp/cv-shop.html | grep -oE 'post-[0-9]+' | sort -u | wc -l)"
 
           echo "=== DUPLICATE PRODUCT IDS ==="
-          grep -oE 'class=\"[^\"]*post-[0-9]+[^\"]*product[^\"]*\"' /tmp/cv-shop.html             | grep -oE 'post-[0-9]+'             | sort             | uniq -c             | awk '$1 > 1 {print}'             | head -50 || true
+          grep -oE '<li[^>]*class=\"[^\"]*product[^\"]*\"[^>]*>' /tmp/cv-shop.html             | grep -oE 'post-[0-9]+'             | sort             | uniq -c             | awk '$1 > 1 {print}'             | head -50 || true
 
           echo "=== PRODUCT IDS IN RENDER ORDER ==="
-          grep -oE 'class=\"[^\"]*post-[0-9]+[^\"]*product[^\"]*\"' /tmp/cv-shop.html             | grep -oE 'post-[0-9]+'             | head -80 || true
+          grep -oE '<li[^>]*class=\"[^\"]*product[^\"]*\"[^>]*>' /tmp/cv-shop.html             | grep -oE 'post-[0-9]+'             | head -80 || true
 
           echo "=== SHOP / WOO SETTINGS ==="
           wp --path="$WP_ROOT" eval '
