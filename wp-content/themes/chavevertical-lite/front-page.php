@@ -77,7 +77,7 @@ if ( ! empty( $categories ) ) {
 }
 
 $hero_categories     = array_slice( $categories, 0, 3 );
-$homepage_categories = array_slice( $categories, 0, 9 );
+$homepage_categories = array_slice( $categories, 0, 10 );
 
 if ( taxonomy_exists( 'product_brand' ) ) {
     $brands = get_terms( array(
@@ -195,7 +195,12 @@ $cvl_category_image = static function ( $term, $size = 'large', $loading = 'lazy
 
             $image = $cvl_category_image( $category, 'medium_large' );
             ?>
-            <a class="cvl-v4-category-card" href="<?php echo esc_url( $category_url ); ?>">
+            <a
+                class="cvl-v4-category-card"
+                href="<?php echo esc_url( $category_url ); ?>"
+                aria-label="<?php echo esc_attr( $category->name ); ?>"
+                title="<?php echo esc_attr( $category->name ); ?>"
+            >
                 <span class="cvl-v4-category-media">
                     <?php
                     if ( $image ) {
@@ -204,10 +209,6 @@ $cvl_category_image = static function ( $term, $size = 'large', $loading = 'lazy
                         echo '<span class="cvl-v4-category-fallback" aria-hidden="true">CV</span>';
                     }
                     ?>
-                </span>
-                <span class="cvl-v4-category-name">
-                    <strong><?php echo esc_html( $category->name ); ?></strong>
-                    <span aria-hidden="true">→</span>
                 </span>
             </a>
         <?php endforeach; ?>

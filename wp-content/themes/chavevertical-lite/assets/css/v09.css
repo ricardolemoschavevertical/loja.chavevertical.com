@@ -168,10 +168,10 @@
 }
 
 
-/* v0.9.2 — nine featured categories on one row */
+/* v0.9.2 — featured categories row */
 @media(min-width:1200px){
   .cvl-v4-categories-section .cvl-v4-category-grid{
-    grid-template-columns:repeat(9,minmax(0,1fr))!important;
+    grid-template-columns:repeat(10,minmax(0,1fr))!important;
     gap:10px!important;
   }
 
@@ -197,10 +197,10 @@
 }
 
 
-/* v0.9.3 — always keep the 9 featured categories on one desktop row */
+/* v0.9.3 — always keep featured categories on one desktop row */
 @media(min-width:992px){
   .cvl-v4-categories-section .cvl-v4-category-grid{
-    grid-template-columns:repeat(9,minmax(0,1fr))!important;
+    grid-template-columns:repeat(10,minmax(0,1fr))!important;
     gap:8px!important;
   }
 
@@ -487,4 +487,36 @@
   .cvl-brands-grid{
     grid-template-columns:repeat(2,minmax(0,1fr));
   }
+}
+
+
+/* v0.9.7 — ten homepage categories without visible labels */
+@media(min-width:992px){
+  .cvl-v4-categories-section .cvl-v4-category-grid{
+    grid-template-columns:repeat(10,minmax(0,1fr))!important;
+  }
+}
+
+.cvl-v4-categories-section .cvl-v4-category-card{
+  overflow:hidden!important;
+}
+
+.cvl-v4-categories-section .cvl-v4-category-media{
+  width:100%!important;
+  min-height:0!important;
+  aspect-ratio:1 / 1!important;
+  padding:8px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+
+.cvl-v4-categories-section .cvl-v4-category-media img{
+  width:100%!important;
+  height:100%!important;
+  object-fit:contain!important;
+}
+
+.cvl-v4-categories-section .cvl-v4-category-name{
+  display:none!important;
 }
