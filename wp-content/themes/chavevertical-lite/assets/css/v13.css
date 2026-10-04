@@ -757,3 +757,34 @@ body.single-product.woocommerce .cvl-product-summary form.cart .single_add_to_ca
   margin:0!important;
   padding:0!important;
 }
+
+
+/* Category archives use the search-results catalogue layout */
+body.tax-product_cat .cvl-category-catalog-page .cvl-search-products.woocommerce ul.products{
+  grid-template-columns:repeat(6,minmax(0,1fr))!important;
+}
+body.tax-product_cat .cvl-category-catalog-page .cvl-search-products .cvl-product-category,
+body.tax-product_cat .cvl-category-catalog-page .cvl-search-products li.product-category{
+  display:none!important;
+}
+
+@media(max-width:1399.98px){
+  body.tax-product_cat .cvl-category-catalog-page .cvl-search-products.woocommerce ul.products{
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  }
+}
+@media(max-width:1199.98px){
+  body.tax-product_cat .cvl-category-catalog-page .cvl-search-products.woocommerce ul.products{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  }
+}
+@media(max-width:991.98px){
+  body.tax-product_cat .cvl-category-catalog-page .cvl-search-products.woocommerce ul.products{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+}
+@media(max-width:767.98px){
+  body.tax-product_cat .cvl-category-catalog-page .cvl-search-products.woocommerce ul.products{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}

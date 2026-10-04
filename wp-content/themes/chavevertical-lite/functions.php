@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.48' );
+define( 'CVL_VERSION', '0.16.49' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -105,16 +105,9 @@ add_action( 'wp_enqueue_scripts', function () {
     }
 
     if ( function_exists( 'is_product_category' ) && is_product_category() ) {
-        wp_enqueue_style(
-            'cvl-v11',
-            get_template_directory_uri() . '/assets/css/v11.css',
-            array( 'cvl-v09' ),
-            CVL_VERSION
-        );
-
         wp_enqueue_script(
-            'cvl-category',
-            get_template_directory_uri() . '/assets/js/category.js',
+            'cvl-search-results',
+            get_template_directory_uri() . '/assets/js/search-results.js',
             array(),
             CVL_VERSION,
             true
@@ -1771,4 +1764,377 @@ function cvl_backup_category_right_sidebar() {
     }
 
     echo '</aside>';
+}
+
+
+/**
+ * Category archives — search-style catalogue with category, brand and price filters.
+ */
+function cvl_category_archive_branch_ids( WP_Term $term ): array {
+    $children = get_term_children( $term->term_id, 'product_cat' );
+    $children = is_wp_error( $children ) ? array() : array_map( 'absint', $children );
+
+    return array_values( array_unique( array_merge( array( (int) $term->term_id ), $children ) ) );
+}
+
+function cvl_category_archive_selected_category( WP_Term $base_term ): ?WP_Term {
+    $slug = isset( $_GET['categoria'] ) ? sanitize_title( wp_unslash( $_GET['categoria'] ) ) : '';
+
+    if ( ! $slug || $slug === $base_term->slug ) {
+        return null;
+    }
+
+    $term = get_term_by( 'slug', $slug, 'product_cat' );
+    if ( ! $term instanceof WP_Term ) {
+        return null;
+    }
+
+    return in_array( (int) $term->term_id, cvl_category_archive_branch_ids( $base_term ), true )
+        ? $term
+        : null;
+}
+
+function cvl_category_archive_brand_facets( array $category_ids, float $min_price = 0.0, float $max_price = 0.0 ): array {
+    if ( ! taxonomy_exists( 'product_brand' ) || ! $category_ids ) {
+        return array();
+    }
+
+    global $wpdb;
+
+    $category_ids = array_values( array_filter( array_map( 'absint', $category_ids ) ) );
+    if ( ! $category_ids ) {
+        return array();
+    }
+
+    $placeholders = implode( ',', array_fill( 0, count( $category_ids ), '%d' ) );
+    $lookup_table = $wpdb->prefix . 'wc_product_meta_lookup';
+    $sql = "
+        SELECT t.term_id, t.slug, t.name, COUNT(DISTINCT p.ID) AS product_count
+        FROM {$wpdb->posts} p
+        INNER JOIN {$wpdb->term_relationships} trc ON trc.object_id = p.ID
+        INNER JOIN {$wpdb->term_taxonomy} ttc
+            ON ttc.term_taxonomy_id = trc.term_taxonomy_id
+            AND ttc.taxonomy = 'product_cat'
+        INNER JOIN {$wpdb->term_relationships} trb ON trb.object_id = p.ID
+        INNER JOIN {$wpdb->term_taxonomy} ttb
+            ON ttb.term_taxonomy_id = trb.term_taxonomy_id
+            AND ttb.taxonomy = 'product_brand'
+        INNER JOIN {$wpdb->terms} t ON t.term_id = ttb.term_id
+        INNER JOIN {$lookup_table} l ON l.product_id = p.ID
+        WHERE p.post_type = 'product'
+          AND p.post_status = 'publish'
+          AND ttc.term_id IN ({$placeholders})
+    ";
+
+    $args = $category_ids;
+
+    if ( $min_price > 0 ) {
+        $sql .= ' AND l.max_price >= %f';
+        $args[] = $min_price;
+    }
+
+    if ( $max_price > 0 ) {
+        $sql .= ' AND l.min_price <= %f';
+        $args[] = $max_price;
+    }
+
+    $sql .= ' GROUP BY t.term_id, t.slug, t.name ORDER BY product_count DESC, t.name ASC';
+
+    $prepared = $wpdb->prepare( $sql, $args );
+    $rows = $wpdb->get_results( $prepared, ARRAY_A );
+
+    return is_array( $rows ) ? $rows : array();
+}
+
+function cvl_category_archive_price_bounds( array $category_ids, string $brand_slug = '' ): array {
+    if ( ! $category_ids ) {
+        return array( 0.0, 0.0 );
+    }
+
+    global $wpdb;
+
+    $category_ids = array_values( array_filter( array_map( 'absint', $category_ids ) ) );
+    if ( ! $category_ids ) {
+        return array( 0.0, 0.0 );
+    }
+
+    $placeholders = implode( ',', array_fill( 0, count( $category_ids ), '%d' ) );
+    $lookup_table = $wpdb->prefix . 'wc_product_meta_lookup';
+
+    $sql = "
+        SELECT MIN(l.min_price) AS min_price, MAX(l.max_price) AS max_price
+        FROM {$wpdb->posts} p
+        INNER JOIN {$wpdb->term_relationships} trc ON trc.object_id = p.ID
+        INNER JOIN {$wpdb->term_taxonomy} ttc
+            ON ttc.term_taxonomy_id = trc.term_taxonomy_id
+            AND ttc.taxonomy = 'product_cat'
+        INNER JOIN {$lookup_table} l ON l.product_id = p.ID
+    ";
+
+    $args = $category_ids;
+
+    if ( $brand_slug && taxonomy_exists( 'product_brand' ) ) {
+        $sql .= "
+            INNER JOIN {$wpdb->term_relationships} trb ON trb.object_id = p.ID
+            INNER JOIN {$wpdb->term_taxonomy} ttb
+                ON ttb.term_taxonomy_id = trb.term_taxonomy_id
+                AND ttb.taxonomy = 'product_brand'
+            INNER JOIN {$wpdb->terms} tb ON tb.term_id = ttb.term_id
+        ";
+    }
+
+    $sql .= "
+        WHERE p.post_type = 'product'
+          AND p.post_status = 'publish'
+          AND ttc.term_id IN ({$placeholders})
+    ";
+
+    if ( $brand_slug && taxonomy_exists( 'product_brand' ) ) {
+        $sql .= ' AND tb.slug = %s';
+        $args[] = $brand_slug;
+    }
+
+    $row = $wpdb->get_row( $wpdb->prepare( $sql, $args ), ARRAY_A );
+
+    return array(
+        isset( $row['min_price'] ) ? (float) $row['min_price'] : 0.0,
+        isset( $row['max_price'] ) ? (float) $row['max_price'] : 0.0,
+    );
+}
+
+add_action( 'pre_get_posts', function ( WP_Query $query ) {
+    if ( is_admin() || ! $query->is_main_query() || ! $query->is_tax( 'product_cat' ) ) {
+        return;
+    }
+
+    $base_slug = sanitize_title( (string) $query->get( 'product_cat' ) );
+    $base_term = $base_slug ? get_term_by( 'slug', $base_slug, 'product_cat' ) : null;
+
+    if ( ! $base_term instanceof WP_Term ) {
+        return;
+    }
+
+    $tax_query = (array) $query->get( 'tax_query' );
+
+    $selected_category = cvl_category_archive_selected_category( $base_term );
+    if ( $selected_category instanceof WP_Term ) {
+        $tax_query[] = array(
+            'taxonomy'         => 'product_cat',
+            'field'            => 'term_id',
+            'terms'            => array( (int) $selected_category->term_id ),
+            'include_children' => true,
+            'operator'         => 'IN',
+        );
+    }
+
+    $brand_slug = isset( $_GET['marca'] ) ? sanitize_title( wp_unslash( $_GET['marca'] ) ) : '';
+    if ( $brand_slug && taxonomy_exists( 'product_brand' ) ) {
+        $brand = get_term_by( 'slug', $brand_slug, 'product_brand' );
+
+        if ( $brand instanceof WP_Term ) {
+            $tax_query[] = array(
+                'taxonomy' => 'product_brand',
+                'field'    => 'term_id',
+                'terms'    => array( (int) $brand->term_id ),
+                'operator' => 'IN',
+            );
+        }
+    }
+
+    if ( $tax_query ) {
+        $query->set( 'tax_query', $tax_query );
+    }
+
+    // Todos os produtos continuam acessíveis; carregamento progressivo evita uma página excessivamente pesada.
+    $query->set( 'posts_per_page', 24 );
+}, 25 );
+
+function cvl_product_category_search_layout(): void {
+    $base_term = get_queried_object();
+
+    if ( ! $base_term instanceof WP_Term || 'product_cat' !== $base_term->taxonomy ) {
+        return;
+    }
+
+    $selected_category = cvl_category_archive_selected_category( $base_term );
+    $selected_brand = isset( $_GET['marca'] ) ? sanitize_title( wp_unslash( $_GET['marca'] ) ) : '';
+    $min_price = isset( $_GET['min_price'] ) ? max( 0, (float) wc_format_decimal( wp_unslash( $_GET['min_price'] ) ) ) : 0.0;
+    $max_price = isset( $_GET['max_price'] ) ? max( 0, (float) wc_format_decimal( wp_unslash( $_GET['max_price'] ) ) ) : 0.0;
+
+    $facet_term = $selected_category instanceof WP_Term ? $selected_category : $base_term;
+    $facet_category_ids = cvl_category_archive_branch_ids( $facet_term );
+
+    $brand_facets = cvl_category_archive_brand_facets( $facet_category_ids, $min_price, $max_price );
+    list( $price_floor_raw, $price_ceil_raw ) = cvl_category_archive_price_bounds( $facet_category_ids, $selected_brand );
+
+    $category_terms = get_terms(
+        array(
+            'taxonomy'   => 'product_cat',
+            'hide_empty' => true,
+            'child_of'   => (int) $base_term->term_id,
+            'orderby'    => 'name',
+            'order'      => 'ASC',
+        )
+    );
+    $category_terms = is_wp_error( $category_terms ) ? array() : $category_terms;
+
+    $base_url = get_term_link( $base_term );
+    if ( is_wp_error( $base_url ) ) {
+        $base_url = home_url( '/' );
+    }
+
+    $filter_url = static function ( array $overrides = array() ) use (
+        $base_url,
+        $selected_category,
+        $selected_brand,
+        $min_price,
+        $max_price
+    ): string {
+        $state = array(
+            'categoria' => $selected_category instanceof WP_Term ? $selected_category->slug : '',
+            'marca'     => $selected_brand,
+            'min_price' => $min_price > 0 ? $min_price : '',
+            'max_price' => $max_price > 0 ? $max_price : '',
+        );
+
+        foreach ( $overrides as $key => $value ) {
+            $state[ $key ] = $value;
+        }
+
+        return add_query_arg(
+            array_filter( $state, static fn( $value ) => '' !== $value && null !== $value ),
+            $base_url
+        );
+    };
+
+    global $wp_query;
+    $found = (int) $wp_query->found_posts;
+    ?>
+    <div class="cvl-shell cvl-content cvl-search-page cvl-category-catalog-page">
+        <header class="cvl-search-heading cvl-search-heading-compact">
+            <span><?php esc_html_e( 'CATEGORIA', 'chavevertical-lite' ); ?></span>
+            <h1><?php echo esc_html( $base_term->name ); ?></h1>
+            <p class="cvl-search-count">
+                <?php
+                printf(
+                    esc_html( _n( '%s produto encontrado', '%s produtos encontrados', $found, 'chavevertical-lite' ) ),
+                    esc_html( number_format_i18n( $found ) )
+                );
+                ?>
+            </p>
+        </header>
+
+        <div class="cvl-search-layout">
+            <aside class="cvl-search-filters" aria-label="<?php esc_attr_e( 'Filtros da categoria', 'chavevertical-lite' ); ?>">
+                <div class="cvl-search-filters-head">
+                    <strong><?php esc_html_e( 'FILTRAR PRODUTOS', 'chavevertical-lite' ); ?></strong>
+                    <?php if ( $selected_category || $selected_brand || $min_price > 0 || $max_price > 0 ) : ?>
+                        <a href="<?php echo esc_url( $base_url ); ?>"><?php esc_html_e( 'Limpar', 'chavevertical-lite' ); ?></a>
+                    <?php endif; ?>
+                </div>
+
+                <?php if ( $category_terms ) : ?>
+                    <section class="cvl-search-filter-group">
+                        <h2><?php esc_html_e( 'CATEGORIAS', 'chavevertical-lite' ); ?></h2>
+                        <div class="cvl-search-filter-list">
+                            <?php foreach ( $category_terms as $term ) : ?>
+                                <?php
+                                if ( ! $term instanceof WP_Term ) {
+                                    continue;
+                                }
+                                $active = $selected_category instanceof WP_Term && (int) $selected_category->term_id === (int) $term->term_id;
+                                ?>
+                                <a class="<?php echo $active ? 'is-active' : ''; ?>" href="<?php echo esc_url( $filter_url( array( 'categoria' => $active ? '' : $term->slug ) ) ); ?>">
+                                    <span><?php echo esc_html( $term->name ); ?></span>
+                                    <small><?php echo esc_html( number_format_i18n( (int) $term->count ) ); ?></small>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                    </section>
+                <?php endif; ?>
+
+                <?php if ( $brand_facets ) : ?>
+                    <section class="cvl-search-filter-group">
+                        <h2><?php esc_html_e( 'MARCAS', 'chavevertical-lite' ); ?></h2>
+                        <div class="cvl-search-filter-list">
+                            <?php foreach ( $brand_facets as $facet ) : ?>
+                                <?php
+                                $slug = sanitize_title( (string) ( $facet['slug'] ?? '' ) );
+                                if ( ! $slug ) {
+                                    continue;
+                                }
+                                $active = $slug === $selected_brand;
+                                ?>
+                                <a class="<?php echo $active ? 'is-active' : ''; ?>" href="<?php echo esc_url( $filter_url( array( 'marca' => $active ? '' : $slug ) ) ); ?>">
+                                    <span><?php echo esc_html( $facet['name'] ?? $slug ); ?></span>
+                                    <small><?php echo esc_html( number_format_i18n( (int) ( $facet['product_count'] ?? 0 ) ) ); ?></small>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                    </section>
+                <?php endif; ?>
+
+                <section class="cvl-search-filter-group">
+                    <h2><?php esc_html_e( 'PREÇO', 'chavevertical-lite' ); ?></h2>
+                    <form class="cvl-search-price-filter" method="get" action="<?php echo esc_url( $base_url ); ?>">
+                        <?php if ( $selected_category instanceof WP_Term ) : ?><input type="hidden" name="categoria" value="<?php echo esc_attr( $selected_category->slug ); ?>"><?php endif; ?>
+                        <?php if ( $selected_brand ) : ?><input type="hidden" name="marca" value="<?php echo esc_attr( $selected_brand ); ?>"><?php endif; ?>
+
+                        <div class="cvl-search-price-inputs">
+                            <label>
+                                <span><?php esc_html_e( 'Mín.', 'chavevertical-lite' ); ?></span>
+                                <input type="number" min="0" step="0.01" name="min_price" value="<?php echo $min_price > 0 ? esc_attr( wc_format_decimal( $min_price, 2 ) ) : ''; ?>" placeholder="<?php echo esc_attr( number_format_i18n( floor( $price_floor_raw ), 0 ) ); ?>">
+                            </label>
+                            <label>
+                                <span><?php esc_html_e( 'Máx.', 'chavevertical-lite' ); ?></span>
+                                <input type="number" min="0" step="0.01" name="max_price" value="<?php echo $max_price > 0 ? esc_attr( wc_format_decimal( $max_price, 2 ) ) : ''; ?>" placeholder="<?php echo esc_attr( number_format_i18n( ceil( $price_ceil_raw ), 0 ) ); ?>">
+                            </label>
+                        </div>
+
+                        <?php if ( $price_ceil_raw > 0 ) : ?>
+                            <div class="cvl-search-price-range"><?php echo wp_kses_post( wc_price( floor( $price_floor_raw ) ) ); ?> – <?php echo wp_kses_post( wc_price( ceil( $price_ceil_raw ) ) ); ?></div>
+                        <?php endif; ?>
+
+                        <button type="submit"><?php esc_html_e( 'APLICAR PREÇO', 'chavevertical-lite' ); ?></button>
+                    </form>
+                </section>
+            </aside>
+
+            <section class="cvl-search-products woocommerce">
+                <?php if ( have_posts() ) : ?>
+                    <?php woocommerce_product_loop_start(); ?>
+                    <?php while ( have_posts() ) : the_post(); ?>
+                        <?php if ( 'product' === get_post_type() ) : ?>
+                            <?php wc_get_template_part( 'content', 'product' ); ?>
+                        <?php endif; ?>
+                    <?php endwhile; ?>
+                    <?php woocommerce_product_loop_end(); ?>
+
+                    <?php
+                    $current_page = max( 1, absint( get_query_var( 'paged' ) ) );
+                    $max_pages = max( 1, (int) $wp_query->max_num_pages );
+                    $next_url = $current_page < $max_pages ? get_next_posts_page_link( $max_pages ) : '';
+                    ?>
+                    <?php if ( $next_url ) : ?>
+                        <div class="cvl-search-load-more-wrap">
+                            <a
+                                class="cvl-search-load-more"
+                                href="<?php echo esc_url( $next_url ); ?>"
+                                data-cvl-search-load-more
+                                data-loading-label="<?php echo esc_attr__( 'A CARREGAR…', 'chavevertical-lite' ); ?>"
+                            ><?php esc_html_e( 'CARREGAR MAIS', 'chavevertical-lite' ); ?></a>
+                            <span class="cvl-search-load-more-status screen-reader-text" data-cvl-search-load-more-status aria-live="polite"></span>
+                        </div>
+                    <?php endif; ?>
+                <?php else : ?>
+                    <div class="cvl-empty-state">
+                        <h2><?php esc_html_e( 'Não encontrámos produtos.', 'chavevertical-lite' ); ?></h2>
+                        <p><?php esc_html_e( 'Experimente remover ou alterar os filtros selecionados.', 'chavevertical-lite' ); ?></p>
+                        <a class="cvl-button cvl-button-primary" href="<?php echo esc_url( $base_url ); ?>"><?php esc_html_e( 'LIMPAR FILTROS', 'chavevertical-lite' ); ?></a>
+                    </div>
+                <?php endif; ?>
+            </section>
+        </div>
+    </div>
+    <?php
 }
