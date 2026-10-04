@@ -168,7 +168,7 @@ $cvl_category_image = static function ( $term, $size = 'large', $loading = 'lazy
     <div class="cvl-shell cvl-ref-benefit-grid">
         <div><span class="cvl-ref-benefit-icon" aria-hidden="true">🚚</span><span><b>Entregas em Portugal</b><small>Encomendas iguais ou superiores a 100 € + IVA*</small></span></div>
         <div><span class="cvl-ref-benefit-icon" aria-hidden="true">📦</span><span><b>Stock para entrega imediata</b><small>Milhares de referências disponíveis</small></span></div>
-        <div><span class="cvl-ref-benefit-icon" aria-hidden="true">🎧</span><span><b>Apoio especializado</b><small>Comercial, técnico e pós-venda</small></span></div>
+        <div><span class="cvl-ref-benefit-icon cvl-ref-benefit-callcenter" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4.5 13v-1a7.5 7.5 0 0 1 15 0v1"></path><path d="M4.5 13h2v5h-2a2 2 0 0 1-2-2v-1a2 2 0 0 1 2-2Z"></path><path d="M19.5 13h-2v5h2a2 2 0 0 0 2-2v-1a2 2 0 0 0-2-2Z"></path><path d="M17.5 18c-.4 2-2 3-4.5 3h-2"></path><circle cx="10" cy="21" r=".8"></circle></svg></span><span><b>Apoio especializado</b><small>Comercial, técnico e pós-venda</small></span></div>
         <div><span class="cvl-ref-benefit-icon" aria-hidden="true">🛒</span><span><b>Mais de 30.000 referências</b><small>Máquinas, ferramentas e consumíveis</small></span></div>
     </div>
 </section>
