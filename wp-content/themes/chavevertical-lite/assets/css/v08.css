@@ -107,13 +107,13 @@
   max-height:44px!important;
   margin:0!important;
   object-fit:contain!important;
-  filter:grayscale(100%);
-  opacity:.6;
-  transition:filter .2s ease,opacity .2s ease;
+  filter:none;
+  opacity:1;
+  transition:opacity .2s ease;
 }
 
 .cvl-brand-carousel-item:hover img{
-  filter:grayscale(0%);
+  filter:none;
   opacity:1;
 }
 
