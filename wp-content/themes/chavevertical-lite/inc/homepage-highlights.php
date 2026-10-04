@@ -64,21 +64,21 @@ function cvl_homepage_highlights_fallback_cards() {
 function cvl_homepage_hero_fallback() {
     return array(
         'main' => array(
-            'eyebrow'                => 'PARA QUEM FAZ ACONTECER',
-            'title'                  => 'O trabalho é exigente.',
-            'title_accent'           => 'A escolha é simples.',
-            'description'            => 'Máquinas, ferramentas e equipamento profissional para oficina, indústria, construção e manutenção — com apoio de quem conhece o produto.',
-            'cta'                    => 'EXPLORAR EQUIPAMENTOS',
-            'url'                    => '',
-            'secondary_cta'          => 'Precisa de ajuda?',
-            'secondary_url'          => '/contactos/',
+            'eyebrow'                => 'ELEVAÇÃO PROFISSIONAL',
+            'title'                  => 'Elevação segura.',
+            'title_accent'           => 'Oficina preparada.',
+            'description'            => 'Elevador 2 Colunas KROFTOOLS 4T, 220V, robusto e preparado para utilização profissional em oficina.',
+            'cta'                    => 'VER ELEVADOR',
+            'url'                    => '/produto/elevador-2-colunas-4t-tipo-h-220v-kroftools/',
+            'secondary_cta'          => 'Ver elevadores',
+            'secondary_url'          => '/categoria-produto/elevadores-elevadores/',
             'badge'                  => 'ESCOLHA PROFISSIONAL',
             'background'             => '#0b4e46',
             'text_color'             => '#ffffff',
             'accent_color'           => '#a9d8a1',
             'image_id'               => 0,
-            'image_url'              => '',
-            'fallback_category_slug' => 'oficina-automovel',
+            'image_url'              => 'https://imagens.chavevertical.com/2025/09/elevador-2-colunas-4t-tipo-h-220v-kroftools1.webp',
+            'fallback_category_slug' => 'elevadores-elevadores',
         ),
         'side' => array(
             'eyebrow'                => 'CATÁLOGO PROFISSIONAL',
@@ -571,7 +571,7 @@ function cvl_render_homepage_highlights_admin() {
             <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Destaques guardados.', 'chavevertical-lite' ); ?></p></div>
         <?php endif; ?>
 
-        <p><?php esc_html_e( 'Personalize o Hero principal, a caixa lateral e os quatro destaques da homepage. A mesma estrutura pode ser gerida pelo Admin ou pelo ficheiro do GitHub.', 'chavevertical-lite' ); ?></p>
+        <p><?php esc_html_e( 'Personalize o Hero principal, incluindo imagem, textos, botões, links, selo e cores, além da caixa lateral e dos quatro destaques da homepage. Selecione "Usar valores do Admin" para aplicar estas alterações no site.', 'chavevertical-lite' ); ?></p>
 
         <div class="cvl-highlights-source-help">
             <strong><?php esc_html_e( 'Edição pelo GitHub:', 'chavevertical-lite' ); ?></strong>
