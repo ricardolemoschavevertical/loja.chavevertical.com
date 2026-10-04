@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.59' );
+define( 'CVL_VERSION', '0.16.60' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -1907,7 +1907,7 @@ function cvl_category_archive_brand_facets( array $category_ids, float $min_pric
     return is_array( $rows ) ? $rows : array();
 }
 
-function cvl_category_archive_price_bounds( array $category_ids, string $brand_slug = '' ): array {
+function cvl_category_archive_price_bounds( array $category_ids, $brand_slugs = array() ): array {
     if ( ! $category_ids ) {
         return array( 0.0, 0.0 );
     }
@@ -1918,6 +1918,15 @@ function cvl_category_archive_price_bounds( array $category_ids, string $brand_s
     if ( ! $category_ids ) {
         return array( 0.0, 0.0 );
     }
+
+    $brand_slugs = is_array( $brand_slugs ) ? $brand_slugs : array( $brand_slugs );
+    $brand_slugs = array_values(
+        array_unique(
+            array_filter(
+                array_map( 'sanitize_title', $brand_slugs )
+            )
+        )
+    );
 
     $placeholders = implode( ',', array_fill( 0, count( $category_ids ), '%d' ) );
     $lookup_table = $wpdb->prefix . 'wc_product_meta_lookup';
@@ -1934,7 +1943,7 @@ function cvl_category_archive_price_bounds( array $category_ids, string $brand_s
 
     $args = $category_ids;
 
-    if ( $brand_slug && taxonomy_exists( 'product_brand' ) ) {
+    if ( $brand_slugs && taxonomy_exists( 'product_brand' ) ) {
         $sql .= "
             INNER JOIN {$wpdb->term_relationships} trb ON trb.object_id = p.ID
             INNER JOIN {$wpdb->term_taxonomy} ttb
@@ -1950,9 +1959,10 @@ function cvl_category_archive_price_bounds( array $category_ids, string $brand_s
           AND ttc.term_id IN ({$placeholders})
     ";
 
-    if ( $brand_slug && taxonomy_exists( 'product_brand' ) ) {
-        $sql .= ' AND tb.slug = %s';
-        $args[] = $brand_slug;
+    if ( $brand_slugs && taxonomy_exists( 'product_brand' ) ) {
+        $brand_placeholders = implode( ',', array_fill( 0, count( $brand_slugs ), '%s' ) );
+        $sql .= " AND tb.slug IN ({$brand_placeholders})";
+        $args = array_merge( $args, $brand_slugs );
     }
 
     $row = $wpdb->get_row( $wpdb->prepare( $sql, $args ), ARRAY_A );
@@ -2037,9 +2047,19 @@ function cvl_product_category_search_layout(): void {
 
     $is_final = empty( $category_terms );
 
-    $selected_brand = $is_final && isset( $_GET['marca'] )
-        ? sanitize_title( wp_unslash( $_GET['marca'] ) )
-        : '';
+    $selected_brands = array();
+
+    if ( $is_final && isset( $_GET['marca'] ) ) {
+        $raw_brands = (array) wp_unslash( $_GET['marca'] );
+        $selected_brands = array_values(
+            array_unique(
+                array_filter(
+                    array_map( 'sanitize_title', $raw_brands )
+                )
+            )
+        );
+    }
+
     $min_price = $is_final && isset( $_GET['min_price'] )
         ? max( 0, (float) wc_format_decimal( wp_unslash( $_GET['min_price'] ) ) )
         : 0.0;
@@ -2053,7 +2073,7 @@ function cvl_product_category_search_layout(): void {
         : array();
 
     if ( $is_final ) {
-        list( $price_floor_raw, $price_ceil_raw ) = cvl_category_archive_price_bounds( $facet_category_ids, $selected_brand );
+        list( $price_floor_raw, $price_ceil_raw ) = cvl_category_archive_price_bounds( $facet_category_ids, $selected_brands );
     } else {
         $price_floor_raw = 0.0;
         $price_ceil_raw  = 0.0;
@@ -2071,13 +2091,13 @@ function cvl_product_category_search_layout(): void {
     $filter_url = static function ( array $overrides = array() ) use (
         $base_url,
         $selected_category,
-        $selected_brand,
+        $selected_brands,
         $min_price,
         $max_price
     ): string {
         $state = array(
             'categoria' => $selected_category instanceof WP_Term ? $selected_category->slug : '',
-            'marca'     => $selected_brand,
+            'marca'     => $selected_brands,
             'min_price' => $min_price > 0 ? $min_price : '',
             'max_price' => $max_price > 0 ? $max_price : '',
         );
@@ -2087,7 +2107,14 @@ function cvl_product_category_search_layout(): void {
         }
 
         return add_query_arg(
-            array_filter( $state, static fn( $value ) => '' !== $value && null !== $value ),
+            array_filter(
+                $state,
+                static function ( $value ): bool {
+                    return is_array( $value )
+                        ? ! empty( $value )
+                        : '' !== $value && null !== $value;
+                }
+            ),
             $base_url
         );
     };
@@ -2112,11 +2139,11 @@ function cvl_product_category_search_layout(): void {
         ),
     );
 
-    if ( $is_final && $selected_brand && taxonomy_exists( 'product_brand' ) ) {
+    if ( $is_final && $selected_brands && taxonomy_exists( 'product_brand' ) ) {
         $catalog_tax_query[] = array(
             'taxonomy' => 'product_brand',
             'field'    => 'slug',
-            'terms'    => array( $selected_brand ),
+            'terms'    => $selected_brands,
             'operator' => 'IN',
         );
     }
@@ -2245,7 +2272,7 @@ function cvl_product_category_search_layout(): void {
             <aside class="cvl-search-filters" aria-label="<?php esc_attr_e( 'Filtros da categoria', 'chavevertical-lite' ); ?>">
                 <div class="cvl-search-filters-head">
                     <strong><?php esc_html_e( 'FILTRAR PRODUTOS', 'chavevertical-lite' ); ?></strong>
-                    <?php if ( $selected_category || $selected_brand || $min_price > 0 || $max_price > 0 ) : ?>
+                    <?php if ( $selected_category || $selected_brands || $min_price > 0 || $max_price > 0 ) : ?>
                         <a href="<?php echo esc_url( $base_url ); ?>"><?php esc_html_e( 'Limpar', 'chavevertical-lite' ); ?></a>
                     <?php endif; ?>
                 </div>
@@ -2320,23 +2347,48 @@ function cvl_product_category_search_layout(): void {
                 <?php endif; ?>
 
                 <?php if ( $is_final && $brand_facets ) : ?>
-                    <section class="cvl-search-filter-group">
-                        <h2><?php esc_html_e( 'MARCAS', 'chavevertical-lite' ); ?></h2>
-                        <div class="cvl-search-filter-list">
-                            <?php foreach ( $brand_facets as $facet ) : ?>
-                                <?php
-                                $slug = sanitize_title( (string) ( $facet['slug'] ?? '' ) );
-                                if ( ! $slug ) {
-                                    continue;
-                                }
-                                $active = $slug === $selected_brand;
-                                ?>
-                                <a class="<?php echo $active ? 'is-active' : ''; ?>" href="<?php echo esc_url( $filter_url( array( 'marca' => $active ? '' : $slug ) ) ); ?>">
-                                    <span><?php echo esc_html( $facet['name'] ?? $slug ); ?></span>
-                                    <small><?php echo esc_html( number_format_i18n( (int) ( $facet['product_count'] ?? 0 ) ) ); ?></small>
-                                </a>
-                            <?php endforeach; ?>
-                        </div>
+                    <section class="cvl-final-brand-filter" aria-label="<?php esc_attr_e( 'Filtrar por marcas', 'chavevertical-lite' ); ?>">
+                        <h2><?php esc_html_e( 'FILTRAR POR MARCAS', 'chavevertical-lite' ); ?></h2>
+
+                        <form class="cvl-final-brand-filter-form" method="get" action="<?php echo esc_url( $base_url ); ?>">
+                            <?php if ( $selected_category instanceof WP_Term ) : ?>
+                                <input type="hidden" name="categoria" value="<?php echo esc_attr( $selected_category->slug ); ?>">
+                            <?php endif; ?>
+                            <?php if ( $min_price > 0 ) : ?>
+                                <input type="hidden" name="min_price" value="<?php echo esc_attr( wc_format_decimal( $min_price, 2 ) ); ?>">
+                            <?php endif; ?>
+                            <?php if ( $max_price > 0 ) : ?>
+                                <input type="hidden" name="max_price" value="<?php echo esc_attr( wc_format_decimal( $max_price, 2 ) ); ?>">
+                            <?php endif; ?>
+
+                            <div class="cvl-final-brand-chips">
+                                <?php foreach ( $brand_facets as $facet ) : ?>
+                                    <?php
+                                    $slug = sanitize_title( (string) ( $facet['slug'] ?? '' ) );
+                                    if ( ! $slug ) {
+                                        continue;
+                                    }
+
+                                    $active   = in_array( $slug, $selected_brands, true );
+                                    $input_id = 'cvl-brand-' . sanitize_html_class( $slug );
+                                    ?>
+                                    <label class="cvl-final-brand-chip<?php echo $active ? ' is-active' : ''; ?>" for="<?php echo esc_attr( $input_id ); ?>">
+                                        <input
+                                            id="<?php echo esc_attr( $input_id ); ?>"
+                                            type="checkbox"
+                                            name="marca[]"
+                                            value="<?php echo esc_attr( $slug ); ?>"
+                                            <?php checked( $active ); ?>
+                                        >
+                                        <span><?php echo esc_html( $facet['name'] ?? $slug ); ?></span>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+
+                            <div class="cvl-final-brand-actions">
+                                <button type="submit"><?php esc_html_e( 'Filtrar', 'chavevertical-lite' ); ?></button>
+                            </div>
+                        </form>
                     </section>
                 <?php endif; ?>
 
@@ -2345,7 +2397,9 @@ function cvl_product_category_search_layout(): void {
                     <h2><?php esc_html_e( 'PREÇO', 'chavevertical-lite' ); ?></h2>
                     <form class="cvl-search-price-filter" method="get" action="<?php echo esc_url( $base_url ); ?>">
                         <?php if ( $selected_category instanceof WP_Term ) : ?><input type="hidden" name="categoria" value="<?php echo esc_attr( $selected_category->slug ); ?>"><?php endif; ?>
-                        <?php if ( $selected_brand ) : ?><input type="hidden" name="marca" value="<?php echo esc_attr( $selected_brand ); ?>"><?php endif; ?>
+                        <?php foreach ( $selected_brands as $selected_brand_slug ) : ?>
+                            <input type="hidden" name="marca[]" value="<?php echo esc_attr( $selected_brand_slug ); ?>">
+                        <?php endforeach; ?>
 
                         <div class="cvl-search-price-inputs">
                             <label>

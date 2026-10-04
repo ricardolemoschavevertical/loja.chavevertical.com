@@ -1129,3 +1129,114 @@ body.tax-product_cat .cvl-category-catalog-page .cvl-search-products li.product-
     font-size:9px!important;
   }
 }
+
+
+/* Final category brand chips */
+.cvl-category-catalog-page.is-final-category .cvl-final-brand-filter{
+  margin:18px 0 0;
+  padding:14px 14px 12px;
+  border-top:1px solid #edf0f1;
+}
+
+.cvl-category-catalog-page.is-final-category .cvl-final-brand-filter h2{
+  margin:0 0 12px;
+  color:#4f5b62;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.06em;
+  line-height:1.2;
+}
+
+.cvl-final-brand-filter-form{
+  margin:0;
+}
+
+.cvl-final-brand-chips{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px 6px;
+}
+
+.cvl-final-brand-chip{
+  position:relative;
+  margin:0;
+  padding:0;
+  display:inline-flex;
+  cursor:pointer;
+}
+
+.cvl-final-brand-chip input{
+  position:absolute!important;
+  width:1px!important;
+  height:1px!important;
+  margin:-1px!important;
+  padding:0!important;
+  overflow:hidden!important;
+  clip:rect(0 0 0 0)!important;
+  white-space:nowrap!important;
+  border:0!important;
+}
+
+.cvl-final-brand-chip span{
+  min-height:32px;
+  padding:7px 10px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:1px solid #d8dde0;
+  border-radius:6px;
+  background:#fff;
+  color:#15191c;
+  font-size:10px;
+  font-weight:850;
+  line-height:1;
+  letter-spacing:.01em;
+  text-align:center;
+  transition:border-color .15s ease,background .15s ease,color .15s ease,box-shadow .15s ease;
+}
+
+.cvl-final-brand-chip:hover span,
+.cvl-final-brand-chip:focus-within span{
+  border-color:#aeb8bd;
+  box-shadow:0 1px 3px rgba(16,24,32,.06);
+}
+
+.cvl-final-brand-chip input:checked + span,
+.cvl-final-brand-chip.is-active span{
+  border-color:var(--cvl-ref-teal);
+  background:#eef8f6;
+  color:var(--cvl-ref-teal-dark);
+}
+
+.cvl-final-brand-actions{
+  margin-top:12px;
+  display:flex;
+  justify-content:flex-end;
+}
+
+.cvl-final-brand-actions button{
+  min-width:72px;
+  min-height:34px;
+  padding:7px 14px;
+  border:1px solid #d5dade;
+  border-radius:5px;
+  background:#f7f7f6;
+  color:#27343a;
+  font-size:10px;
+  font-weight:750;
+  cursor:pointer;
+}
+
+.cvl-final-brand-actions button:hover,
+.cvl-final-brand-actions button:focus{
+  border-color:var(--cvl-ref-teal);
+  background:var(--cvl-ref-teal);
+  color:#fff;
+}
+
+@media(max-width:991.98px){
+  .cvl-category-catalog-page.is-final-category .cvl-final-brand-filter{
+    padding-left:0;
+    padding-right:0;
+  }
+}
