@@ -59,17 +59,34 @@ if ( ! is_wp_error( $brand_terms ) && ! empty( $brand_terms ) ) {
     <?php if ( is_wp_error( $brand_terms ) || empty( $brand_groups ) ) : ?>
         <p class="cvl-brands-empty"><?php esc_html_e( 'Ainda não existem marcas disponíveis.', 'chavevertical-lite' ); ?></p>
     <?php else : ?>
-        <nav class="cvl-brands-index" aria-label="<?php esc_attr_e( 'Índice alfabético de marcas', 'chavevertical-lite' ); ?>">
+        <div class="cvl-brands-search">
+            <label class="screen-reader-text" for="cvl-brands-search-input"><?php esc_html_e( 'Pesquisar marca', 'chavevertical-lite' ); ?></label>
+            <span class="cvl-brands-search-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
+            </span>
+            <input
+                id="cvl-brands-search-input"
+                type="search"
+                data-cvl-brands-search
+                placeholder="<?php esc_attr_e( 'Pesquisar marca…', 'chavevertical-lite' ); ?>"
+                autocomplete="off"
+                spellcheck="false"
+            >
+        </div>
+
+        <p class="cvl-brands-search-empty" data-cvl-brands-search-empty hidden><?php esc_html_e( 'Nenhuma marca encontrada.', 'chavevertical-lite' ); ?></p>
+
+        <nav class="cvl-brands-index" data-cvl-brands-index aria-label="<?php esc_attr_e( 'Índice alfabético de marcas', 'chavevertical-lite' ); ?>">
             <?php foreach ( array_keys( $brand_groups ) as $letter ) : ?>
                 <?php $group_id = '#' === $letter ? 'marcas-outros' : 'marcas-' . strtolower( $letter ); ?>
-                <a href="#<?php echo esc_attr( $group_id ); ?>"><?php echo esc_html( '#' === $letter ? '0–9' : $letter ); ?></a>
+                <a href="#<?php echo esc_attr( $group_id ); ?>" data-cvl-brand-index-link><?php echo esc_html( '#' === $letter ? '0–9' : $letter ); ?></a>
             <?php endforeach; ?>
         </nav>
 
         <div class="cvl-brands-groups">
             <?php foreach ( $brand_groups as $letter => $terms ) : ?>
                 <?php $group_id = '#' === $letter ? 'marcas-outros' : 'marcas-' . strtolower( $letter ); ?>
-                <section id="<?php echo esc_attr( $group_id ); ?>" class="cvl-brand-group">
+                <section id="<?php echo esc_attr( $group_id ); ?>" class="cvl-brand-group" data-cvl-brand-group>
                     <h2 class="cvl-brand-group-title"><?php echo esc_html( '#' === $letter ? '0–9 / Outros' : $letter ); ?></h2>
 
                     <div class="cvl-brands-grid">
@@ -96,7 +113,7 @@ if ( ! is_wp_error( $brand_terms ) && ! empty( $brand_terms ) ) {
                                 );
                             }
                             ?>
-                            <a class="cvl-brand-card" href="<?php echo esc_url( $term_url ); ?>">
+                            <a class="cvl-brand-card" data-cvl-brand-card data-brand-name="<?php echo esc_attr( $term->name ); ?>" href="<?php echo esc_url( $term_url ); ?>">
                                 <?php if ( $logo_html ) : ?>
                                     <span class="cvl-brand-card-media"><?php echo wp_kses_post( $logo_html ); ?></span>
                                     <strong class="cvl-brand-card-name"><?php echo esc_html( $term->name ); ?></strong>
