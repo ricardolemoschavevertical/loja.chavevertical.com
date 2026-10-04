@@ -488,9 +488,12 @@
   background:#f6f8f8!important;
 }
 .cvl-home-product-strip .products{
+  width:100%!important;
   grid-template-columns:repeat(8,minmax(0,1fr))!important;
   gap:10px!important;
-  margin-top:0!important;
+  margin:0!important;
+  padding:0!important;
+  list-style:none!important;
 }
 .cvl-home-product-strip .cvl-v4-section-head{
   margin-bottom:22px!important;
