@@ -4,6 +4,8 @@
  *
  * Reorganiza apenas o markup visual da ficha, mantendo todos os hooks
  * comerciais nativos do WooCommerce.
+ *
+ * @version 3.6.0
  */
 
 defined( 'ABSPATH' ) || exit;
