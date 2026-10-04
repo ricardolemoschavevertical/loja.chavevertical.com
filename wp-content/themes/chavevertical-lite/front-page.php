@@ -218,6 +218,59 @@ $cvl_category_image = static function ( $term, $size = 'large', $loading = 'lazy
 
 
 
+<?php
+$homepage_highlights = function_exists( 'cvl_get_homepage_highlights' )
+    ? cvl_get_homepage_highlights()
+    : array();
+?>
+
+<?php if ( ! empty( $homepage_highlights ) ) : ?>
+<section class="cvl-shell cvl-homepage-highlights-section" aria-label="<?php esc_attr_e( 'Destaques Chave Vertical', 'chavevertical-lite' ); ?>">
+    <div class="cvl-solutions cvl-homepage-highlights">
+        <?php foreach ( $homepage_highlights as $highlight_index => $highlight ) : ?>
+            <?php
+            $highlight_image = function_exists( 'cvl_homepage_highlight_image_url' )
+                ? cvl_homepage_highlight_image_url( $highlight )
+                : '';
+            $highlight_number = str_pad( (string) ( $highlight_index + 1 ), 2, '0', STR_PAD_LEFT );
+            $highlight_style  = sprintf(
+                '--cvl-highlight-bg:%1$s;--cvl-highlight-color:%2$s;',
+                esc_attr( $highlight['background'] ),
+                esc_attr( $highlight['text_color'] )
+            );
+            ?>
+            <a
+                class="cvl-solution-card cvl-homepage-highlight"
+                href="<?php echo esc_url( $highlight['url'] ); ?>"
+                style="<?php echo esc_attr( $highlight_style ); ?>"
+            >
+                <span class="cvl-homepage-highlight-media<?php echo $highlight_image ? '' : ' is-empty'; ?>">
+                    <?php if ( $highlight_image ) : ?>
+                        <img
+                            src="<?php echo esc_url( $highlight_image ); ?>"
+                            alt="<?php echo esc_attr( $highlight['title'] ); ?>"
+                            loading="lazy"
+                            decoding="async"
+                        >
+                    <?php else : ?>
+                        <span class="cvl-homepage-highlight-placeholder" aria-hidden="true">CV</span>
+                    <?php endif; ?>
+                </span>
+
+                <span class="cvl-homepage-highlight-content">
+                    <span class="cvl-solution-number" aria-hidden="true"><?php echo esc_html( $highlight_number ); ?></span>
+                    <span class="cvl-kicker"><?php echo esc_html( $highlight['eyebrow'] ); ?></span>
+                    <h2><?php echo esc_html( $highlight['title'] ); ?></h2>
+                    <p><?php echo esc_html( $highlight['description'] ); ?></p>
+                    <strong><?php echo esc_html( $highlight['cta'] ); ?></strong>
+                </span>
+            </a>
+        <?php endforeach; ?>
+    </div>
+</section>
+<?php endif; ?>
+
+
 <?php if ( ! empty( $products ) ) : ?>
 <section class="cvl-v4-products">
     <div class="cvl-shell">

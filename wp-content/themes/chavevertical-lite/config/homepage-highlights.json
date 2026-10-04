@@ -1,0 +1,50 @@
+[
+  {
+    "eyebrow": "MAIS PROCURADO",
+    "title": "Equipar uma oficina",
+    "description": "Carros de ferramentas, elevadores, máquinas e equipamentos para utilização profissional.",
+    "cta": "VER SOLUÇÕES →",
+    "url": "/?s=oficina&post_type=product",
+    "background": "#101820",
+    "text_color": "#ffffff",
+    "image_id": 0,
+    "image_url": "",
+    "fallback_category_slug": "oficina-automovel"
+  },
+  {
+    "eyebrow": "AR COMPRIMIDO",
+    "title": "Produção e tratamento de ar",
+    "description": "Compressores, secadores, enroladores, reservatórios e acessórios pneumáticos.",
+    "cta": "EXPLORAR →",
+    "url": "/?s=compressor&post_type=product",
+    "background": "#006b62",
+    "text_color": "#ffffff",
+    "image_id": 0,
+    "image_url": "",
+    "fallback_category_slug": "ar-comprimido"
+  },
+  {
+    "eyebrow": "MOVIMENTAÇÃO",
+    "title": "Elevação e logística",
+    "description": "Porta-paletes, mesas elevatórias, gruas e soluções para armazém e oficina.",
+    "cta": "VER EQUIPAMENTO →",
+    "url": "/?s=porta-paletes&post_type=product",
+    "background": "#f5f7f7",
+    "text_color": "#182129",
+    "image_id": 0,
+    "image_url": "",
+    "fallback_category_slug": "elevacao-e-carga"
+  },
+  {
+    "eyebrow": "NÃO ENCONTRA?",
+    "title": "Tratamos da pesquisa por si.",
+    "description": "Indique a aplicação, referência ou características técnicas e ajudamos a encontrar a solução.",
+    "cta": "PEDIR ACONSELHAMENTO →",
+    "url": "/contactos/",
+    "background": "#b51f1f",
+    "text_color": "#ffffff",
+    "image_id": 0,
+    "image_url": "",
+    "fallback_category_slug": ""
+  }
+]

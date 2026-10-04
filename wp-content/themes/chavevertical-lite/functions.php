@@ -1,7 +1,12 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.9.13' );
+define( 'CVL_VERSION', '0.9.14' );
+
+$cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
+if ( file_exists( $cvl_homepage_highlights_file ) ) {
+    require_once $cvl_homepage_highlights_file;
+}
 
 add_action( 'after_setup_theme', function () {
     load_theme_textdomain( 'chavevertical-lite', get_template_directory() . '/languages' );
