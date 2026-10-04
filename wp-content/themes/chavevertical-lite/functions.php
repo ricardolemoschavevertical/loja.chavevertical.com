@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.31' );
+define( 'CVL_VERSION', '0.16.32' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -1094,6 +1094,13 @@ function cvl_single_product_share() {
 }
 
 /**
+ * Os nomes dos separadores já identificam o conteúdo; evita títulos repetidos
+ * dentro dos painéis Descrição e Informação adicional.
+ */
+add_filter( 'woocommerce_product_description_heading', '__return_empty_string' );
+add_filter( 'woocommerce_product_additional_information_heading', '__return_empty_string' );
+
+/**
  * Tab comercial equivalente ao layout de referência.
  */
 add_filter( 'woocommerce_product_tabs', function ( $tabs ) {
@@ -1116,7 +1123,6 @@ function cvl_single_product_contact_tab_content() {
     $url = cvl_single_product_request_url( $product, 'orcamento' );
 
     echo '<div class="cvl-single-contact-tab">';
-    echo '<h3>' . esc_html__( 'Solicitar Orçamento ou Informação Adicional', 'chavevertical-lite' ) . '</h3>';
     echo '<p>' . esc_html__( 'Tem dúvidas sobre as características técnicas ou pretende encomendar em quantidade? A equipa comercial prepara uma proposta adequada ao seu pedido.', 'chavevertical-lite' ) . '</p>';
     echo '<a class="cvl-single-contact-cta" href="' . esc_url( $url ) . '">' . esc_html__( 'SOLICITAR ORÇAMENTO', 'chavevertical-lite' ) . '</a>';
     echo '</div>';

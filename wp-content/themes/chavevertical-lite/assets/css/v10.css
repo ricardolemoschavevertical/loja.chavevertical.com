@@ -642,8 +642,10 @@ body.admin-bar.single-product .cvl-product-gallery-wrap{top:204px}
 .single-product .cvl-product-summary-tabs .woocommerce-tabs .panel{
   width:100%!important;max-width:none!important;margin:0!important;padding:16px 0 6px!important;color:#4c5962;font-size:12.5px!important;line-height:1.65!important;
 }
-.single-product .cvl-product-summary-tabs .woocommerce-tabs .panel>h2:first-child{
-  margin:0 0 8px;color:#24333c;font-size:16px;
+.single-product .cvl-product-summary-tabs .woocommerce-tabs .panel>h2:first-child,
+.single-product .cvl-product-summary-tabs .woocommerce-tabs .woocommerce-Reviews-title,
+.single-product .cvl-product-summary-tabs .cvl-single-contact-tab>h3:first-child{
+  display:none!important;
 }
 .single-product table.shop_attributes{
   width:100%;max-width:100%;border-collapse:collapse;
