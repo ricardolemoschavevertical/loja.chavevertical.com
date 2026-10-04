@@ -1,0 +1,121 @@
+name: Diagnose CV OpenSearch Live
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cv-opensearch-diagnostic
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Collect safe diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_ROOT=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          OUT="$GITHUB_WORKSPACE/ops/cv-opensearch-diagnostic.txt"
+          mkdir -p "$GITHUB_WORKSPACE/ops"
+          : > "$OUT"
+
+          {
+            echo "timestamp_utc=$(date -u +%FT%TZ)"
+            echo "runner_user=$(id -un)"
+            echo "plugin_active=$(wp --path="$WP_ROOT" plugin is-active cv-opensearch >/dev/null 2>&1 && echo yes || echo no)"
+            echo -n "plugin_version="
+            wp --path="$WP_ROOT" eval 'echo defined("CVOS_VERSION") ? CVOS_VERSION : "missing";'
+            echo
+            echo -n "settings="
+            wp --path="$WP_ROOT" eval '
+              $s = new CVOS_Settings();
+              $safe = array(
+                "endpoint" => $s->endpoint(),
+                "auth_type" => $s->auth_type(),
+                "username" => $s->username(),
+                "index" => $s->index_name(),
+                "enabled" => $s->is_yes("enabled"),
+                "replace_native_search" => $s->is_yes("replace_native_search"),
+                "enable_instant_search" => $s->is_yes("enable_instant_search"),
+                "enable_astro_api" => $s->is_yes("enable_astro_api"),
+                "verify_ssl" => $s->is_yes("verify_ssl"),
+                "secret_present" => "" !== $s->secret(),
+                "ca_file" => $s->ca_file(),
+                "ca_file_readable" => $s->ca_file() ? is_readable($s->ca_file()) : false,
+                "ca_pem_present" => $s->has_ca_pem(),
+              );
+              echo wp_json_encode($safe, JSON_UNESCAPED_SLASHES);
+            '
+            echo
+            echo -n "reindex_state="
+            wp --path="$WP_ROOT" option get cvos_reindex_state --format=json 2>/dev/null || echo '{}'
+            echo
+            echo -n "client_health="
+            wp --path="$WP_ROOT" eval '
+              $p = CVOS_Plugin::instance();
+              $r = $p->client->health();
+              if (is_wp_error($r)) {
+                echo wp_json_encode(array("ok"=>false,"code"=>$r->get_error_code(),"message"=>$r->get_error_message()));
+              } else {
+                echo wp_json_encode(array("ok"=>true,"status"=>$r["status"] ?? null,"cluster"=>$r["cluster_name"] ?? null));
+              }
+            '
+            echo
+            echo -n "index_probe="
+            wp --path="$WP_ROOT" eval '
+              $p = CVOS_Plugin::instance();
+              $r = $p->search->search(array("q"=>"","page"=>1,"per_page"=>1,"facets"=>false));
+              if (is_wp_error($r)) {
+                echo wp_json_encode(array("ok"=>false,"code"=>$r->get_error_code(),"message"=>$r->get_error_message()));
+              } else {
+                echo wp_json_encode(array("ok"=>true,"total"=>$r["total"] ?? null,"items"=>count($r["items"] ?? array())));
+              }
+            '
+            echo
+          } >> "$OUT"
+
+          HEALTH_CODE=$(curl --connect-timeout 10 --max-time 30 -sS -o /tmp/cvos-health.json -w '%{http_code}' 'https://loja.chavevertical.com/wp-json/cv-opensearch/v1/health' || true)
+          SUGGEST_CODE=$(curl --connect-timeout 10 --max-time 30 -sS -o /tmp/cvos-suggest.json -w '%{http_code}' 'https://loja.chavevertical.com/wp-json/cv-opensearch/v1/suggest?q=bosch&limit=3' || true)
+          HOME_CODE=$(curl --connect-timeout 10 --max-time 30 -sS -o /tmp/cvos-home.html -w '%{http_code}' 'https://loja.chavevertical.com/' || true)
+
+          {
+            echo "public_health_http=$HEALTH_CODE"
+            echo -n "public_health_body="
+            head -c 2000 /tmp/cvos-health.json 2>/dev/null || true
+            echo
+            echo "public_suggest_http=$SUGGEST_CODE"
+            echo -n "public_suggest_body="
+            head -c 4000 /tmp/cvos-suggest.json 2>/dev/null || true
+            echo
+            echo "homepage_http=$HOME_CODE"
+            echo "homepage_has_cvos_script=$(grep -q 'cv-opensearch/assets/search.js' /tmp/cvos-home.html && echo yes || echo no)"
+            echo "homepage_has_cvos_config=$(grep -q 'CVOpenSearch' /tmp/cvos-home.html && echo yes || echo no)"
+            echo "homepage_has_theme_search=$(grep -q 'class=\"cvl-search\"' /tmp/cvos-home.html && echo yes || echo no)"
+            echo -n "homepage_cvos_script_src="
+            grep -oE 'https?[^" ]*cv-opensearch/assets/search\.js[^" ]*' /tmp/cvos-home.html | head -n1 || true
+            echo
+          } >> "$OUT"
+
+          sed -E 's/(password|secret)[^,}]*/\1=REDACTED/Ig' "$OUT"
+
+      - name: Persist diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ops/cv-opensearch-diagnostic.txt
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "chore: record OpenSearch live diagnostic"
+          git push
