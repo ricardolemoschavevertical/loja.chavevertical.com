@@ -513,3 +513,46 @@
     grid-template-columns:repeat(8,minmax(0,1fr))!important;
   }
 }
+
+
+/* Search results — OpenSearch products with brand/category/price facets. */
+.cvl-search-page{padding-top:34px}
+.cvl-search-page .cvl-search-heading{margin-bottom:22px}
+.cvl-search-count{margin:0;color:#6f7a81;font-size:12px}
+.cvl-search-layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:24px;align-items:start}
+.cvl-search-filters{position:sticky;top:18px;padding:16px;border:1px solid #e2e7e9;border-radius:10px;background:#fff}
+.cvl-search-filters-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:12px;border-bottom:1px solid #edf0f1}
+.cvl-search-filters-head strong{color:#26343b;font-size:11px;font-weight:900;letter-spacing:.04em}
+.cvl-search-filters-head a{color:var(--cvl-ref-teal);font-size:10px;font-weight:800;text-decoration:none}
+.cvl-search-filter-group{margin-top:18px}
+.cvl-search-filter-group h2{margin:0 0 9px;color:#5f6b72;font-size:10px;font-weight:900;letter-spacing:.06em}
+.cvl-search-filter-list{display:grid;gap:2px}
+.cvl-search-filter-list a{min-height:32px;padding:7px 8px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-radius:5px;color:#334149;font-size:11px;line-height:1.25;text-decoration:none}
+.cvl-search-filter-list a:hover,.cvl-search-filter-list a.is-active{background:#eef8f6;color:var(--cvl-ref-teal-dark)}
+.cvl-search-filter-list a.is-active{font-weight:800}
+.cvl-search-filter-list a.is-query-match{border-left:3px solid var(--cvl-ref-teal);padding-left:7px;font-weight:800}
+.cvl-search-filter-list small{min-width:24px;color:#8b959b;font-size:9px;text-align:right}
+.cvl-search-price-inputs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cvl-search-price-inputs label{display:grid;gap:4px;color:#7c878d;font-size:9px;font-weight:800;text-transform:uppercase}
+.cvl-search-price-inputs input{width:100%;height:36px;padding:0 8px;border:1px solid #d9e0e3;border-radius:5px;background:#fff;color:#29373e;font-size:11px}
+.cvl-search-price-range{margin:8px 0;color:#7b868c;font-size:9px}
+.cvl-search-price-filter button{width:100%;height:34px;border:1px solid var(--cvl-ref-teal);border-radius:5px;background:var(--cvl-ref-teal);color:#fff;font-size:9px;font-weight:900;cursor:pointer}
+.cvl-search-price-filter button:hover{background:var(--cvl-ref-teal-dark);border-color:var(--cvl-ref-teal-dark)}
+.cvl-search-products{min-width:0}
+.cvl-search-products>ul.products{margin-top:0!important}
+body.search-results .cvl-search-products.woocommerce ul.products{grid-template-columns:repeat(6,minmax(0,1fr))!important}
+body.search-results .cvl-search-products .cvl-product-category,
+body.search-results .cvl-search-products li.product-category{display:none!important}
+@media(max-width:1399.98px){body.search-results .cvl-search-products.woocommerce ul.products{grid-template-columns:repeat(5,minmax(0,1fr))!important}}
+@media(max-width:1199.98px){
+  .cvl-search-layout{grid-template-columns:205px minmax(0,1fr);gap:18px}
+  body.search-results .cvl-search-products.woocommerce ul.products{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+}
+@media(max-width:991.98px){
+  .cvl-search-layout{grid-template-columns:1fr}
+  .cvl-search-filters{position:static}
+  .cvl-search-filter-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+  body.search-results .cvl-search-products.woocommerce ul.products{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+}
+@media(max-width:767.98px){body.search-results .cvl-search-products.woocommerce ul.products{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:520px){.cvl-search-filter-list{grid-template-columns:1fr}}

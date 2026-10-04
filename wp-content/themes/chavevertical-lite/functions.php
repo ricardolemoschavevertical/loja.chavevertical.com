@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.15.9' );
+define( 'CVL_VERSION', '0.16.0' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -341,6 +341,11 @@ function cvl_get_product_primary_category( $product_id ) {
  */
 function cvl_loop_product_category() {
     global $product;
+
+    // Na página de pesquisa, a categoria pertence aos filtros laterais.
+    if ( is_search() ) {
+        return;
+    }
 
     if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product ) {
         return;

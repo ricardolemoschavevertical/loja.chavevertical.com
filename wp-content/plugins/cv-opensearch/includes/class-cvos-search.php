@@ -336,6 +336,12 @@ final class CVOS_Search {
                         'size'  => 250,
                     ),
                 ),
+                'categories' => array(
+                    'terms' => array(
+                        'field' => 'category_slugs',
+                        'size'  => 250,
+                    ),
+                ),
                 'price' => array(
                     'stats' => array( 'field' => 'price' ),
                 ),
@@ -358,8 +364,9 @@ final class CVOS_Search {
         }
 
         $facets = array(
-            'brands' => array(),
-            'price'  => null,
+            'brands'     => array(),
+            'categories' => array(),
+            'price'      => null,
         );
 
         foreach ( $response['aggregations']['brands']['buckets'] ?? array() as $bucket ) {
@@ -374,6 +381,20 @@ final class CVOS_Search {
             }
         }
 
+        foreach ( $response['aggregations']['categories']['buckets'] ?? array() as $bucket ) {
+            $slug = sanitize_title( (string) ( $bucket['key'] ?? '' ) );
+            if ( ! $slug || in_array( $slug, array( 'uncategorized', 'predefinido' ), true ) ) {
+                continue;
+            }
+
+            $term = get_term_by( 'slug', $slug, 'product_cat' );
+            $facets['categories'][] = array(
+                'slug'  => $slug,
+                'name'  => $term instanceof WP_Term ? $term->name : ucwords( str_replace( '-', ' ', $slug ) ),
+                'count' => (int) ( $bucket['doc_count'] ?? 0 ),
+            );
+        }
+
         if ( isset( $response['aggregations']['price'] ) ) {
             $stats = $response['aggregations']['price'];
             $facets['price'] = array(
@@ -382,7 +403,7 @@ final class CVOS_Search {
             );
         }
 
-        if ( '' !== $query ) {
+        if ( '' !== $query && false !== ( $args['analytics'] ?? true ) ) {
             $this->record_analytics( $query, $total );
         }
 
@@ -457,6 +478,25 @@ final class CVOS_Search {
                 ),
             ),
         );
+
+        if ( $this->settings->is_yes( 'search_in_categories' ) ) {
+            $should[] = array(
+                'term' => array(
+                    'category_slugs' => array(
+                        'value' => sanitize_title( $query ),
+                        'boost' => 60,
+                    ),
+                ),
+            );
+            $should[] = array(
+                'match_phrase' => array(
+                    'category_names' => array(
+                        'query' => $query,
+                        'boost' => 40,
+                    ),
+                ),
+            );
+        }
 
         foreach ( $this->expand_synonyms( $query ) as $synonym ) {
             if ( 0 === strcasecmp( $synonym, $query ) ) {
@@ -546,22 +586,30 @@ final class CVOS_Search {
             return;
         }
 
-        $post_type = $query->get( 'post_type' );
-        if ( $post_type && 'product' !== $post_type && ! ( is_array( $post_type ) && in_array( 'product', $post_type, true ) ) ) {
-            return;
-        }
+        // A pesquisa pública é exclusivamente de produtos.
+        $query->set( 'post_type', 'product' );
 
         $term = trim( (string) $query->get( 's' ) );
         if ( '' === $term ) {
             return;
         }
 
-        $ids = $this->search_ids( $term, 2000 );
+        $brand = isset( $_GET['marca'] )
+            ? sanitize_title( wp_unslash( $_GET['marca'] ) )
+            : ( isset( $_GET['brand'] ) ? sanitize_title( wp_unslash( $_GET['brand'] ) ) : '' );
+
+        $category = isset( $_GET['categoria'] )
+            ? sanitize_title( wp_unslash( $_GET['categoria'] ) )
+            : ( isset( $_GET['category'] ) ? sanitize_title( wp_unslash( $_GET['category'] ) ) : '' );
+
+        $min_price = isset( $_GET['min_price'] ) ? (float) wc_format_decimal( wp_unslash( $_GET['min_price'] ) ) : 0.0;
+        $max_price = isset( $_GET['max_price'] ) ? (float) wc_format_decimal( wp_unslash( $_GET['max_price'] ) ) : 0.0;
+
+        $ids = $this->search_ids( $term, 2000, $brand, $category, $min_price, $max_price );
         if ( is_wp_error( $ids ) ) {
             return;
         }
 
-        $query->set( 'post_type', 'product' );
         $query->set( 'post__in', $ids ?: array( 0 ) );
         $query->set( 'orderby', 'post__in' );
         $query->set( 'cvos_active', 1 );
@@ -571,19 +619,59 @@ final class CVOS_Search {
         return $query->get( 'cvos_active' ) ? '' : $search;
     }
 
-    private function search_ids( string $term, int $limit ) {
+    private function search_ids(
+        string $term,
+        int $limit,
+        string $brand = '',
+        string $category = '',
+        float $min_price = 0.0,
+        float $max_price = 0.0
+    ) {
+        $filters = array(
+            array( 'term' => array( 'status' => 'publish' ) ),
+        );
+        $must_not = array();
+
+        if ( $this->settings->is_yes( 'exclude_out_of_stock' ) ) {
+            $must_not[] = array( 'term' => array( 'stock_status' => 'outofstock' ) );
+        }
+
+        if ( $brand ) {
+            $filters[] = array( 'term' => array( 'brand_slugs' => sanitize_title( $brand ) ) );
+        }
+
+        if ( $category ) {
+            $filters[] = array( 'term' => array( 'category_slugs' => sanitize_title( $category ) ) );
+        }
+
+        if ( $min_price > 0 || $max_price > 0 ) {
+            $range = array();
+            if ( $min_price > 0 ) {
+                $range['gte'] = $min_price;
+            }
+            if ( $max_price > 0 ) {
+                $range['lte'] = $max_price;
+            }
+            $filters[] = array( 'range' => array( 'price' => $range ) );
+        }
+
+        $this->add_static_filters( $filters, $must_not );
+
+        $bool = array(
+            'filter' => $filters,
+            'must'   => array( $this->text_query( $term ) ),
+        );
+
+        if ( $must_not ) {
+            $bool['must_not'] = $must_not;
+        }
+
         $body = array(
             'size'             => min( 5000, max( 1, $limit ) ),
             '_source'          => false,
             'track_total_hits' => false,
-            'query'            => array(
-                'bool' => array(
-                    'filter' => array(
-                        array( 'term' => array( 'status' => 'publish' ) ),
-                    ),
-                    'must' => array( $this->text_query( $term ) ),
-                ),
-            ),
+            'query'            => array( 'bool' => $bool ),
+            'sort'             => $this->sort( 'relevance', true ),
         );
 
         $response = $this->client->search( $body );
