@@ -96,3 +96,26 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 });
+
+
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('[data-cvl-brand-auto-filter]').forEach(function (form) {
+    form.querySelectorAll('input[type="checkbox"][name="marca[]"]').forEach(function (input) {
+      input.addEventListener('change', function () {
+        var chip = input.closest('.cvl-final-brand-chip');
+
+        if (chip) {
+          chip.classList.toggle('is-active', input.checked);
+        }
+
+        form.setAttribute('aria-busy', 'true');
+
+        if (typeof form.requestSubmit === 'function') {
+          form.requestSubmit();
+        } else {
+          form.submit();
+        }
+      });
+    });
+  });
+});

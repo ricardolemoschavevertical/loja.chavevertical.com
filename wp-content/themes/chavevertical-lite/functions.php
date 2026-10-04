@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.61' );
+define( 'CVL_VERSION', '0.16.62' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -2350,7 +2350,7 @@ function cvl_product_category_search_layout(): void {
                     <section class="cvl-final-brand-filter" aria-label="<?php esc_attr_e( 'Filtrar por marcas', 'chavevertical-lite' ); ?>">
                         <h2><?php esc_html_e( 'FILTRAR POR MARCAS', 'chavevertical-lite' ); ?></h2>
 
-                        <form class="cvl-final-brand-filter-form" method="get" action="<?php echo esc_url( $base_url ); ?>">
+                        <form class="cvl-final-brand-filter-form" method="get" action="<?php echo esc_url( $base_url ); ?>" data-cvl-brand-auto-filter>
                             <?php if ( $selected_category instanceof WP_Term ) : ?>
                                 <input type="hidden" name="categoria" value="<?php echo esc_attr( $selected_category->slug ); ?>">
                             <?php endif; ?>
@@ -2385,9 +2385,6 @@ function cvl_product_category_search_layout(): void {
                                 <?php endforeach; ?>
                             </div>
 
-                            <div class="cvl-final-brand-actions">
-                                <button type="submit"><?php esc_html_e( 'Filtrar', 'chavevertical-lite' ); ?></button>
-                            </div>
                         </form>
                     </section>
                 <?php endif; ?>
