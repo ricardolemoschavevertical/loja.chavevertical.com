@@ -556,3 +556,77 @@ body.search-results .cvl-search-products li.product-category{display:none!import
 }
 @media(max-width:767.98px){body.search-results .cvl-search-products.woocommerce ul.products{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media(max-width:520px){.cvl-search-filter-list{grid-template-columns:1fr}}
+
+
+/* Search heading + progressive load more v0.16.4 */
+.cvl-search-page .cvl-search-heading-compact{
+  margin-bottom:18px!important;
+}
+.cvl-search-page .cvl-search-heading-compact>span{
+  margin-bottom:5px!important;
+  display:block!important;
+  color:#8a949a!important;
+  font-size:9px!important;
+  font-weight:900!important;
+  letter-spacing:.09em!important;
+  line-height:1!important;
+}
+.cvl-search-page .cvl-search-heading-compact h1{
+  margin:0 0 5px!important;
+  color:#25333a!important;
+  font-family:"Manrope","DM Sans",system-ui,sans-serif!important;
+  font-size:24px!important;
+  font-weight:800!important;
+  letter-spacing:-.025em!important;
+  line-height:1.15!important;
+  text-transform:none!important;
+}
+.cvl-search-page .cvl-search-heading-compact h1>span{
+  color:#77838a!important;
+  font-size:.72em!important;
+  font-weight:650!important;
+  letter-spacing:-.01em!important;
+}
+.cvl-search-load-more-wrap{
+  width:100%;
+  margin:28px 0 10px;
+  display:flex;
+  justify-content:center;
+}
+.cvl-search-load-more{
+  min-width:190px;
+  min-height:42px;
+  padding:11px 22px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:1px solid var(--cvl-ref-teal);
+  border-radius:6px;
+  background:#fff;
+  color:var(--cvl-ref-teal-dark);
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.045em;
+  line-height:1;
+  text-decoration:none;
+  transition:background .18s ease,color .18s ease,border-color .18s ease,opacity .18s ease;
+}
+.cvl-search-load-more:hover,
+.cvl-search-load-more:focus{
+  border-color:var(--cvl-ref-teal-dark);
+  background:var(--cvl-ref-teal);
+  color:#fff;
+}
+.cvl-search-load-more.is-loading{
+  pointer-events:none;
+  opacity:.65;
+}
+@media(max-width:767.98px){
+  .cvl-search-page .cvl-search-heading-compact h1{
+    font-size:20px!important;
+  }
+  .cvl-search-load-more{
+    width:100%;
+    max-width:320px;
+  }
+}

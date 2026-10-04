@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.3' );
+define( 'CVL_VERSION', '0.16.4' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -165,6 +165,16 @@ add_action( 'wp_enqueue_scripts', function () {
         CVL_VERSION,
         true
     );
+
+    if ( is_search() && 'product' === get_query_var( 'post_type' ) ) {
+        wp_enqueue_script(
+            'cvl-search-results',
+            get_template_directory_uri() . '/assets/js/search-results.js',
+            array(),
+            CVL_VERSION,
+            true
+        );
+    }
 } );
 
 add_filter( 'woocommerce_enqueue_styles', function ( $styles ) {

@@ -129,9 +129,9 @@ global $wp_query;
 $cvl_found = (int) $wp_query->found_posts;
 ?>
 <div class="cvl-shell cvl-content cvl-search-page">
-    <header class="cvl-search-heading">
+    <header class="cvl-search-heading cvl-search-heading-compact">
         <span><?php esc_html_e( 'PESQUISA', 'chavevertical-lite' ); ?></span>
-        <h1><?php printf( esc_html__( 'Resultados para: %s', 'chavevertical-lite' ), esc_html( $cvl_query ) ); ?></h1>
+        <h1><span><?php esc_html_e( 'Resultados para:', 'chavevertical-lite' ); ?></span> <?php echo esc_html( $cvl_query ); ?></h1>
         <p class="cvl-search-count">
             <?php
             printf(
@@ -233,7 +233,24 @@ $cvl_found = (int) $wp_query->found_posts;
                     <?php endif; ?>
                 <?php endwhile; ?>
                 <?php woocommerce_product_loop_end(); ?>
-                <?php woocommerce_pagination(); ?>
+                <?php
+                $cvl_current_page = max( 1, absint( get_query_var( 'paged' ) ) );
+                $cvl_max_pages    = max( 1, (int) $wp_query->max_num_pages );
+                $cvl_next_url     = $cvl_current_page < $cvl_max_pages
+                    ? get_next_posts_page_link( $cvl_max_pages )
+                    : '';
+                ?>
+                <?php if ( $cvl_next_url ) : ?>
+                    <div class="cvl-search-load-more-wrap">
+                        <a
+                            class="cvl-search-load-more"
+                            href="<?php echo esc_url( $cvl_next_url ); ?>"
+                            data-cvl-search-load-more
+                            data-loading-label="<?php echo esc_attr__( 'A CARREGAR…', 'chavevertical-lite' ); ?>"
+                        ><?php esc_html_e( 'CARREGAR MAIS', 'chavevertical-lite' ); ?></a>
+                        <span class="cvl-search-load-more-status screen-reader-text" data-cvl-search-load-more-status aria-live="polite"></span>
+                    </div>
+                <?php endif; ?>
             <?php else : ?>
                 <div class="cvl-empty-state">
                     <h2><?php esc_html_e( 'Não encontrámos produtos.', 'chavevertical-lite' ); ?></h2>
