@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.15.1' );
+define( 'CVL_VERSION', '0.15.2' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -129,6 +129,24 @@ add_action( 'wp_enqueue_scripts', function () {
             CVL_VERSION
         );
     }
+
+    /*
+     * Cartões de produto — réplica visual da definição final do CV-Shopware.
+     * Carrega depois do CSS específico de categorias para que a listagem use
+     * uma única apresentação em shop, categorias, pesquisa e blocos WooCommerce.
+     */
+    $cvl_listing_style_dependencies = array( 'cvl-v09' );
+
+    if ( wp_style_is( 'cvl-v11', 'enqueued' ) ) {
+        $cvl_listing_style_dependencies[] = 'cvl-v11';
+    }
+
+    wp_enqueue_style(
+        'cvl-v13',
+        get_template_directory_uri() . '/assets/css/v13.css',
+        $cvl_listing_style_dependencies,
+        CVL_VERSION
+    );
 
     if ( is_front_page() ) {
         wp_enqueue_script(
@@ -458,7 +476,9 @@ function cvl_loop_view_button() {
         return;
     }
 
-    echo '<a class="button cvl-view-product" href="' . esc_url( $product->get_permalink() ) . '">' . esc_html__( 'Ver', 'chavevertical-lite' ) . '</a>';
+    $eye_icon = '<svg class="cvl-view-product-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12Z"></path><circle cx="12" cy="12" r="2.7"></circle></svg>';
+
+    echo '<a class="button cvl-view-product" href="' . esc_url( $product->get_permalink() ) . '" aria-label="' . esc_attr( sprintf( __( 'Ver %s', 'chavevertical-lite' ), $product->get_name() ) ) . '">' . $eye_icon . '<span>' . esc_html__( 'VER', 'chavevertical-lite' ) . '</span></a>';
 }
 add_action( 'woocommerce_after_shop_loop_item', 'cvl_loop_view_button', 15 );
 
@@ -476,8 +496,17 @@ add_filter( 'woocommerce_product_add_to_cart_text', function ( $text, $product )
 }, 10, 2 );
 
 add_filter( 'woocommerce_loop_add_to_cart_link', function ( $html, $product ) {
-    if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product || ! $product->is_type( 'simple' ) || ! $product->is_purchasable() || ! $product->is_in_stock() ) {
+    if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product ) {
         return $html;
+    }
+
+    /*
+     * O card final usa o carrinho apenas quando a compra pode acontecer
+     * diretamente na listagem. Nos restantes casos fica apenas a ação VER,
+     * evitando dois botões com a mesma função.
+     */
+    if ( ! $product->is_type( 'simple' ) || ! $product->is_purchasable() || ! $product->is_in_stock() ) {
+        return '';
     }
 
     $icon = '<svg class="cvl-cart-button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 8H7"></path><circle cx="10" cy="20" r="1.2"></circle><circle cx="18" cy="20" r="1.2"></circle></svg>';

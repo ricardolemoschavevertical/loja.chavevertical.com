@@ -1,0 +1,434 @@
+/* Chave Vertical Lite v0.13 — product listing parity with final CV-Shopware card */
+
+/*
+ * Mantém o markup e a lógica comercial nativos do WooCommerce.
+ * Esta camada trata apenas a apresentação da listagem de produtos.
+ */
+.woocommerce ul.products{
+  display:grid!important;
+  grid-template-columns:repeat(6,minmax(0,1fr))!important;
+  gap:8px!important;
+}
+
+.woocommerce ul.products li.product:not(.product-category){
+  position:relative!important;
+  z-index:1!important;
+  min-width:0!important;
+  height:100%!important;
+  margin:0!important;
+  padding:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  overflow:hidden!important;
+  border:1px solid #eee!important;
+  border-radius:12px!important;
+  background:#fff!important;
+  box-shadow:0 2px 8px rgba(0,0,0,.04)!important;
+  transition:transform .3s ease,border-color .3s ease,box-shadow .3s ease!important;
+}
+
+.woocommerce ul.products li.product:not(.product-category):hover{
+  z-index:20!important;
+  border-color:var(--cvl-ref-red)!important;
+  box-shadow:0 12px 24px rgba(0,0,0,.10)!important;
+  transform:translateY(-4px)!important;
+}
+
+.woocommerce ul.products li.product:not(.product-category)>a.woocommerce-LoopProduct-link{
+  min-width:0!important;
+  flex:1 1 auto!important;
+  padding:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  color:inherit!important;
+  text-decoration:none!important;
+}
+
+/* Imagem 1:1 */
+.woocommerce ul.products li.product:not(.product-category) a img{
+  width:100%!important;
+  max-width:100%!important;
+  height:auto!important;
+  aspect-ratio:1/1!important;
+  margin:0 0 8px!important;
+  padding:10px!important;
+  border:0!important;
+  border-radius:0!important;
+  background:#f8f8f6!important;
+  object-fit:contain!important;
+  object-position:center!important;
+  transition:transform .3s ease!important;
+}
+
+.woocommerce ul.products li.product:not(.product-category):hover a img{
+  transform:scale(1.025)!important;
+}
+
+/* Badge comercial */
+.woocommerce ul.products li.product:not(.product-category) .cvl-product-badge{
+  position:absolute!important;
+  z-index:3!important;
+  top:8px!important;
+  left:8px!important;
+  right:auto!important;
+  min-width:auto!important;
+  min-height:auto!important;
+  padding:4px 10px!important;
+  border:0!important;
+  border-radius:0!important;
+  background:#ff7a21!important;
+  color:#fff!important;
+  box-shadow:0 2px 5px rgba(0,0,0,.18)!important;
+  clip-path:polygon(0 0,100% 0,92% 100%,0 100%)!important;
+  font-size:10px!important;
+  font-weight:800!important;
+  letter-spacing:.05em!important;
+  line-height:1.2!important;
+  text-transform:uppercase!important;
+  white-space:nowrap!important;
+}
+
+.woocommerce ul.products li.product:not(.product-category) .cvl-product-badge.is-sale{
+  background:var(--cvl-ref-red)!important;
+}
+
+.woocommerce ul.products li.product:not(.product-category) .cvl-product-badge.is-unavailable{
+  background:#6b7280!important;
+}
+
+/* Categoria + título */
+.woocommerce ul.products li.product:not(.product-category) .cvl-product-category{
+  min-height:0!important;
+  margin:0 10px 6px!important;
+  display:block!important;
+  overflow:hidden!important;
+  color:#7a838b!important;
+  font-size:8px!important;
+  font-weight:700!important;
+  letter-spacing:0!important;
+  line-height:1.15!important;
+  text-align:center!important;
+  text-overflow:ellipsis!important;
+  text-transform:uppercase!important;
+  white-space:nowrap!important;
+}
+
+.woocommerce ul.products li.product:not(.product-category) .woocommerce-loop-product__title{
+  min-height:2.6em!important;
+  height:2.6em!important;
+  max-height:2.6em!important;
+  margin:0 10px 7px!important;
+  padding:0!important;
+  display:-webkit-box!important;
+  overflow:hidden!important;
+  color:var(--cvl-ref-ink)!important;
+  font:700 11px/1.3 "DM Sans",system-ui,sans-serif!important;
+  letter-spacing:0!important;
+  text-align:center!important;
+  text-overflow:ellipsis!important;
+  text-transform:none!important;
+  white-space:normal!important;
+  -webkit-box-orient:vertical!important;
+  -webkit-line-clamp:2!important;
+}
+
+.woocommerce ul.products li.product:not(.product-category):hover .woocommerce-loop-product__title{
+  display:-webkit-box!important;
+  height:2.6em!important;
+  max-height:2.6em!important;
+  overflow:hidden!important;
+  color:var(--cvl-ref-red)!important;
+  -webkit-line-clamp:2!important;
+}
+
+/* Marca — logótipo quando existe; nome quando não existe */
+.woocommerce ul.products li.product:not(.product-category) .cvl-product-brand-row{
+  min-height:30px!important;
+  margin:1px 10px 0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+
+.woocommerce ul.products li.product:not(.product-category) .cvl-product-brand{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  min-height:24px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  overflow:hidden!important;
+}
+
+.woocommerce ul.products li.product:not(.product-category) .cvl-product-brand-logo{
+  display:block!important;
+  width:auto!important;
+  max-width:96px!important;
+  height:auto!important;
+  max-height:24px!important;
+  margin:0 auto!important;
+  object-fit:contain!important;
+}
+
+.woocommerce ul.products li.product:not(.product-category) .cvl-product-brand-name{
+  width:auto!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+  color:var(--cvl-ref-red)!important;
+  font-size:8px!important;
+  font-weight:900!important;
+  letter-spacing:0!important;
+  line-height:1!important;
+  text-align:center!important;
+  text-overflow:ellipsis!important;
+  text-transform:uppercase!important;
+  white-space:nowrap!important;
+}
+
+/* Referência */
+.woocommerce ul.products li.product:not(.product-category) .cvl-product-sku-row{
+  min-height:28px!important;
+  margin:0 10px!important;
+  padding:5px 0 7px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  border-bottom:1px solid #eef1f2!important;
+}
+
+.woocommerce ul.products li.product:not(.product-category) .cvl-product-sku{
+  width:auto!important;
+  min-width:0!important;
+  max-width:100%!important;
+  min-height:16px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:5px!important;
+  overflow:hidden!important;
+  color:#78828a!important;
+  font-size:8px!important;
+  font-weight:700!important;
+  line-height:1!important;
+  text-align:center!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+
+.woocommerce ul.products li.product:not(.product-category) .cvl-product-sku i{
+  width:15px!important;
+  height:10px!important;
+  flex:0 0 15px!important;
+  background:repeating-linear-gradient(90deg,#4b5563 0 1px,transparent 1px 3px,#4b5563 3px 5px,transparent 5px 6px,#4b5563 6px 7px,transparent 7px 9px)!important;
+  opacity:.8!important;
+}
+
+/* A versão final da listagem Shopware não mostra rating/stock no card. */
+.woocommerce ul.products li.product:not(.product-category) .star-rating,
+.woocommerce ul.products li.product:not(.product-category) .cvl-product-stock{
+  display:none!important;
+}
+
+/* Preço */
+.woocommerce ul.products li.product:not(.product-category) .price{
+  width:auto!important;
+  min-height:48px!important;
+  margin:auto 10px 0!important;
+  padding:10px 0 0!important;
+  border:0!important;
+  display:flex!important;
+  align-items:baseline!important;
+  justify-content:center!important;
+  flex-wrap:wrap!important;
+  gap:5px!important;
+  color:var(--cvl-ref-ink)!important;
+  font-family:"Manrope","DM Sans",sans-serif!important;
+  font-size:19px!important;
+  font-weight:800!important;
+  line-height:1.15!important;
+  letter-spacing:-.015em!important;
+  text-align:center!important;
+}
+
+.woocommerce ul.products li.product:not(.product-category) .price del{
+  width:100%!important;
+  margin:0 0 2px!important;
+  display:block!important;
+  color:#9aa2a8!important;
+  font-size:9px!important;
+  font-weight:600!important;
+  line-height:1.1!important;
+  opacity:1!important;
+  text-align:center!important;
+  text-decoration-thickness:1px!important;
+}
+
+.woocommerce ul.products li.product:not(.product-category) .price ins{
+  color:inherit!important;
+  font-weight:inherit!important;
+  text-decoration:none!important;
+}
+
+.woocommerce ul.products li.product:not(.product-category) .price::after{
+  content:"c/ IVA";
+  margin-left:0;
+  display:inline-block;
+  color:#9099a0;
+  font-family:"DM Sans",sans-serif;
+  font-size:8.5px;
+  font-weight:600;
+  line-height:1;
+  letter-spacing:0;
+  white-space:nowrap;
+}
+
+/* Ações: carrinho compacto à esquerda + VER à direita */
+.woocommerce ul.products li.product:not(.product-category) .cvl-product-actions{
+  width:calc(100% - 20px)!important;
+  margin:10px 10px 12px!important;
+  padding:0!important;
+  display:flex!important;
+  align-items:stretch!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+}
+
+.woocommerce ul.products li.product:not(.product-category) .cvl-product-actions .button{
+  height:36px!important;
+  min-height:36px!important;
+  margin:0!important;
+  border-radius:5px!important;
+  box-shadow:none!important;
+  font-size:8.5px!important;
+  font-weight:800!important;
+  line-height:1!important;
+  text-decoration:none!important;
+  text-transform:none!important;
+}
+
+.woocommerce ul.products li.product:not(.product-category) .cvl-product-actions .cvl-cart-icon-button{
+  width:40px!important;
+  min-width:40px!important;
+  flex:0 0 40px!important;
+  padding:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  border:1px solid var(--cvl-ref-teal)!important;
+  background:var(--cvl-ref-teal)!important;
+  color:#fff!important;
+}
+
+.woocommerce ul.products li.product:not(.product-category) .cvl-product-actions .cvl-cart-icon-button:hover,
+.woocommerce ul.products li.product:not(.product-category) .cvl-product-actions .cvl-cart-icon-button:focus{
+  border-color:var(--cvl-ref-teal-dark)!important;
+  background:var(--cvl-ref-teal-dark)!important;
+  color:#fff!important;
+}
+
+.woocommerce ul.products li.product:not(.product-category) .cvl-cart-button-icon{
+  width:17px!important;
+  height:17px!important;
+  flex:0 0 17px!important;
+  fill:none!important;
+  stroke:currentColor!important;
+  stroke-width:1.8!important;
+  stroke-linecap:round!important;
+  stroke-linejoin:round!important;
+}
+
+.woocommerce ul.products li.product:not(.product-category) .cvl-view-product{
+  width:auto!important;
+  min-width:64px!important;
+  flex:0 0 auto!important;
+  margin-left:auto!important;
+  padding:6px 10px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:5px!important;
+  border:1px solid #cfd7db!important;
+  background:#fff!important;
+  color:#344149!important;
+}
+
+.woocommerce ul.products li.product:not(.product-category) .cvl-view-product::before{
+  content:none!important;
+  display:none!important;
+}
+
+.woocommerce ul.products li.product:not(.product-category) .cvl-view-product-icon{
+  width:14px!important;
+  height:14px!important;
+  flex:0 0 14px!important;
+  fill:none!important;
+  stroke:currentColor!important;
+  stroke-width:1.7!important;
+}
+
+.woocommerce ul.products li.product:not(.product-category) .cvl-view-product:hover,
+.woocommerce ul.products li.product:not(.product-category) .cvl-view-product:focus{
+  border-color:var(--cvl-ref-teal)!important;
+  background:var(--cvl-ref-teal-soft)!important;
+  color:var(--cvl-ref-teal-dark)!important;
+}
+
+/* Link "Ver carrinho" que o WooCommerce pode injetar após AJAX. */
+.woocommerce ul.products li.product:not(.product-category) .cvl-product-actions .added_to_cart{
+  align-self:center;
+  color:var(--cvl-ref-teal-dark);
+  font-size:8px;
+  font-weight:800;
+}
+
+/* Breakpoints iguais à densidade da storefront de referência. */
+@media(max-width:1599.98px) and (min-width:1200px){
+  .woocommerce ul.products{
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  }
+}
+
+@media(max-width:1199.98px){
+  .woocommerce ul.products{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  }
+}
+
+@media(max-width:991.98px){
+  .woocommerce ul.products{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+}
+
+@media(max-width:767.98px){
+  .woocommerce ul.products{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:10px!important;
+  }
+
+  .woocommerce ul.products li.product:not(.product-category) .cvl-product-actions{
+    gap:8px!important;
+  }
+}
+
+@media(max-width:420px){
+  .woocommerce ul.products li.product:not(.product-category) .cvl-product-category{
+    font-size:7.5px!important;
+  }
+
+  .woocommerce ul.products li.product:not(.product-category) .woocommerce-loop-product__title{
+    font-size:10.5px!important;
+  }
+
+  .woocommerce ul.products li.product:not(.product-category) .price{
+    font-size:17px!important;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  .woocommerce ul.products li.product:not(.product-category),
+  .woocommerce ul.products li.product:not(.product-category) a img{
+    transition:none!important;
+  }
+}
