@@ -1,0 +1,73 @@
+name: Install Rank Math
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/install-rank-math.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: loja-plugin-management
+  cancel-in-progress: false
+
+jobs:
+  install:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Guard target WordPress
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_ROOT=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          test -f "$WP_ROOT/wp-load.php"
+          test "$(id -un)" = "codex1"
+          HOME_URL=$(wp --path="$WP_ROOT" option get home)
+          SITE_URL=$(wp --path="$WP_ROOT" option get siteurl)
+          test "${HOME_URL%/}" = "https://loja.chavevertical.com"
+          test "${SITE_URL%/}" = "https://loja.chavevertical.com"
+
+      - name: Backup database
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_ROOT=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          BACKUP_DIR=/home/codex1/backups/github-plugins
+          mkdir -p "$BACKUP_DIR"
+          BACKUP="$BACKUP_DIR/before-rank-math-$(date -u +%Y%m%dT%H%M%SZ).sql"
+          wp --path="$WP_ROOT" db export "$BACKUP" --quiet
+          test -s "$BACKUP"
+          chmod 600 "$BACKUP"
+          echo "Database backup: $BACKUP"
+
+      - name: Install and activate Rank Math
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_ROOT=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          PLUGIN=seo-by-rank-math
+
+          if wp --path="$WP_ROOT" plugin is-installed "$PLUGIN"; then
+            echo "Rank Math is already installed."
+          else
+            wp --path="$WP_ROOT" plugin install "$PLUGIN"
+          fi
+
+          if wp --path="$WP_ROOT" plugin is-active "$PLUGIN"; then
+            echo "Rank Math is already active."
+          else
+            wp --path="$WP_ROOT" plugin activate "$PLUGIN"
+          fi
+
+          wp --path="$WP_ROOT" plugin status "$PLUGIN"
+          wp --path="$WP_ROOT" plugin is-active "$PLUGIN"
