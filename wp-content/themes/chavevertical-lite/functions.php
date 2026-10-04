@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.50' );
+define( 'CVL_VERSION', '0.16.51' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -1924,13 +1924,21 @@ add_action( 'pre_get_posts', function ( WP_Query $query ) {
 
     $tax_query = (array) $query->get( 'tax_query' );
 
+    /*
+     * A categoria mãe agrega explicitamente todos os produtos da sua árvore.
+     * Quando o utilizador escolhe uma categoria do carrossel, o mesmo princípio
+     * aplica-se apenas a esse ramo: categoria escolhida + todos os descendentes.
+     */
     $selected_category = cvl_category_archive_selected_category( $base_term );
-    if ( $selected_category instanceof WP_Term ) {
+    $branch_term       = $selected_category instanceof WP_Term ? $selected_category : $base_term;
+    $branch_ids        = cvl_category_archive_branch_ids( $branch_term );
+
+    if ( $branch_ids ) {
         $tax_query[] = array(
             'taxonomy'         => 'product_cat',
             'field'            => 'term_id',
-            'terms'            => array( (int) $selected_category->term_id ),
-            'include_children' => true,
+            'terms'            => $branch_ids,
+            'include_children' => false,
             'operator'         => 'IN',
         );
     }
