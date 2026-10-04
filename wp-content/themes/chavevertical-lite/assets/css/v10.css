@@ -612,9 +612,19 @@ body.admin-bar.single-product .cvl-product-gallery-wrap{top:204px}
   align-items:flex-end!important;
   gap:28px!important;
   overflow-x:auto!important;
+  overflow-y:hidden!important;
+  scrollbar-width:none!important;
+  -ms-overflow-style:none!important;
   border-bottom:2px solid #e2e7ea!important;
   background:#fff!important;
 }
+
+.single-product .cvl-product-summary-tabs .woocommerce-tabs ul.tabs::-webkit-scrollbar{
+  display:none!important;
+  width:0!important;
+  height:0!important;
+}
+
 .single-product .cvl-product-summary-tabs .woocommerce-tabs ul.tabs::before,
 .single-product .cvl-product-summary-tabs .woocommerce-tabs ul.tabs::after,
 .single-product .cvl-product-summary-tabs .woocommerce-tabs ul.tabs li::before,
