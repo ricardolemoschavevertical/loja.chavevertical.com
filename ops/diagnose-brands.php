@@ -279,7 +279,7 @@ if ( is_wp_error( $exact_product_response ) ) {
     $result['exact_product_width_probe']['theme_version'] = defined( 'CVL_VERSION' ) ? CVL_VERSION : null;
 
     foreach ( array( 'v05.css', 'v10.css' ) as $probe_css_file ) {
-        if ( preg_match( '/<link[^>]+href=["\\']([^"\\']*' . preg_quote( $probe_css_file, '/' ) . '[^"\\']*)["\\']/i', $exact_body, $m ) ) {
+        if ( preg_match( "~<link[^>]+href=[\\\"']([^\\\"']*" . preg_quote( $probe_css_file, "~" ) . "[^\\\"']*)[\\\"']~i", $exact_body, $m ) ) {
             $css_href = html_entity_decode( $m[1], ENT_QUOTES );
             $result['exact_product_width_probe'][ str_replace( '.', '_', $probe_css_file ) . '_href' ] = $css_href;
             $css_response = wp_remote_get(
