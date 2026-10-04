@@ -14,6 +14,13 @@ defined( 'ABSPATH' ) || exit;
 <div class="cvl-utility cvl-utility-contactbar">
     <div class="cvl-shell cvl-utility-inner">
         <div class="cvl-meta-contact">
+            <a class="cvl-meta-link" href="tel:+351234020500" aria-label="Ligar para a Chave Vertical: 234 020 500">
+                <span class="cvl-meta-link-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M6.8 3.6 9.1 7.5c.3.5.2 1.1-.2 1.5l-1.5 1.2a13.8 13.8 0 0 0 6.4 6.4l1.2-1.5c.4-.4 1-.5 1.5-.2l3.9 2.3c.5.3.8.9.6 1.5l-.6 1.8c-.2.6-.8 1-1.5 1C9.7 21.5 2.5 14.3 2.5 5.1c0-.7.4-1.3 1-1.5l1.8-.6c.6-.2 1.2.1 1.5.6Z"></path></svg>
+                </span>
+                <span class="cvl-utility-contact-label">234 020 500</span>
+            </a>
+            <span class="cvl-meta-separator" aria-hidden="true"></span>
             <a class="cvl-meta-link" href="mailto:geral@chavevertical.pt">
                 <span class="cvl-meta-link-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24"><path d="M4 6.5h16v11H4z"></path><path d="m5 7.5 7 5.5 7-5.5"></path></svg>
@@ -58,11 +65,6 @@ defined( 'ABSPATH' ) || exit;
         </form>
 
         <div class="cvl-header-actions">
-            <a class="cvl-phone" href="tel:+351234020500" aria-label="Ligar para a Chave Vertical: 234 020 500">
-                <span class="cvl-phone-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6.8 3.6 9.1 7.5c.3.5.2 1.1-.2 1.5l-1.5 1.2a13.8 13.8 0 0 0 6.4 6.4l1.2-1.5c.4-.4 1-.5 1.5-.2l3.9 2.3c.5.3.8.9.6 1.5l-.6 1.8c-.2.6-.8 1-1.5 1C9.7 21.5 2.5 14.3 2.5 5.1c0-.7.4-1.3 1-1.5l1.8-.6c.6-.2 1.2.1 1.5.6Z"></path></svg></span>
-                <span class="cvl-phone-copy"><small>Apoio</small><strong>234 020 500</strong></span>
-            </a>
-
             <a class="cvl-header-action cvl-account-action" href="<?php echo esc_url( cvl_account_url() ); ?>" aria-label="<?php esc_attr_e( 'A minha conta', 'chavevertical-lite' ); ?>">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4.5 21a7.5 7.5 0 0 1 15 0"></path></svg>
                 <span class="cvl-action-label">Conta</span>
