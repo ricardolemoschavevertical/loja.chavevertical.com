@@ -31,6 +31,12 @@ if ( post_password_required() ) {
 
         <section class="summary entry-summary cvl-product-summary">
             <?php do_action( 'woocommerce_single_product_summary' ); ?>
+
+            <?php if ( function_exists( 'woocommerce_output_product_data_tabs' ) ) : ?>
+                <div class="cvl-product-summary-tabs">
+                    <?php woocommerce_output_product_data_tabs(); ?>
+                </div>
+            <?php endif; ?>
         </section>
     </div>
 

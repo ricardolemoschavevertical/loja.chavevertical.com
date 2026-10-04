@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.2' );
+define( 'CVL_VERSION', '0.16.3' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -574,7 +574,39 @@ add_action( 'wp', function () {
     remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_price', 10 );
     remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_meta', 40 );
     remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_sharing', 50 );
+    remove_action( 'woocommerce_after_single_product_summary', 'woocommerce_output_product_data_tabs', 10 );
 }, 20 );
+
+/**
+ * Barra de serviços no topo da coluna de informação, como na referência visual.
+ */
+function cvl_single_product_service_strip() {
+    global $product;
+
+    if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product ) {
+        return;
+    }
+
+    $quote_url = cvl_single_product_request_url( $product, 'orcamento' );
+
+    echo '<div class="cvl-single-service-strip">';
+    echo '<a href="' . esc_url( $quote_url ) . '">';
+    echo '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6z"></path><path d="M9 7h6M9 11h6M9 15h4"></path></svg>';
+    echo '<span>' . esc_html__( 'Peça cotação personalizada', 'chavevertical-lite' ) . '</span>';
+    echo '</a>';
+
+    echo '<span>';
+    echo '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13v-2a8 8 0 0 1 16 0v2"></path><path d="M4 13h3v6H5a1 1 0 0 1-1-1zM20 13h-3v6h2a1 1 0 0 0 1-1z"></path></svg>';
+    echo '<span>' . esc_html__( 'Apoio técnico especializado', 'chavevertical-lite' ) . '</span>';
+    echo '</span>';
+
+    echo '<span>';
+    echo '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"></path><circle cx="7" cy="18" r="2"></circle><circle cx="18" cy="18" r="2"></circle></svg>';
+    echo '<span>' . esc_html__( 'Envio para todo o país', 'chavevertical-lite' ) . '</span>';
+    echo '</span>';
+    echo '</div>';
+}
+add_action( 'woocommerce_single_product_summary', 'cvl_single_product_service_strip', 4 );
 
 /**
  * Badge comercial por cima da galeria.
@@ -595,7 +627,14 @@ function cvl_single_product_badge() {
         $label = __( 'PROMOÇÃO', 'chavevertical-lite' );
     } elseif ( 'instock' === $status ) {
         $class = 'is-stock';
-        $label = __( 'EM STOCK', 'chavevertical-lite' );
+
+        $stock_quantity = $product->managing_stock() ? $product->get_stock_quantity() : null;
+
+        if ( 1 === (int) $stock_quantity ) {
+            $label = __( 'SÓ 1 EM STOCK', 'chavevertical-lite' );
+        } else {
+            $label = __( 'EM STOCK', 'chavevertical-lite' );
+        }
     } elseif ( 'outofstock' === $status ) {
         $class = 'is-danger';
         $label = __( 'SOB CONSULTA', 'chavevertical-lite' );
@@ -879,20 +918,21 @@ function cvl_single_product_request_url( WC_Product $product, $request_type = 'q
     );
 }
 
-function cvl_single_product_proforma_action() {
+function cvl_single_product_quote_action() {
     global $product;
 
     if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product ) {
         return;
     }
 
-    $url = cvl_single_product_request_url( $product, 'fatura-pro-forma' );
+    $url = cvl_single_product_request_url( $product, 'orcamento' );
 
-    echo '<a class="cvl-single-proforma-button" href="' . esc_url( $url ) . '">';
-    echo esc_html__( 'SOLICITAR FATURA PRO-FORMA', 'chavevertical-lite' );
+    echo '<a class="cvl-single-proforma-button cvl-single-quote-button" href="' . esc_url( $url ) . '">';
+    echo '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6z"></path><path d="M9 7h6M9 11h6M9 15h4"></path></svg>';
+    echo '<span>' . esc_html__( 'SOLICITAR ORÇAMENTO', 'chavevertical-lite' ) . '</span>';
     echo '</a>';
 }
-add_action( 'woocommerce_after_add_to_cart_button', 'cvl_single_product_proforma_action', 20 );
+add_action( 'woocommerce_after_add_to_cart_button', 'cvl_single_product_quote_action', 20 );
 
 function cvl_single_product_quote_only_action() {
     global $product;
