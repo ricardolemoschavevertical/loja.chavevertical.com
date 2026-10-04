@@ -37,9 +37,10 @@ if ( post_password_required() ) {
         </section>
     </div>
 
-    <div class="cvl-product-after">
-        <?php do_action( 'woocommerce_after_single_product_summary' ); ?>
-    </div>
+</div>
+
+<div class="cvl-product-after">
+    <?php do_action( 'woocommerce_after_single_product_summary' ); ?>
 </div>
 
 <?php do_action( 'woocommerce_after_single_product' ); ?>
