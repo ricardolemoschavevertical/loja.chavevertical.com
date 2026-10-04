@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.69' );
+define( 'CVL_VERSION', '0.16.70' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -109,7 +109,10 @@ add_action( 'wp_enqueue_scripts', function () {
         );
     }
 
-    if ( function_exists( 'is_product_category' ) && is_product_category() ) {
+    if (
+        ( function_exists( 'is_product_category' ) && is_product_category() )
+        || ( taxonomy_exists( 'product_brand' ) && is_tax( 'product_brand' ) )
+    ) {
         wp_enqueue_script(
             'cvl-search-results',
             get_template_directory_uri() . '/assets/js/search-results.js',
