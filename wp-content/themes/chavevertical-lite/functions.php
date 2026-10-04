@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.24' );
+define( 'CVL_VERSION', '0.16.25' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -597,13 +597,7 @@ function cvl_single_product_service_strip() {
         return;
     }
 
-    $quote_url = cvl_single_product_request_url( $product, 'orcamento' );
-
     echo '<div class="cvl-single-service-strip">';
-    echo '<a href="' . esc_url( $quote_url ) . '">';
-    echo '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6z"></path><path d="M9 7h6M9 11h6M9 15h4"></path></svg>';
-    echo '<span class="cvl-single-service-copy"><strong>' . esc_html__( 'Peça cotação personalizada', 'chavevertical-lite' ) . '</strong><small>' . esc_html__( 'Soluções à medida do seu pedido', 'chavevertical-lite' ) . '</small></span>';
-    echo '</a>';
 
     echo '<span>';
     echo '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13v-2a8 8 0 0 1 16 0v2"></path><path d="M4 13h3v6H5a1 1 0 0 1-1-1zM20 13h-3v6h2a1 1 0 0 0 1-1z"></path></svg>';
