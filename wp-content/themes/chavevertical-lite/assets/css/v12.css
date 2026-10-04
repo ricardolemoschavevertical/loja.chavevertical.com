@@ -538,3 +538,11 @@
     display:inline-flex;
   }
 }
+
+
+/* v0.12.4 — hide top email CTA on mobile */
+@media(max-width:639.98px){
+  .cvl-contact-hero-actions > .cvl-contact-action.is-email{
+    display:none!important;
+  }
+}
