@@ -10,7 +10,8 @@ final class CVOS_Settings {
             'endpoint'                    => '',
             'auth_type'                   => 'basic',
             'username'                    => '',
-            'index_name'                  => 'cv_products',
+            'index_name'                  => 'wordpress-chavevertical-products',
+            'ca_file'                     => '',
             'verify_ssl'                  => 'yes',
             'allow_insecure_http'         => 'no',
             'timeout'                     => 12,
@@ -102,9 +103,18 @@ final class CVOS_Settings {
     }
 
     public function index_name(): string {
-        $name = strtolower( (string) $this->get( 'index_name', 'cv_products' ) );
+        $name = strtolower( (string) $this->get( 'index_name', 'wordpress-chavevertical-products' ) );
         $name = preg_replace( '/[^a-z0-9_-]+/', '-', $name );
-        return trim( $name, '-_' ) ?: 'cv_products';
+        return trim( $name, '-_' ) ?: 'wordpress-chavevertical-products';
+    }
+
+    public function ca_file(): string {
+        if ( defined( 'CVOS_CA_FILE' ) && CVOS_CA_FILE ) {
+            return wp_normalize_path( (string) CVOS_CA_FILE );
+        }
+
+        $path = trim( (string) $this->get( 'ca_file', '' ) );
+        return $path ? wp_normalize_path( $path ) : '';
     }
 
     public function configured(): bool {
@@ -129,7 +139,8 @@ final class CVOS_Settings {
         $out['endpoint']            = untrailingslashit( esc_url_raw( $endpoint ) );
         $out['auth_type']           = in_array( $input['auth_type'] ?? '', array( 'none', 'basic', 'bearer' ), true ) ? $input['auth_type'] : 'basic';
         $out['username']            = sanitize_text_field( $input['username'] ?? '' );
-        $out['index_name']          = sanitize_key( str_replace( '.', '-', $input['index_name'] ?? 'cv_products' ) ) ?: 'cv_products';
+        $out['index_name']          = sanitize_key( str_replace( '.', '-', $input['index_name'] ?? 'wordpress-chavevertical-products' ) ) ?: 'wordpress-chavevertical-products';
+        $out['ca_file']             = sanitize_text_field( $input['ca_file'] ?? '' );
         $out['timeout']             = min( 60, max( 2, absint( $input['timeout'] ?? 12 ) ) );
         $out['min_chars']           = min( 10, max( 1, absint( $input['min_chars'] ?? 2 ) ) );
         $out['suggestions_limit']   = min( 30, max( 3, absint( $input['suggestions_limit'] ?? 10 ) ) );
