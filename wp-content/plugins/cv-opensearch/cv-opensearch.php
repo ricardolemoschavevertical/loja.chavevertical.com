@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CV OpenSearch Catalog & Search
  * Description: Pesquisa e catálogo WooCommerce em OpenSearch remoto, com sincronização incremental, reindexação, pesquisa nativa e API para Astro.
- * Version: 0.1.4
+ * Version: 0.1.5
  * Author: Chave Vertical
  * Requires at least: 6.5
  * Requires PHP: 8.0
@@ -12,7 +12,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVOS_VERSION', '0.1.4' );
+define( 'CVOS_VERSION', '0.1.5' );
 define( 'CVOS_FILE', __FILE__ );
 define( 'CVOS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'CVOS_URL', plugin_dir_url( __FILE__ ) );
