@@ -1,14 +1,14 @@
-timestamp_utc=2026-10-04T22:20:14Z
+timestamp_utc=2026-10-04T22:22:46Z
 runner_user=codex1
 plugin_active=yes
 plugin_version=0.1.7
-theme_version=0.16.55
+theme_version=0.16.56
 live_search_template_has_filters=yes
 settings={"endpoint":"https://127.0.0.1:19200","auth_type":"basic","username":"wordpress","index":"wordpress-chavevertical-products","enabled":true,"replace_native_search":true,"enable_instant_search":true,"enable_astro_api":true,"verify_ssl":true,"secret_present":true,"ca_file":"/home/chavevertical-loja/htdocs/loja.chavevertical.com/wp-content/plugins/cv-opensearch/certs/opensearch-ca.pem","ca_file_readable":true,"ca_pem_present":false}
 reindex_state={"status":"complete","processed":212,"total":212,"started":1791138565,"updated":1791138567,"message":"","finished":1791138567}
 
 client_health={"ok":true,"status":"green","cluster":"wordpress-search"}
-index_probe={"ok":true,"total":1387,"items":1}
+index_probe={"ok":true,"total":1409,"items":1}
 public_health_http=200
 public_health_body={"ok":true,"configured":true,"enabled":true,"cluster":"wordpress-search","status":"green","index":"wordpress-chavevertical-products","plugin":"0.1.7"}
 public_suggest_http=200
