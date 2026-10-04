@@ -1261,3 +1261,43 @@ body.tax-product_cat .cvl-category-catalog-page .cvl-search-products li.product-
     grid-template-columns:1fr!important;
   }
 }
+
+/* Final category brand search */
+.cvl-final-brand-search{
+  margin:0 0 10px;
+}
+
+.cvl-final-brand-search-input{
+  width:100%;
+  min-height:38px;
+  padding:8px 11px;
+  border:1px solid #d8dde0;
+  border-radius:6px;
+  background:#fff;
+  color:#263238;
+  font-size:12px;
+  line-height:1.2;
+  outline:none;
+  transition:border-color .15s ease,box-shadow .15s ease;
+}
+
+.cvl-final-brand-search-input::placeholder{
+  color:#7c878d;
+  opacity:1;
+}
+
+.cvl-final-brand-search-input:focus{
+  border-color:var(--cvl-ref-teal);
+  box-shadow:0 0 0 3px rgba(15,121,104,.10);
+}
+
+.cvl-final-brand-search-empty{
+  margin:0 0 10px;
+  color:#6c777d;
+  font-size:11px;
+  line-height:1.4;
+}
+
+.cvl-final-brand-chip[hidden]{
+  display:none!important;
+}
