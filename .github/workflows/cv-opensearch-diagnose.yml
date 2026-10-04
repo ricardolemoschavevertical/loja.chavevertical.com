@@ -39,6 +39,10 @@ jobs:
             echo -n "plugin_version="
             wp --path="$WP_ROOT" eval 'echo defined("CVOS_VERSION") ? CVOS_VERSION : "missing";'
             echo
+            echo -n "theme_version="
+            wp --path="$WP_ROOT" eval 'echo defined("CVL_VERSION") ? CVL_VERSION : "missing";'
+            echo
+            echo "live_search_template_has_filters=$(grep -q 'cvl-search-filters' "$WP_ROOT/wp-content/themes/chavevertical-lite/search.php" && echo yes || echo no)"
             echo -n "settings="
             wp --path="$WP_ROOT" eval '
               $s = new CVOS_Settings();
@@ -91,8 +95,12 @@ jobs:
           SUGGEST_CODE=$(curl --connect-timeout 10 --max-time 30 -sS -o /tmp/cvos-suggest.json -w '%{http_code}' 'https://loja.chavevertical.com/wp-json/cv-opensearch/v1/suggest?q=powered&limit=3' || true)
           HOME_CODE=$(curl --connect-timeout 10 --max-time 30 -sS -o /tmp/cvos-home.html -w '%{http_code}' 'https://loja.chavevertical.com/' || true)
           CATALOG_CODE=$(curl --connect-timeout 10 --max-time 30 -sS -o /tmp/cvos-catalog.json -w '%{http_code}' 'https://loja.chavevertical.com/wp-json/cv-opensearch/v1/catalog/products?s=insonorizados&per_page=5' || true)
-          SEARCH_CODE=$(curl --connect-timeout 10 --max-time 30 -sS -o /tmp/cvos-search.html -w '%{http_code}' 'https://loja.chavevertical.com/?s=insonorizados&post_type=product' || true)
-          FILTER_CODE=$(curl --connect-timeout 10 --max-time 30 -sS -o /tmp/cvos-filter.html -w '%{http_code}' 'https://loja.chavevertical.com/?s=powered&post_type=product&min_price=100&max_price=5000' || true)
+          SEARCH_META=$(curl -L --connect-timeout 10 --max-time 30 -sS -o /tmp/cvos-search.html -w '%{http_code}|%{url_effective}' 'https://loja.chavevertical.com/?s=insonorizados&post_type=product' || true)
+          SEARCH_CODE="${SEARCH_META%%|*}"
+          SEARCH_URL="${SEARCH_META#*|}"
+          FILTER_META=$(curl -L --connect-timeout 10 --max-time 30 -sS -o /tmp/cvos-filter.html -w '%{http_code}|%{url_effective}' 'https://loja.chavevertical.com/?s=powered&post_type=product&min_price=100&max_price=5000' || true)
+          FILTER_CODE="${FILTER_META%%|*}"
+          FILTER_URL="${FILTER_META#*|}"
 
           {
             echo "public_health_http=$HEALTH_CODE"
@@ -131,6 +139,7 @@ jobs:
             echo
 
             echo "search_page_http=$SEARCH_CODE"
+            echo "search_page_final_url=$SEARCH_URL"
             echo "search_has_filter_panel=$(grep -q 'cvl-search-filters' /tmp/cvos-search.html && echo yes || echo no)"
             echo "search_has_brand_filter=$(grep -q '>MARCAS<' /tmp/cvos-search.html && echo yes || echo no)"
             echo "search_has_category_filter=$(grep -q '>CATEGORIAS<' /tmp/cvos-search.html && echo yes || echo no)"
@@ -141,7 +150,11 @@ jobs:
             echo
 
             echo "price_filtered_page_http=$FILTER_CODE"
-            echo "price_filter_values_present=$(grep -q 'name="min_price" value="100.00"' /tmp/cvos-filter.html && grep -q 'name="max_price" value="5000.00"' /tmp/cvos-filter.html && echo yes || echo no)"
+            echo "price_filtered_page_final_url=$FILTER_URL"
+            echo "price_filter_panel_present=$(grep -q 'cvl-search-price-filter' /tmp/cvos-filter.html && echo yes || echo no)"
+            echo -n "price_filter_input_snippet="
+            grep -oE 'name="(min_price|max_price)"[^>]*' /tmp/cvos-filter.html | head -n2 | tr '\n' ' ' || true
+            echo
           } >> "$OUT"
 
           sed -E 's/(password|secret)[^,}]*/\1=REDACTED/Ig' "$OUT"
