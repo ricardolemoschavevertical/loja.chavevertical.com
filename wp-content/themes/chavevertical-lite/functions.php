@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.39' );
+define( 'CVL_VERSION', '0.16.40' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -465,7 +465,7 @@ add_action( 'woocommerce_after_shop_loop_item_title', 'cvl_loop_product_meta', 4
  * - restantes estados mantêm promoção / stock.
  *
  * Utilizadores com gestão WooCommerce veem também a quantidade exata
- * quando o produto gere stock diretamente.
+ * apenas quando existem 3 ou mais unidades em stock.
  */
 function cvl_product_image_badge_data( WC_Product $product ) {
     $status         = $product->get_stock_status();
@@ -474,13 +474,6 @@ function cvl_product_image_badge_data( WC_Product $product ) {
     $can_manage     = is_user_logged_in() && current_user_can( 'manage_woocommerce' );
 
     if ( 'outofstock' === $status ) {
-        if ( $can_manage && null !== $stock_quantity ) {
-            return array(
-                'class' => 'is-unavailable',
-                'label' => sprintf( __( '%d EM STOCK', 'chavevertical-lite' ), $stock_quantity ),
-            );
-        }
-
         return null;
     }
 
@@ -504,13 +497,13 @@ function cvl_product_image_badge_data( WC_Product $product ) {
         $label = __( 'EM STOCK', 'chavevertical-lite' );
     }
 
-    if ( $can_manage && null !== $stock_quantity ) {
+    if ( $can_manage && null !== $stock_quantity && $stock_quantity >= 3 ) {
         $stock_label = sprintf( __( '%d EM STOCK', 'chavevertical-lite' ), $stock_quantity );
 
         if ( '' === $label || 'is-stock' === $class ) {
-            $class = '' === $class ? 'is-unavailable' : $class;
+            $class = '' === $class ? 'is-stock' : $class;
             $label = $stock_label;
-        } elseif ( ! ( 'is-low-stock' === $class && 1 === $stock_quantity ) ) {
+        } else {
             $label .= ' · ' . $stock_label;
         }
     }
