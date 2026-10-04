@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.42' );
+define( 'CVL_VERSION', '0.16.43' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -549,6 +549,10 @@ function cvl_loop_product_badge() {
     echo '<span class="cvl-product-badge ' . esc_attr( $badge['class'] ) . '">' . esc_html( $badge['label'] ) . '</span>';
 }
 add_action( 'woocommerce_before_shop_loop_item_title', 'cvl_loop_product_badge', 5 );
+
+add_action( 'wp', function () {
+    remove_action( 'woocommerce_before_shop_loop_item_title', 'woocommerce_show_product_loop_sale_flash', 10 );
+}, 25 );
 
 /**
  * Card de produto: disponibilidade perto do rating/preço.
