@@ -1,7 +1,9 @@
-timestamp_utc=2026-10-04T19:24:54Z
+timestamp_utc=2026-10-04T19:26:00Z
 runner_user=codex1
 plugin_active=yes
 plugin_version=0.1.6
+theme_version=0.16.1
+live_search_template_has_filters=yes
 settings={"endpoint":"https://127.0.0.1:19200","auth_type":"basic","username":"wordpress","index":"wordpress-chavevertical-products","enabled":true,"replace_native_search":true,"enable_instant_search":true,"enable_astro_api":true,"verify_ssl":true,"secret_present":true,"ca_file":"/home/chavevertical-loja/htdocs/loja.chavevertical.com/wp-content/plugins/cv-opensearch/certs/opensearch-ca.pem","ca_file_readable":true,"ca_pem_present":false}
 reindex_state={"status":"complete","processed":212,"total":212,"started":1791138565,"updated":1791138567,"message":"","finished":1791138567}
 
@@ -19,12 +21,16 @@ homepage_cvos_script_src=https://loja.chavevertical.com/wp-content/plugins/cv-op
 
 catalog_http=200
 catalog_summary={"ok":true,"source":"opensearch","total":1,"first_id":3296,"first_name":"Gerador Diesel 15kVA Mono Trifásico Hyundai DHY15000SE-T 12kW 230V/400V","first_category_match":true,"has_brand_facets":true,"has_category_facets":true,"has_price_facet":true}
-search_page_http=302
+search_page_http=200
+search_page_final_url=https://loja.chavevertical.com/produto/gerador-diesel-15kva-mono-trifasico-hyundai-dhy15000se-t-12kw-230v-400v/
 search_has_filter_panel=no
-search_has_brand_filter=no
-search_has_category_filter=no
+search_has_brand_filter=yes
+search_has_category_filter=yes
 search_has_price_filter=no
 search_has_category_label_in_product_card=no
-search_first_product_id=
+search_first_product_id=3296
+
 price_filtered_page_http=200
-price_filter_values_present=no
+price_filtered_page_final_url=https://loja.chavevertical.com/?s=powered&post_type=product&min_price=100&max_price=5000
+price_filter_panel_present=no
+price_filter_input_snippet=
