@@ -1,0 +1,52 @@
+name: Configure Recommended WooCommerce Features
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/configure-woocommerce-features.yml"
+      - "ops/configure-woocommerce-features.php"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: loja-woocommerce-settings
+  cancel-in-progress: false
+
+jobs:
+  configure:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Guard target WordPress
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_ROOT=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          test -f "$WP_ROOT/wp-load.php"
+          test "$(wp --path="$WP_ROOT" option get home | sed 's:/*$::')" = "https://loja.chavevertical.com"
+          test "$(wp --path="$WP_ROOT" option get siteurl | sed 's:/*$::')" = "https://loja.chavevertical.com"
+
+      - name: Backup database
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_ROOT=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          BACKUP_DIR=/home/codex1/backups/github-woocommerce-settings
+          mkdir -p "$BACKUP_DIR"
+          BACKUP="$BACKUP_DIR/before-features-$(date -u +%Y%m%dT%H%M%SZ).sql"
+          wp --path="$WP_ROOT" db export "$BACKUP" --quiet
+          test -s "$BACKUP"
+          chmod 600 "$BACKUP"
+          echo "Database backup: $BACKUP"
+
+      - name: Apply recommended features
+        shell: bash
+        run: php ops/configure-woocommerce-features.php
