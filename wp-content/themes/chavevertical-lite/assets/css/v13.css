@@ -1741,3 +1741,38 @@ body.tax-product_brand .cvl-brand-catalog-page .cvl-search-products li.product-c
     grid-template-columns:repeat(2,minmax(0,1fr))!important;
   }
 }
+
+
+/* Promotion catalogue uses the search-results layout */
+body.woocommerce-shop .cvl-promotion-catalog-page .cvl-search-products.woocommerce ul.products{
+  grid-template-columns:repeat(6,minmax(0,1fr))!important;
+}
+
+body.woocommerce-shop .cvl-promotion-catalog-page .cvl-search-products .cvl-product-category,
+body.woocommerce-shop .cvl-promotion-catalog-page .cvl-search-products li.product-category{
+  display:none!important;
+}
+
+@media(max-width:1399.98px){
+  body.woocommerce-shop .cvl-promotion-catalog-page .cvl-search-products.woocommerce ul.products{
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  }
+}
+
+@media(max-width:1199.98px){
+  body.woocommerce-shop .cvl-promotion-catalog-page .cvl-search-products.woocommerce ul.products{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  }
+}
+
+@media(max-width:991.98px){
+  body.woocommerce-shop .cvl-promotion-catalog-page .cvl-search-products.woocommerce ul.products{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+}
+
+@media(max-width:767.98px){
+  body.woocommerce-shop .cvl-promotion-catalog-page .cvl-search-products.woocommerce ul.products{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
