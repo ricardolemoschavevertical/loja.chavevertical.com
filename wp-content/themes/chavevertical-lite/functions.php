@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.34' );
+define( 'CVL_VERSION', '0.16.35' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -895,7 +895,7 @@ function cvl_single_product_info_panel() {
     $tags     = wp_get_post_terms( $product->get_id(), 'product_tag', array( 'fields' => 'names' ) );
     $tag_text = ! is_wp_error( $tags ) && ! empty( $tags ) ? implode( ', ', $tags ) : '—';
 
-    // Informação detalhada de disponibilidade com quantidade real e backorders.
+    // Informação detalhada de disponibilidade com quantidade real em stock.
     $availability_detail = $label;
 
     if ( 'instock' === $status && $product->managing_stock() ) {
@@ -911,9 +911,6 @@ function cvl_single_product_info_panel() {
                 );
             }
 
-            if ( $product->backorders_allowed() ) {
-                $availability_detail .= ' ' . __( '(pode ser encomendado sem stock)', 'chavevertical-lite' );
-            }
         }
     }
 

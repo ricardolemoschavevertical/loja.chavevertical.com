@@ -483,7 +483,7 @@ body.admin-bar.single-product .cvl-product-gallery-wrap{top:204px}
 .single-product .cvl-single-stock-state{
   display:inline-flex;
   align-items:center;
-  gap:7px;
+  gap:0;
   max-width:100%;
   color:#4d5961;
   font-weight:700;
