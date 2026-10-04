@@ -11,40 +11,35 @@ defined( 'ABSPATH' ) || exit;
 <body <?php body_class(); ?>>
 <?php wp_body_open(); ?>
 
-<div class="cvl-utility">
+<div class="cvl-utility cvl-utility-contactbar">
     <div class="cvl-shell cvl-utility-inner">
-        <span>🚚 <strong>Entregas Gratuitas</strong> para encomendas iguais ou superiores a 100€ + IVA*</span>
+        <div class="cvl-meta-contact">
+            <a class="cvl-meta-link" href="mailto:geral@chavevertical.pt">
+                <span class="cvl-meta-link-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M4 6.5h16v11H4z"></path><path d="m5 7.5 7 5.5 7-5.5"></path></svg>
+                </span>
+                <span class="cvl-utility-contact-label">geral@chavevertical.pt</span>
+            </a>
+            <span class="cvl-meta-separator" aria-hidden="true"></span>
+            <a class="cvl-meta-link" href="https://wa.me/351914580410" target="_blank" rel="noopener noreferrer">
+                <span class="cvl-meta-link-icon cvl-meta-link-icon-whatsapp" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M12.04 2a9.91 9.91 0 0 0-8.59 14.86L2.05 22l5.25-1.38A9.9 9.9 0 1 0 12.04 2Zm5.79 14.1c-.24.68-1.4 1.25-1.92 1.32-.5.07-1.14.1-3.32-.8-2.79-1.15-4.58-4.01-4.72-4.2-.14-.19-1.13-1.5-1.13-2.86 0-1.36.71-2.03.96-2.31.25-.28.56-.35.75-.35.19 0 .37 0 .53.01.17.01.4.06.61.57.24.57.81 1.98.88 2.12.07.14.12.31.02.5-.09.19-.14.31-.28.47-.14.17-.3.37-.43.5-.14.14-.29.3-.12.59.16.28.73 1.2 1.56 1.94 1.07.95 1.97 1.25 2.25 1.39.28.14.45.12.61-.07.17-.19.72-.84.91-1.13.19-.28.38-.24.64-.14.26.09 1.66.78 1.95.92.28.14.47.21.54.33.07.12.07.7-.17 1.38Z"></path></svg>
+                </span>
+                <span class="cvl-utility-contact-label">WhatsApp</span>
+            </a>
+        </div>
+
+        <div class="cvl-meta-social" aria-label="Redes sociais">
+            <a href="https://facebook.com/chavevertical" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><svg viewBox="0 0 24 24"><path d="M14 8h3V4h-3c-3 0-5 2-5 5v2H6v4h3v7h4v-7h3l1-4h-4V9c0-.7.3-1 1-1z"></path></svg></a>
+            <a href="https://x.com/ChaveVertical" target="_blank" rel="noopener noreferrer" aria-label="X"><svg viewBox="0 0 24 24"><path d="M5 4l14 16M19 4L5 20"></path></svg></a>
+            <a href="https://youtube.com/@chavevertical" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><svg viewBox="0 0 24 24"><path d="M21 8.2a3 3 0 0 0-2.1-2.1C17 5.5 12 5.5 12 5.5s-5 0-6.9.6A3 3 0 0 0 3 8.2 31 31 0 0 0 3 12a31 31 0 0 0 .1 3.8 3 3 0 0 0 2.1 2.1c1.9.6 6.9.6 6.9.6s5 0 6.9-.6a3 3 0 0 0 2.1-2.1A31 31 0 0 0 21 12a31 31 0 0 0 0-3.8z"></path><path class="cvl-social-play" d="M10 9l5 3-5 3z"></path></svg></a>
+            <a href="https://instagram.com/chavevertical" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"></rect><circle cx="12" cy="12" r="3.5"></circle><circle class="cvl-social-dot" cx="17.4" cy="6.7" r="1"></circle></svg></a>
+            <a href="https://www.linkedin.com/company/chave-vertical/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><svg viewBox="0 0 24 24"><path d="M6 9v10M6 5.5v.1M10.5 19v-6c0-2 1.3-3.5 3.4-3.5 2 0 3.1 1.3 3.1 3.5v6M10.5 13.5c0-2.2 1.4-4 3.8-4"></path></svg></a>
+        </div>
     </div>
 </div>
 
 <header class="cvl-header">
-    <div class="cvl-meta">
-        <div class="cvl-shell cvl-meta-inner">
-            <div class="cvl-meta-contact">
-                <a class="cvl-meta-link" href="mailto:geral@chavevertical.pt">
-                    <span class="cvl-meta-link-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24"><path d="M4 6.5h16v11H4z"></path><path d="m5 7.5 7 5.5 7-5.5"></path></svg>
-                    </span>
-                    <span>geral@chavevertical.pt</span>
-                </a>
-                <span class="cvl-meta-separator" aria-hidden="true"></span>
-                <a class="cvl-meta-link" href="https://wa.me/351914580410" target="_blank" rel="noopener noreferrer">
-                    <span class="cvl-meta-link-icon cvl-meta-link-icon-whatsapp" aria-hidden="true">
-                        <svg viewBox="0 0 24 24"><path d="M12.04 2a9.91 9.91 0 0 0-8.59 14.86L2.05 22l5.25-1.38A9.9 9.9 0 1 0 12.04 2Zm5.79 14.1c-.24.68-1.4 1.25-1.92 1.32-.5.07-1.14.1-3.32-.8-2.79-1.15-4.58-4.01-4.72-4.2-.14-.19-1.13-1.5-1.13-2.86 0-1.36.71-2.03.96-2.31.25-.28.56-.35.75-.35.19 0 .37 0 .53.01.17.01.4.06.61.57.24.57.81 1.98.88 2.12.07.14.12.31.02.5-.09.19-.14.31-.28.47-.14.17-.3.37-.43.5-.14.14-.29.3-.12.59.16.28.73 1.2 1.56 1.94 1.07.95 1.97 1.25 2.25 1.39.28.14.45.12.61-.07.17-.19.72-.84.91-1.13.19-.28.38-.24.64-.14.26.09 1.66.78 1.95.92.28.14.47.21.54.33.07.12.07.7-.17 1.38Z"></path></svg>
-                    </span>
-                    <span>Fale connosco no WhatsApp</span>
-                </a>
-            </div>
-
-            <div class="cvl-meta-social" aria-label="Redes sociais">
-                <a href="https://facebook.com/chavevertical" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><svg viewBox="0 0 24 24"><path d="M14 8h3V4h-3c-3 0-5 2-5 5v2H6v4h3v7h4v-7h3l1-4h-4V9c0-.7.3-1 1-1z"></path></svg></a>
-                <a href="https://x.com/ChaveVertical" target="_blank" rel="noopener noreferrer" aria-label="X"><svg viewBox="0 0 24 24"><path d="M5 4l14 16M19 4L5 20"></path></svg></a>
-                <a href="https://youtube.com/@chavevertical" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><svg viewBox="0 0 24 24"><path d="M21 8.2a3 3 0 0 0-2.1-2.1C17 5.5 12 5.5 12 5.5s-5 0-6.9.6A3 3 0 0 0 3 8.2 31 31 0 0 0 3 12a31 31 0 0 0 .1 3.8 3 3 0 0 0 2.1 2.1c1.9.6 6.9.6 6.9.6s5 0 6.9-.6a3 3 0 0 0 2.1-2.1A31 31 0 0 0 21 12a31 31 0 0 0 0-3.8z"></path><path class="cvl-social-play" d="M10 9l5 3-5 3z"></path></svg></a>
-                <a href="https://instagram.com/chavevertical" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"></rect><circle cx="12" cy="12" r="3.5"></circle><circle class="cvl-social-dot" cx="17.4" cy="6.7" r="1"></circle></svg></a>
-                <a href="https://www.linkedin.com/company/chave-vertical/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><svg viewBox="0 0 24 24"><path d="M6 9v10M6 5.5v.1M10.5 19v-6c0-2 1.3-3.5 3.4-3.5 2 0 3.1 1.3 3.1 3.5v6M10.5 13.5c0-2.2 1.4-4 3.8-4"></path></svg></a>
-            </div>
-        </div>
-    </div>
 
     <div class="cvl-shell cvl-header-main">
         <a class="cvl-brand" href="<?php echo esc_url( home_url( '/' ) ); ?>" aria-label="<?php esc_attr_e( 'Chave Vertical — início', 'chavevertical-lite' ); ?>">
