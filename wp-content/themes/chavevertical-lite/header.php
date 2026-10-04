@@ -108,7 +108,7 @@ defined( 'ABSPATH' ) || exit;
                 ),
                 array(
                     'label' => 'MARCAS',
-                    'url'   => home_url( '/marcas/' ),
+                    'url'   => cvl_brands_page_url(),
                 ),
                 array(
                     'label' => 'QUEM SOMOS',
