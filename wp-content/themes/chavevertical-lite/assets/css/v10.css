@@ -429,15 +429,32 @@ body.admin-bar.single-product .cvl-product-gallery-wrap{top:204px}
   width:42px;height:42px;flex:0 0 42px;display:grid;place-items:center;
   border-radius:50%;background:rgba(198,123,0,.12);color:#c67b00;
 }
-.single-product .cvl-single-availability.is-instock .cvl-single-availability-icon{background:rgba(8,160,92,.14);color:#08a05c}
+.single-product .cvl-single-availability.is-onbackorder .cvl-single-availability-icon{
+  background:rgba(198,123,0,.14);
+  color:#c67b00;
+  box-shadow:0 0 0 1px rgba(198,123,0,.12) inset;
+}
+.single-product .cvl-single-availability.is-instock .cvl-single-availability-icon{
+  background:rgba(8,160,92,.14);
+  color:#08a05c;
+  box-shadow:0 0 0 1px rgba(8,160,92,.12) inset;
+}
 .single-product .cvl-single-availability.is-outofstock .cvl-single-availability-icon{
-  background:rgba(37,211,102,.14);
-  color:#128c4b;
-  box-shadow:0 0 0 1px rgba(37,211,102,.12) inset;
+  background:rgba(183,40,40,.14);
+  color:#b72828;
+  box-shadow:0 0 0 1px rgba(183,40,40,.12) inset;
+}
+.single-product .cvl-single-availability:hover .cvl-single-availability-icon{
+  transform:scale(1.04);
+}
+.single-product .cvl-single-availability.is-onbackorder:hover .cvl-single-availability-icon{
+  background:rgba(198,123,0,.22);
+}
+.single-product .cvl-single-availability.is-instock:hover .cvl-single-availability-icon{
+  background:rgba(8,160,92,.22);
 }
 .single-product .cvl-single-availability.is-outofstock:hover .cvl-single-availability-icon{
-  background:rgba(37,211,102,.22);
-  transform:scale(1.04);
+  background:rgba(183,40,40,.22);
 }
 .single-product .cvl-single-availability-icon{
   transition:background .16s ease,transform .16s ease;
