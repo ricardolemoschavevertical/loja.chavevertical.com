@@ -222,15 +222,39 @@ final class CVOS_Client {
             'headers'     => $headers,
         );
 
-        $ca_file = $this->settings->ca_file();
-        if ( $this->settings->is_yes( 'verify_ssl' ) && $ca_file ) {
-            if ( ! is_readable( $ca_file ) || ! is_file( $ca_file ) ) {
-                return new WP_Error(
-                    'cvos_ca_unreadable',
-                    'O certificado CA configurado não existe ou não pode ser lido pelo WordPress.'
-                );
+        $temp_ca = '';
+
+        if ( $this->settings->is_yes( 'verify_ssl' ) ) {
+            $ca_file = $this->settings->ca_file();
+
+            if ( $ca_file ) {
+                if ( ! is_readable( $ca_file ) || ! is_file( $ca_file ) ) {
+                    return new WP_Error(
+                        'cvos_ca_unreadable',
+                        'O certificado CA configurado não existe ou não pode ser lido pelo WordPress.'
+                    );
+                }
+
+                $args['sslcertificates'] = $ca_file;
+            } elseif ( $this->settings->has_ca_pem() ) {
+                $pem = $this->settings->normalize_ca_pem( $this->settings->ca_pem() );
+
+                if ( is_wp_error( $pem ) ) {
+                    return $pem;
+                }
+
+                $temp_ca = wp_tempnam( 'cvos-opensearch-ca.pem' );
+
+                if ( ! $temp_ca || false === file_put_contents( $temp_ca, $pem, LOCK_EX ) ) {
+                    return new WP_Error(
+                        'cvos_ca_temp_failed',
+                        'Não foi possível preparar temporariamente o certificado CA para a ligação OpenSearch.'
+                    );
+                }
+
+                @chmod( $temp_ca, 0600 );
+                $args['sslcertificates'] = $temp_ca;
             }
-            $args['sslcertificates'] = $ca_file;
         }
 
         if ( null !== $body ) {
@@ -238,6 +262,11 @@ final class CVOS_Client {
         }
 
         $response = wp_remote_request( $base . '/' . ltrim( $path, '/' ), $args );
+
+        if ( $temp_ca && is_file( $temp_ca ) ) {
+            @unlink( $temp_ca );
+        }
+
         if ( is_wp_error( $response ) ) {
             return $response;
         }

@@ -4,6 +4,7 @@ defined( 'ABSPATH' ) || exit;
 final class CVOS_Settings {
     public const OPTION = 'cvos_settings';
     public const SECRET_OPTION = 'cvos_secret';
+    public const CA_PEM_OPTION = 'cvos_ca_pem';
 
     public static function defaults(): array {
         return array(
@@ -115,6 +116,60 @@ final class CVOS_Settings {
 
         $path = trim( (string) $this->get( 'ca_file', '' ) );
         return $path ? wp_normalize_path( $path ) : '';
+    }
+
+    public function ca_pem(): string {
+        if ( defined( 'CVOS_CA_PEM' ) && CVOS_CA_PEM ) {
+            return trim( (string) CVOS_CA_PEM );
+        }
+
+        return trim( (string) get_option( self::CA_PEM_OPTION, '' ) );
+    }
+
+    public function has_ca_pem(): bool {
+        return '' !== $this->ca_pem();
+    }
+
+    public function normalize_ca_pem( string $pem ) {
+        $pem = trim( str_replace( "\r", '', $pem ) );
+
+        if ( '' === $pem ) {
+            return new WP_Error( 'cvos_empty_ca', 'O certificado CA está vazio.' );
+        }
+
+        if ( preg_match( '/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/i', $pem ) ) {
+            return new WP_Error( 'cvos_private_key_rejected', 'Não cole chaves privadas. Este campo aceita apenas certificados públicos PEM.' );
+        }
+
+        if ( ! preg_match_all( '/-----BEGIN CERTIFICATE-----\s+[A-Za-z0-9+\/=\s]+-----END CERTIFICATE-----/s', $pem, $matches ) || empty( $matches[0] ) ) {
+            return new WP_Error( 'cvos_invalid_ca', 'Não foi encontrado um certificado PEM válido.' );
+        }
+
+        $normalized = array();
+
+        foreach ( $matches[0] as $certificate ) {
+            $certificate = trim( preg_replace( "/\n{3,}/", "\n\n", str_replace( "\r", '', $certificate ) ) );
+
+            if ( function_exists( 'openssl_x509_read' ) ) {
+                $resource = openssl_x509_read( $certificate );
+                if ( false === $resource ) {
+                    return new WP_Error( 'cvos_invalid_ca', 'O conteúdo PEM não é um certificado X.509 válido.' );
+                }
+            } else {
+                $body = preg_replace(
+                    '/-----BEGIN CERTIFICATE-----|-----END CERTIFICATE-----|\s+/',
+                    '',
+                    $certificate
+                );
+                if ( false === base64_decode( $body, true ) ) {
+                    return new WP_Error( 'cvos_invalid_ca', 'O conteúdo PEM não pôde ser validado.' );
+                }
+            }
+
+            $normalized[] = $certificate;
+        }
+
+        return implode( "\n", $normalized ) . "\n";
     }
 
     public function configured(): bool {

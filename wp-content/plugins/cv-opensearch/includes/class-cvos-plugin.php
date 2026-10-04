@@ -49,6 +49,10 @@ final class CVOS_Plugin {
             add_option( CVOS_Settings::SECRET_OPTION, '', '', false );
         }
 
+        if ( false === get_option( CVOS_Settings::CA_PEM_OPTION, false ) ) {
+            add_option( CVOS_Settings::CA_PEM_OPTION, '', '', false );
+        }
+
         self::create_analytics_table();
 
         $client     = new CVOS_Client( $settings );
@@ -124,6 +128,23 @@ final class CVOS_Plugin {
 
         if ( '' !== $secret ) {
             update_option( CVOS_Settings::SECRET_OPTION, $secret, false );
+        }
+
+        $remove_ca = ! empty( $_POST['cvos_remove_ca_pem'] );
+        $ca_pem    = isset( $_POST['cvos_ca_pem'] )
+            ? trim( (string) wp_unslash( $_POST['cvos_ca_pem'] ) )
+            : '';
+
+        if ( $remove_ca ) {
+            update_option( CVOS_Settings::CA_PEM_OPTION, '', false );
+        } elseif ( '' !== $ca_pem ) {
+            $normalized_ca = $this->settings->normalize_ca_pem( $ca_pem );
+
+            if ( is_wp_error( $normalized_ca ) ) {
+                $this->redirect_admin( 'error', $normalized_ca->get_error_message() );
+            }
+
+            update_option( CVOS_Settings::CA_PEM_OPTION, $normalized_ca, false );
         }
 
         $this->indexer->update_schedule();
@@ -249,8 +270,23 @@ final class CVOS_Plugin {
                             <td><input id="cvos-index" class="regular-text code" type="text" name="settings[index_name]" value="<?php echo esc_attr( $settings['index_name'] ); ?>"><p class="description">Para este servidor use um nome dentro de <code>wordpress-chavevertical-*</code>, por exemplo <code>wordpress-chavevertical-products</code>.</p></td>
                         </tr>
                         <tr>
-                            <th><label for="cvos-ca-file">Certificado CA</label></th>
-                            <td><input id="cvos-ca-file" class="large-text code" type="text" name="settings[ca_file]" value="<?php echo esc_attr( $settings['ca_file'] ?? '' ); ?>" placeholder="/caminho/privado/opensearch-ca.pem"><p class="description">Caminho absoluto no servidor WordPress para <code>opensearch-ca.pem</code>. O ficheiro deve ficar fora da pasta pública sempre que possível.</p></td>
+                            <th><label for="cvos-ca-file">Certificado CA — ficheiro</label></th>
+                            <td><input id="cvos-ca-file" class="large-text code" type="text" name="settings[ca_file]" value="<?php echo esc_attr( $settings['ca_file'] ?? '' ); ?>" placeholder="/caminho/privado/opensearch-ca.pem"><p class="description">Opcional. Caminho absoluto para um ficheiro PEM privado no servidor. Se este campo estiver preenchido, tem prioridade sobre o certificado colado abaixo.</p></td>
+                        </tr>
+                        <tr>
+                            <th><label for="cvos-ca-pem">Colar certificado CA (PEM)</label></th>
+                            <td>
+                                <textarea id="cvos-ca-pem" class="large-text code" rows="10" name="cvos_ca_pem" placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"></textarea>
+                                <p class="description">
+                                    Cole aqui apenas o certificado público <code>opensearch-ca.pem</code>. O conteúdo é validado antes de ser guardado e não volta a ser mostrado no formulário.
+                                    <?php if ( $this->settings->has_ca_pem() ) : ?>
+                                        <strong>Já existe um certificado PEM importado.</strong>
+                                    <?php endif; ?>
+                                </p>
+                                <?php if ( $this->settings->has_ca_pem() ) : ?>
+                                    <label><input type="checkbox" name="cvos_remove_ca_pem" value="1"> Remover o certificado PEM atualmente guardado</label>
+                                <?php endif; ?>
+                            </td>
                         </tr>
                         <tr>
                             <th>Segurança TLS</th>
@@ -370,7 +406,7 @@ final class CVOS_Plugin {
                     <section style="background:#fff;border:1px solid #dcdcde;padding:18px">
                         <h2 style="margin-top:0">Segurança</h2>
                         <p>O Astro não recebe credenciais do OpenSearch. Consulta a API somente-leitura deste plugin.</p>
-                        <p>Em produção pode guardar segredos em <code>wp-config.php</code> através de <code>CVOS_ENDPOINT</code>, <code>CVOS_USERNAME</code>, <code>CVOS_PASSWORD</code> ou <code>CVOS_BEARER_TOKEN</code>. O caminho da CA também pode ser definido em <code>CVOS_CA_FILE</code>.</p>
+                        <p>Em produção pode guardar segredos em <code>wp-config.php</code> através de <code>CVOS_ENDPOINT</code>, <code>CVOS_USERNAME</code>, <code>CVOS_PASSWORD</code> ou <code>CVOS_BEARER_TOKEN</code>. O caminho da CA também pode ser definido em <code>CVOS_CA_FILE</code>; em alternativa, o certificado público pode ser colado diretamente no campo PEM acima.</p>
                     </section>
                 </aside>
             </div>
