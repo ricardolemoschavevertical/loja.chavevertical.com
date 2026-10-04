@@ -11,7 +11,7 @@ get_header();
 $locations = array(
     array(
         'name'    => 'Loja / Armazém Aveiro',
-        'address' => "Trading Park Cacia\nRua da Paz nº 123, Armazém B\nQuinta do Loureiro\n3800-587 Cacia - Aveiro",
+        'address' => "Trading Park Cacia\nRua da Paz nº 123\nArmazém A & B · Quinta do Loureiro\n3800-587 Cacia - Aveiro",
         'maps'    => 'Trading Park Cacia Rua da Paz 123 Armazém B Quinta do Loureiro 3800-587 Cacia Aveiro',
     ),
     array(
@@ -45,11 +45,12 @@ $locations = array(
         <div class="cvl-contact-grid">
             <article class="cvl-contact-card is-online">
                 <div class="cvl-contact-card-icon" aria-hidden="true">↗</div>
-                <h3><?php esc_html_e( 'Loja Online', 'chavevertical-lite' ); ?></h3>
+                <h3><?php esc_html_e( 'Encomendas On-line', 'chavevertical-lite' ); ?></h3>
                 <p class="cvl-contact-card-name">Ricardo Lemos</p>
                 <ul class="cvl-contact-card-list">
-                    <li><a href="tel:+351914580410">914 580 410*</a></li>
+                    <li><a href="tel:+351914580410">914 580 410</a></li>
                     <li><a href="mailto:ricardo@chavevertical.pt">ricardo@chavevertical.pt</a></li>
+                    <li><a href="mailto:ricardo@chavevertical.com">ricardo@chavevertical.com</a></li>
                 </ul>
                 <div class="cvl-contact-card-actions">
                     <a href="https://wa.me/351914580410" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'WhatsApp', 'chavevertical-lite' ); ?></a>
@@ -60,21 +61,22 @@ $locations = array(
             <article class="cvl-contact-card">
                 <div class="cvl-contact-card-icon" aria-hidden="true">C</div>
                 <h3><?php esc_html_e( 'Departamento Comercial', 'chavevertical-lite' ); ?></h3>
-                <p class="cvl-contact-card-name"><?php esc_html_e( 'Apoio a clientes e propostas comerciais', 'chavevertical-lite' ); ?></p>
+                <p class="cvl-contact-card-name">Ricardo · José · Joana · Samuel · Andreia · Luis</p>
                 <ul class="cvl-contact-card-list">
                     <li><a href="tel:+351234020500">234 020 500</a></li>
-                    <li><a href="tel:+351914938100">914 938 100*</a></li>
-                    <li><a href="mailto:comercial@chavevertical.pt">comercial@chavevertical.pt</a></li>
+                    <li><a href="tel:+351914938100">914 938 100</a></li>
+                    <li><a href="mailto:geral@chavevertical.pt">geral@chavevertical.pt</a></li>
+                    <li><a href="mailto:info@chavevertical.com">info@chavevertical.com</a></li>
                 </ul>
             </article>
 
             <article class="cvl-contact-card">
                 <div class="cvl-contact-card-icon" aria-hidden="true">SPV</div>
                 <h3><?php esc_html_e( 'Serviço Pós-Venda', 'chavevertical-lite' ); ?></h3>
-                <p class="cvl-contact-card-name"><?php esc_html_e( 'Assistência após a compra', 'chavevertical-lite' ); ?></p>
+                <p class="cvl-contact-card-name">Samuel</p>
                 <ul class="cvl-contact-card-list">
+                    <li><a href="tel:+351928065970">928 065 970</a></li>
                     <li><a href="tel:+351234020500">234 020 500</a></li>
-                    <li><a href="tel:+351928065970">928 065 970*</a></li>
                     <li><a href="mailto:spv@chavevertical.pt">spv@chavevertical.pt</a></li>
                 </ul>
             </article>
@@ -82,10 +84,21 @@ $locations = array(
             <article class="cvl-contact-card">
                 <div class="cvl-contact-card-icon" aria-hidden="true">€</div>
                 <h3><?php esc_html_e( 'Contabilidade', 'chavevertical-lite' ); ?></h3>
-                <p class="cvl-contact-card-name"><?php esc_html_e( 'Documentação e assuntos administrativos', 'chavevertical-lite' ); ?></p>
+                <p class="cvl-contact-card-name">João Colaço</p>
                 <ul class="cvl-contact-card-list">
+                    <li><a href="tel:+351300529937">300 529 937</a></li>
                     <li><a href="tel:+351234020500">234 020 500</a></li>
                     <li><a href="mailto:contabilidade@chavevertical.pt">contabilidade@chavevertical.pt</a></li>
+                </ul>
+            </article>
+
+            <article class="cvl-contact-card">
+                <div class="cvl-contact-card-icon" aria-hidden="true">A</div>
+                <h3><?php esc_html_e( 'Administração', 'chavevertical-lite' ); ?></h3>
+                <p class="cvl-contact-card-name">Rui Lemos</p>
+                <ul class="cvl-contact-card-list">
+                    <li><a href="tel:+351915216090">915 216 090</a></li>
+                    <li><a href="mailto:ruilemos@chavevertical.pt">ruilemos@chavevertical.pt</a></li>
                 </ul>
             </article>
         </div>
