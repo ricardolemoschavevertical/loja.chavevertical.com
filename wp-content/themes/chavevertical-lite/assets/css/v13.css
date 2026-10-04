@@ -1306,7 +1306,7 @@ body.tax-product_cat .cvl-category-catalog-page .cvl-search-products li.product-
 .cvl-footer-v2{
   margin-top:56px!important;
   padding:0!important;
-  background:#2f2f2f!important;
+  background:#11191d!important;
   color:#d9e1e4!important;
   font-family:"DM Sans",system-ui,sans-serif;
 }
@@ -1523,7 +1523,7 @@ body.tax-product_cat .cvl-category-catalog-page .cvl-search-products li.product-
 
 .cvl-footer-v2-trust{
   border-top:1px solid rgba(255,255,255,.08);
-  background:#2f2f2f;
+  background:#0d1418;
 }
 
 .cvl-footer-v2-trust-grid{
@@ -1598,7 +1598,7 @@ body.tax-product_cat .cvl-category-catalog-page .cvl-search-products li.product-
 
 .cvl-footer-v2-bottom{
   border-top:1px solid rgba(255,255,255,.055);
-  background:#2f2f2f;
+  background:#090f12;
 }
 
 .cvl-footer-v2-bottom-inner{
@@ -1704,5 +1704,5 @@ body.tax-product_cat .cvl-category-catalog-page .cvl-search-products li.product-
 
 
 .cvl-footer-v2 .cvl-footer-social-play{
-  fill:#2f2f2f!important;
+  fill:#0d1418!important;
 }
