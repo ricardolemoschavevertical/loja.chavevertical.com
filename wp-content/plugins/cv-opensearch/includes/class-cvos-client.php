@@ -222,6 +222,17 @@ final class CVOS_Client {
             'headers'     => $headers,
         );
 
+        $ca_file = $this->settings->ca_file();
+        if ( $this->settings->is_yes( 'verify_ssl' ) && $ca_file ) {
+            if ( ! is_readable( $ca_file ) || ! is_file( $ca_file ) ) {
+                return new WP_Error(
+                    'cvos_ca_unreadable',
+                    'O certificado CA configurado não existe ou não pode ser lido pelo WordPress.'
+                );
+            }
+            $args['sslcertificates'] = $ca_file;
+        }
+
         if ( null !== $body ) {
             $args['body'] = $body;
         }
