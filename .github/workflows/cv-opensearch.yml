@@ -1,0 +1,81 @@
+name: Package and Deploy CV OpenSearch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "wp-content/plugins/cv-opensearch/**"
+      - ".github/workflows/cv-opensearch.yml"
+      - "ops/deploy-cv-opensearch.sh"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cv-opensearch-deploy
+  cancel-in-progress: false
+
+jobs:
+  package:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate plugin
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLUGIN="wp-content/plugins/cv-opensearch"
+          test -f "$PLUGIN/cv-opensearch.php"
+          find "$PLUGIN" -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          node --check "$PLUGIN/assets/search.js"
+          bash -n ops/deploy-cv-opensearch.sh
+
+      - name: Build installable ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd wp-content/plugins
+          zip -qr cv-opensearch.zip cv-opensearch
+          unzip -t cv-opensearch.zip
+
+      - name: Upload plugin ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: cv-opensearch
+          path: wp-content/plugins/cv-opensearch.zip
+          if-no-files-found: error
+          retention-days: 30
+
+  deploy:
+    needs: package
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Download plugin ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: cv-opensearch
+          path: ${{ runner.temp }}/cv-opensearch-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Deploy and activate
+        shell: bash
+        env:
+          PLUGIN_ZIP: ${{ runner.temp }}/cv-opensearch-${{ github.run_id }}-${{ github.run_attempt }}/cv-opensearch.zip
+        run: bash ops/deploy-cv-opensearch.sh "$PLUGIN_ZIP"
+
+      - name: Verify public health endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl --connect-timeout 10 --max-time 30 -sS -o /tmp/cvos-health.json -w '%{http_code}' 'https://loja.chavevertical.com/wp-json/cv-opensearch/v1/health')
+          test "$code" = "200" || test "$code" = "503"
+          cat /tmp/cvos-health.json
