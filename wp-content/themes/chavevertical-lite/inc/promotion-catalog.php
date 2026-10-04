@@ -566,9 +566,6 @@ function cvl_promotion_catalog_layout(): void {
                             <?php if ( $selected_category instanceof WP_Term ) : ?>
                                 <input type="hidden" name="categoria" value="<?php echo esc_attr( $selected_category->slug ); ?>">
                             <?php endif; ?>
-                            <?php foreach ( $selected_brands as $selected_brand_slug ) : ?>
-                                <input type="hidden" name="marca[]" value="<?php echo esc_attr( $selected_brand_slug ); ?>">
-                            <?php endforeach; ?>
                             <?php if ( $min_price > 0 ) : ?>
                                 <input type="hidden" name="min_price" value="<?php echo esc_attr( wc_format_decimal( $min_price, 2 ) ); ?>">
                             <?php endif; ?>
@@ -700,6 +697,9 @@ function cvl_promotion_catalog_layout(): void {
                             <?php if ( $selected_category instanceof WP_Term ) : ?>
                                 <input type="hidden" name="categoria" value="<?php echo esc_attr( $selected_category->slug ); ?>">
                             <?php endif; ?>
+                            <?php foreach ( $selected_brands as $selected_brand_slug ) : ?>
+                                <input type="hidden" name="marca[]" value="<?php echo esc_attr( $selected_brand_slug ); ?>">
+                            <?php endforeach; ?>
 
                             <div class="cvl-search-price-inputs">
                                 <label>
