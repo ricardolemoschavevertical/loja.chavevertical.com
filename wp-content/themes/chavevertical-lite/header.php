@@ -134,7 +134,9 @@ defined( 'ABSPATH' ) || exit;
                 ),
                 array(
                     'label' => 'PROMOÇÕES',
-                    'url'   => 'https://chavevertical.com/promocoes/',
+                    'url'   => function_exists( 'cvl_promotions_url' )
+                        ? cvl_promotions_url()
+                        : add_query_arg( 'on_sale', '1', home_url( '/shop/' ) ),
                     'badge' => 'OPORTUNIDADES',
                     'badge_class' => 'is-opportunity',
                 ),
