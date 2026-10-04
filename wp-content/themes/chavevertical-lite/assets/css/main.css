@@ -9,6 +9,8 @@
   --cvl-red:#d62828;
   --cvl-red-dark:#a81e1e;
   --cvl-red-soft:#fff3f3;
+  --cvl-commercial-green:#009a56;
+  --cvl-commercial-green-dark:#087d4b;
   --cvl-shell:calc(100% - 96px);
   --cvl-radius:8px;
 }
@@ -72,8 +74,8 @@ button,input,select,textarea{font:inherit}
 .cvl-hero p{max-width:680px;color:var(--cvl-muted);font-size:17px;line-height:1.7}
 .cvl-hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
 .cvl-button{min-height:44px;padding:0 18px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #cfd5d9;background:#fff;font-size:12px;font-weight:900}
-.cvl-button-primary{border-color:var(--cvl-red);background:var(--cvl-red);color:#fff}
-.cvl-button-primary:hover{background:var(--cvl-red-dark)}
+.cvl-button-primary{border-color:var(--cvl-commercial-green);background:var(--cvl-commercial-green);color:#fff}
+.cvl-button-primary:hover{background:var(--cvl-commercial-green-dark)}
 .cvl-hero-panel{min-height:250px;padding:34px;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;background:var(--cvl-ink);color:#fff;border-radius:14px}
 .cvl-hero-panel strong{font-size:24px}
 .cvl-hero-panel span{color:#c6ced4;line-height:1.5}
@@ -100,15 +102,15 @@ button,input,select,textarea{font:inherit}
 .woocommerce ul.products li.product a img{aspect-ratio:1/1;object-fit:contain;margin:0 0 14px!important}
 .woocommerce ul.products li.product .woocommerce-loop-product__title{min-height:50px;padding:0!important;color:var(--cvl-ink);font-size:13px!important;line-height:1.35;font-weight:800}
 .woocommerce ul.products li.product .price{margin:12px 0!important;color:var(--cvl-ink)!important;font-size:16px!important;font-weight:900!important}
-.woocommerce ul.products li.product .button{width:100%;min-height:38px;margin-top:8px!important;display:flex!important;align-items:center;justify-content:center;border-radius:5px!important;background:var(--cvl-red)!important;color:#fff!important;font-size:11px!important;font-weight:900!important}
-.woocommerce ul.products li.product .button:hover{background:var(--cvl-red-dark)!important}
+.woocommerce ul.products li.product .button{width:100%;min-height:38px;margin-top:8px!important;display:flex!important;align-items:center;justify-content:center;border-radius:5px!important;background:var(--cvl-commercial-green)!important;color:#fff!important;font-size:11px!important;font-weight:900!important}
+.woocommerce ul.products li.product .button:hover{background:var(--cvl-commercial-green-dark)!important}
 
 .woocommerce div.product{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:48px}
 .woocommerce div.product div.images,.woocommerce div.product div.summary{float:none!important;width:auto!important}
 .woocommerce div.product div.images img{border:1px solid var(--cvl-line);border-radius:12px;background:#fff}
 .woocommerce div.product .product_title{font-size:clamp(26px,3vw,40px);line-height:1.15}
 .woocommerce div.product p.price,.woocommerce div.product span.price{color:var(--cvl-ink)!important;font-size:24px!important;font-weight:900!important}
-.woocommerce div.product form.cart .button{min-height:46px;background:var(--cvl-red)!important;border-radius:5px!important;font-weight:900!important}
+.woocommerce div.product form.cart .button{min-height:46px;background:var(--cvl-commercial-green)!important;border-radius:5px!important;font-weight:900!important}
 .woocommerce div.product .quantity .qty{min-height:46px;border:1px solid var(--cvl-line)}
 .woocommerce-tabs{grid-column:1/-1}
 .woocommerce-message,.woocommerce-info,.woocommerce-error{border-top-color:var(--cvl-teal)!important}
@@ -294,7 +296,7 @@ button,input,select,textarea{font:inherit}
 }
 .woocommerce ul.products li.product .cvl-product-actions .add_to_cart_button,
 .woocommerce ul.products li.product .cvl-product-actions .product_type_simple{
-  background:var(--cvl-red)!important;
+  background:var(--cvl-commercial-green)!important;
   color:#fff!important;
 }
 .woocommerce ul.products li.product .cvl-product-actions .cvl-view-product{
@@ -516,12 +518,12 @@ button,input,select,textarea{font:inherit}
 .woocommerce button.button.alt,
 .woocommerce input.button.alt,
 #place_order{
-  background:var(--cvl-red)!important;
+  background:var(--cvl-commercial-green)!important;
 }
 .woocommerce .button.alt:hover,
 .woocommerce button.button.alt:hover,
 #place_order:hover{
-  background:var(--cvl-red-dark)!important;
+  background:var(--cvl-commercial-green-dark)!important;
 }
 .woocommerce-checkout #customer_details{
   display:grid;

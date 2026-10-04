@@ -322,15 +322,15 @@
   display:flex!important;
   align-items:center!important;
   justify-content:center!important;
-  border:1px solid var(--cvl-ref-teal)!important;
-  background:var(--cvl-ref-teal)!important;
+  border:1px solid var(--cvl-commercial-green)!important;
+  background:var(--cvl-commercial-green)!important;
   color:#fff!important;
 }
 
 :is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-actions .cvl-cart-icon-button:hover,
 :is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-actions .cvl-cart-icon-button:focus{
-  border-color:var(--cvl-ref-teal-dark)!important;
-  background:var(--cvl-ref-teal-dark)!important;
+  border-color:var(--cvl-commercial-green-dark)!important;
+  background:var(--cvl-commercial-green-dark)!important;
   color:#fff!important;
 }
 
@@ -677,17 +677,17 @@ body.cvl-site .cvl-shell{
 body.single-product.woocommerce .cvl-product-summary form.cart button.single_add_to_cart_button,
 body.single-product.woocommerce .cvl-product-summary form.cart .single_add_to_cart_button.button,
 body.single-product.woocommerce .cvl-product-summary form.cart .single_add_to_cart_button.button.alt{
-  background:#009a56!important;
-  background-color:#009a56!important;
-  border-color:#009a56!important;
+  background:var(--cvl-commercial-green)!important;
+  background-color:var(--cvl-commercial-green)!important;
+  border-color:var(--cvl-commercial-green)!important;
   color:#fff!important;
 }
 
 body.single-product.woocommerce .cvl-product-summary form.cart button.single_add_to_cart_button:hover,
 body.single-product.woocommerce .cvl-product-summary form.cart .single_add_to_cart_button.button:hover,
 body.single-product.woocommerce .cvl-product-summary form.cart .single_add_to_cart_button.button.alt:hover{
-  background:#087d4b!important;
-  background-color:#087d4b!important;
-  border-color:#087d4b!important;
+  background:var(--cvl-commercial-green-dark)!important;
+  background-color:var(--cvl-commercial-green-dark)!important;
+  border-color:var(--cvl-commercial-green-dark)!important;
   color:#fff!important;
 }
