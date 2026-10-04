@@ -7,7 +7,7 @@ defined( 'ABSPATH' ) || exit;
 
 
 /**
- * Canonical promotions URL used by the catalogue and the main navigation.
+ * Canonical Best Price URL used by the catalogue and the main navigation.
  */
 function cvl_best_price_url(): string {
     $shop_url = function_exists( 'wc_get_page_permalink' )
@@ -18,7 +18,7 @@ function cvl_best_price_url(): string {
 }
 
 /**
- * True only for the dedicated promotions view in the WooCommerce shop.
+ * True only for the dedicated Best Price view in the WooCommerce shop.
  */
 function cvl_is_best_price_catalog_request(): bool {
     if ( ! function_exists( 'is_shop' ) || ! is_shop() ) {
@@ -33,7 +33,7 @@ function cvl_is_best_price_catalog_request(): bool {
 }
 
 /**
- * Published parent/simple product IDs that are currently on sale.
+ * Published WooCommerce products currently marked as featured.
  */
 function cvl_featured_product_ids(): array {
     static $ids = null;
@@ -209,7 +209,7 @@ function cvl_featured_category_facets( array $featured_product_ids ): array {
 
 /**
  * Hierarchical tree: only root categories are visible initially.
- * Missing ancestors are injected so every used sale category remains reachable.
+ * Missing ancestors are injected so every used featured category remains reachable.
  */
 function cvl_featured_category_tree( array $terms ): array {
     $nodes = array();
@@ -621,8 +621,8 @@ function cvl_best_price_catalog_layout(): void {
                         ? array_map( 'absint', get_ancestors( $selected_category_id, 'product_cat', 'taxonomy' ) )
                         : array();
 
-                    $render_promotion_category_nodes = static function ( array $items, int $depth = 0 ) use (
-                        &$render_promotion_category_nodes,
+                    $render_featured_category_nodes = static function ( array $items, int $depth = 0 ) use (
+                        &$render_featured_category_nodes,
                         $filter_url,
                         $selected_category_id,
                         $selected_ancestor_ids
@@ -671,7 +671,7 @@ function cvl_best_price_catalog_layout(): void {
                                         data-cvl-category-tree-children
                                         <?php echo $expanded ? '' : 'hidden'; ?>
                                     >
-                                        <?php $render_promotion_category_nodes( $children, $depth + 1 ); ?>
+                                        <?php $render_featured_category_nodes( $children, $depth + 1 ); ?>
                                     </div>
                                 <?php endif; ?>
                             </div>
@@ -683,7 +683,7 @@ function cvl_best_price_catalog_layout(): void {
                     <section class="cvl-search-filter-group cvl-category-filter-group">
                         <h2><?php esc_html_e( 'CATEGORIAS', 'chavevertical-lite' ); ?></h2>
                         <div class="cvl-category-filter-tree" data-cvl-category-filter-tree>
-                            <?php $render_promotion_category_nodes( $category_tree ); ?>
+                            <?php $render_featured_category_nodes( $category_tree ); ?>
                         </div>
                     </section>
                 <?php endif; ?>
