@@ -39,7 +39,7 @@ defined( 'ABSPATH' ) || exit;
         <div class="cvl-footer-col">
             <div class="cvl-footer-card cvl-footer-highlight">
                 <h3>🛒 Loja Online</h3>
-                <p>✉️ <a href="mailto:lojaonline@chavevertical.com">lojaonline@chavevertical.com</a></p>
+                <p>✉️ <a href="mailto:info@chavevertical.com">info@chavevertical.com</a></p>
                 <p>📱 <a href="tel:+351914580410">914 580 410*</a></p>
                 <div class="cvl-footer-direct-actions">
                     <a class="cvl-footer-btn cvl-footer-btn-wa" href="https://wa.me/351914580410" target="_blank" rel="noopener">💬 Falar por WhatsApp</a>
@@ -50,7 +50,7 @@ defined( 'ABSPATH' ) || exit;
                 <ul class="cvl-footer-links">
                     <li><a href="<?php echo esc_url( cvl_contact_page_url() ); ?>">Pedido de cotação</a></li>
                     <li><a href="https://wa.me/351914580410" target="_blank" rel="noopener">WhatsApp</a></li>
-                    <li><a href="mailto:lojaonline@chavevertical.com">Email Loja Online</a></li>
+                    <li><a href="mailto:info@chavevertical.com">Email Loja Online</a></li>
                     <li><a href="mailto:comercial@chavevertical.pt">Email Comercial</a></li>
                 </ul>
             </div>
