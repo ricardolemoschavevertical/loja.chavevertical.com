@@ -30,3 +30,45 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 });
+
+
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('[data-cvl-category-carousel]').forEach(function (carousel) {
+    var viewport = carousel.querySelector('[data-cvl-category-viewport]');
+    var prev = carousel.querySelector('[data-cvl-category-prev]');
+    var next = carousel.querySelector('[data-cvl-category-next]');
+
+    if (!viewport || !prev || !next) {
+      return;
+    }
+
+    function step() {
+      var card = viewport.querySelector('.cvl-category-carousel-card');
+      if (!card) {
+        return Math.max(260, viewport.clientWidth * 0.75);
+      }
+
+      var styles = window.getComputedStyle(viewport.querySelector('.cvl-category-carousel-track'));
+      var gap = parseFloat(styles.columnGap || styles.gap || '12') || 12;
+      return Math.max(card.getBoundingClientRect().width + gap, viewport.clientWidth * 0.7);
+    }
+
+    function updateButtons() {
+      var max = Math.max(0, viewport.scrollWidth - viewport.clientWidth - 2);
+      prev.disabled = viewport.scrollLeft <= 2;
+      next.disabled = viewport.scrollLeft >= max;
+    }
+
+    prev.addEventListener('click', function () {
+      viewport.scrollBy({ left: -step(), behavior: 'smooth' });
+    });
+
+    next.addEventListener('click', function () {
+      viewport.scrollBy({ left: step(), behavior: 'smooth' });
+    });
+
+    viewport.addEventListener('scroll', updateButtons, { passive: true });
+    window.addEventListener('resize', updateButtons);
+    updateButtons();
+  });
+});

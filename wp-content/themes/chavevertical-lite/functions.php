@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.49' );
+define( 'CVL_VERSION', '0.16.50' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -108,6 +108,14 @@ add_action( 'wp_enqueue_scripts', function () {
         wp_enqueue_script(
             'cvl-search-results',
             get_template_directory_uri() . '/assets/js/search-results.js',
+            array(),
+            CVL_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
+            'cvl-category',
+            get_template_directory_uri() . '/assets/js/category.js',
             array(),
             CVL_VERSION,
             true
@@ -1978,6 +1986,19 @@ function cvl_product_category_search_layout(): void {
     );
     $category_terms = is_wp_error( $category_terms ) ? array() : $category_terms;
 
+    // Carrossel visual para navegar progressivamente pela árvore da categoria.
+    $carousel_parent = $selected_category instanceof WP_Term ? $selected_category : $base_term;
+    $carousel_terms = get_terms(
+        array(
+            'taxonomy'   => 'product_cat',
+            'hide_empty' => true,
+            'parent'     => (int) $carousel_parent->term_id,
+            'orderby'    => 'name',
+            'order'      => 'ASC',
+        )
+    );
+    $carousel_terms = is_wp_error( $carousel_terms ) ? array() : $carousel_terms;
+
     $base_url = get_term_link( $base_term );
     if ( is_wp_error( $base_url ) ) {
         $base_url = home_url( '/' );
@@ -2023,6 +2044,47 @@ function cvl_product_category_search_layout(): void {
                 ?>
             </p>
         </header>
+
+        <?php if ( $carousel_terms ) : ?>
+            <section class="cvl-category-carousel" data-cvl-category-carousel aria-label="<?php esc_attr_e( 'Categorias', 'chavevertical-lite' ); ?>">
+                <div class="cvl-category-carousel-head">
+                    <h2><?php esc_html_e( 'CATEGORIAS', 'chavevertical-lite' ); ?></h2>
+                    <div class="cvl-category-carousel-controls" aria-hidden="false">
+                        <button type="button" class="cvl-category-carousel-arrow is-prev" data-cvl-category-prev aria-label="<?php esc_attr_e( 'Categorias anteriores', 'chavevertical-lite' ); ?>">‹</button>
+                        <button type="button" class="cvl-category-carousel-arrow is-next" data-cvl-category-next aria-label="<?php esc_attr_e( 'Categorias seguintes', 'chavevertical-lite' ); ?>">›</button>
+                    </div>
+                </div>
+
+                <div class="cvl-category-carousel-viewport" data-cvl-category-viewport tabindex="0">
+                    <div class="cvl-category-carousel-track">
+                        <?php foreach ( $carousel_terms as $term ) : ?>
+                            <?php
+                            if ( ! $term instanceof WP_Term ) {
+                                continue;
+                            }
+
+                            $thumbnail_id = absint( get_term_meta( $term->term_id, 'thumbnail_id', true ) );
+                            $image_url = $thumbnail_id ? wp_get_attachment_image_url( $thumbnail_id, 'woocommerce_thumbnail' ) : '';
+                            if ( ! $image_url && function_exists( 'wc_placeholder_img_src' ) ) {
+                                $image_url = wc_placeholder_img_src( 'woocommerce_thumbnail' );
+                            }
+
+                            $active = $selected_category instanceof WP_Term && (int) $selected_category->term_id === (int) $term->term_id;
+                            $url = $filter_url( array( 'categoria' => $term->slug ) );
+                            ?>
+                            <a class="cvl-category-carousel-card<?php echo $active ? ' is-active' : ''; ?>" href="<?php echo esc_url( $url ); ?>">
+                                <span class="cvl-category-carousel-image">
+                                    <?php if ( $image_url ) : ?>
+                                        <img src="<?php echo esc_url( $image_url ); ?>" alt="<?php echo esc_attr( $term->name ); ?>" loading="lazy" decoding="async">
+                                    <?php endif; ?>
+                                </span>
+                                <span class="cvl-category-carousel-name"><?php echo esc_html( $term->name ); ?></span>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </section>
+        <?php endif; ?>
 
         <div class="cvl-search-layout">
             <aside class="cvl-search-filters" aria-label="<?php esc_attr_e( 'Filtros da categoria', 'chavevertical-lite' ); ?>">
