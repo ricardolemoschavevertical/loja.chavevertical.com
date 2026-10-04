@@ -183,6 +183,73 @@ foreach ( $home_probe_urls as $probe_key => $probe_url ) {
     );
 }
 
+
+/* Product page visual-layout probe: verifies the live HTML actually contains
+ * the selected mockup structure and that the expected stylesheet version loads.
+ */
+$result['product_layout_check'] = array();
+
+if ( function_exists( 'wc_get_product_id_by_sku' ) ) {
+    $probe_product_id = (int) wc_get_product_id_by_sku( 'JBM54037' );
+
+    if ( $probe_product_id > 0 ) {
+        $probe_product_url = get_permalink( $probe_product_id );
+        $probe_product_response = wp_remote_get(
+            add_query_arg( 'cvl_product_probe', (string) time(), $probe_product_url ),
+            array(
+                'timeout' => 25,
+                'redirection' => 5,
+                'headers' => array(
+                    'Cache-Control' => 'no-cache',
+                    'Pragma' => 'no-cache',
+                ),
+            )
+        );
+
+        $result['product_layout_check']['product_id'] = $probe_product_id;
+        $result['product_layout_check']['url'] = $probe_product_url;
+
+        if ( is_wp_error( $probe_product_response ) ) {
+            $result['product_layout_check']['error'] = $probe_product_response->get_error_message();
+        } else {
+            $probe_product_body = (string) wp_remote_retrieve_body( $probe_product_response );
+            $result['product_layout_check']['status'] = (int) wp_remote_retrieve_response_code( $probe_product_response );
+            $result['product_layout_check']['theme_version'] = defined( 'CVL_VERSION' ) ? CVL_VERSION : null;
+            $result['product_layout_check']['v10_loaded'] = false !== strpos( $probe_product_body, '/assets/css/v10.css' );
+            $result['product_layout_check']['version_loaded'] = defined( 'CVL_VERSION' )
+                ? false !== strpos( $probe_product_body, 'ver=' . rawurlencode( CVL_VERSION ) )
+                : null;
+            $result['product_layout_check']['grid'] = substr_count( $probe_product_body, 'cvl-product-detail-grid' );
+            $result['product_layout_check']['gallery'] = substr_count( $probe_product_body, 'cvl-product-gallery-wrap' );
+            $result['product_layout_check']['summary'] = substr_count( $probe_product_body, 'cvl-product-summary' );
+            $result['product_layout_check']['service_strip'] = substr_count( $probe_product_body, 'cvl-single-service-strip' );
+            $result['product_layout_check']['brand_block'] = substr_count( $probe_product_body, 'cvl-single-brand-block' );
+            $result['product_layout_check']['price_box'] = substr_count( $probe_product_body, 'cvl-single-price-box' );
+            $result['product_layout_check']['short_description'] = substr_count( $probe_product_body, 'woocommerce-product-details__short-description' );
+            $result['product_layout_check']['info_panel'] = substr_count( $probe_product_body, 'cvl-single-info-panel' );
+            $result['product_layout_check']['quote_button'] = substr_count( $probe_product_body, 'cvl-single-quote-button' );
+            $result['product_layout_check']['trust_strip'] = substr_count( $probe_product_body, 'cvl-single-trust-strip' );
+            $result['product_layout_check']['summary_tabs'] = substr_count( $probe_product_body, 'cvl-product-summary-tabs' );
+            $result['product_layout_check']['stock_badge_one'] = false !== strpos( $probe_product_body, 'SÓ 1 EM STOCK' );
+            $result['product_layout_check']['body_length'] = strlen( $probe_product_body );
+
+            if ( preg_match( '/<link[^>]+href=["\']([^"\']*v10\.css[^"\']*)["\']/i', $probe_product_body, $m ) ) {
+                $result['product_layout_check']['v10_href'] = html_entity_decode( $m[1], ENT_QUOTES );
+            }
+
+            if ( preg_match( '/<div id="product-' . preg_quote( (string) $probe_product_id, '/' ) . '"[\s\S]{0,25000}/i', $probe_product_body, $m ) ) {
+                $result['product_layout_check']['product_html_sample'] = substr(
+                    preg_replace( '/\s+/', ' ', $m[0] ),
+                    0,
+                    5000
+                );
+            }
+        }
+    } else {
+        $result['product_layout_check']['error'] = 'Probe product JBM54037 not found.';
+    }
+}
+
 $response = wp_remote_get($target, array('timeout' => 20, 'redirection' => 3));
 
 if (is_wp_error($response)) {
