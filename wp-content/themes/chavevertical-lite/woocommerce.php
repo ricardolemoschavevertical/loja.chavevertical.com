@@ -5,7 +5,13 @@ get_header();
 ?>
 <div class="cvl-shell cvl-woocommerce-shell">
     <?php if ( function_exists( 'woocommerce_content' ) ) : ?>
-        <?php woocommerce_content(); ?>
+        <?php if ( function_exists( 'is_product_category' ) && is_product_category() && function_exists( 'cvl_backup_category_layout_open' ) && function_exists( 'cvl_backup_category_layout_close' ) ) : ?>
+            <?php cvl_backup_category_layout_open(); ?>
+            <?php woocommerce_content(); ?>
+            <?php cvl_backup_category_layout_close(); ?>
+        <?php else : ?>
+            <?php woocommerce_content(); ?>
+        <?php endif; ?>
     <?php else : ?>
         <section class="cvl-empty-state">
             <h1><?php esc_html_e( 'Loja em preparação', 'chavevertical-lite' ); ?></h1>

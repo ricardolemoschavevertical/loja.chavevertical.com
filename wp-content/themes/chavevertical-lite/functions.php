@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.11.0' );
+define( 'CVL_VERSION', '0.11.1' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -1029,20 +1029,6 @@ function cvl_render_category_drawer_items( array $tree, int $parent = 0, int $de
  * É deliberadamente limitado a taxonomias product_cat; shop, produto,
  * carrinho e checkout mantêm o layout existente.
  */
-add_action( 'wp', function () {
-    if ( ! function_exists( 'is_product_category' ) || ! is_product_category() ) {
-        return;
-    }
-
-    remove_action( 'woocommerce_before_main_content', 'woocommerce_output_content_wrapper', 10 );
-    remove_action( 'woocommerce_after_main_content', 'woocommerce_output_content_wrapper_end', 10 );
-    remove_action( 'woocommerce_before_main_content', 'woocommerce_breadcrumb', 20 );
-    remove_action( 'woocommerce_sidebar', 'woocommerce_get_sidebar', 10 );
-
-    add_action( 'woocommerce_before_main_content', 'cvl_backup_category_layout_open', 5 );
-    add_action( 'woocommerce_after_main_content', 'cvl_backup_category_layout_close', 50 );
-}, 20 );
-
 add_filter( 'woocommerce_show_page_title', function ( $show ) {
     if ( function_exists( 'is_product_category' ) && is_product_category() ) {
         return false;
