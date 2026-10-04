@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.29' );
+define( 'CVL_VERSION', '0.16.30' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -895,6 +895,28 @@ function cvl_single_product_info_panel() {
     $tags     = wp_get_post_terms( $product->get_id(), 'product_tag', array( 'fields' => 'names' ) );
     $tag_text = ! is_wp_error( $tags ) && ! empty( $tags ) ? implode( ', ', $tags ) : '—';
 
+    // Informação detalhada de disponibilidade com quantidade real e backorders.
+    $availability_detail = $label;
+
+    if ( 'instock' === $status && $product->managing_stock() ) {
+        $stock_quantity = $product->get_stock_quantity();
+
+        if ( null !== $stock_quantity && $stock_quantity > 0 ) {
+            if ( 1 === (int) $stock_quantity ) {
+                $availability_detail = __( 'Só 1 em stock', 'chavevertical-lite' );
+            } else {
+                $availability_detail = sprintf(
+                    __( '%d em stock', 'chavevertical-lite' ),
+                    (int) $stock_quantity
+                );
+            }
+
+            if ( $product->backorders_allowed() ) {
+                $availability_detail .= ' ' . __( '(pode ser encomendado sem stock)', 'chavevertical-lite' );
+            }
+        }
+    }
+
     $message = sprintf(
         'Olá, pretendo consultar o prazo de entrega do produto %1$s%2$s. %3$s',
         $product->get_name(),
@@ -912,7 +934,7 @@ function cvl_single_product_info_panel() {
     echo '</div>';
 
     echo '<div class="cvl-single-facts"><table><tbody>';
-    echo '<tr><th scope="row">' . esc_html__( 'Disponibilidade:', 'chavevertical-lite' ) . '</th><td><span class="cvl-single-stock-state ' . esc_attr( $class ) . '"><i aria-hidden="true"></i>' . esc_html( $label ) . '</span></td></tr>';
+    echo '<tr><th scope="row">' . esc_html__( 'Disponibilidade:', 'chavevertical-lite' ) . '</th><td><span class="cvl-single-stock-state ' . esc_attr( $class ) . '"><i aria-hidden="true"></i>' . esc_html( $availability_detail ) . '</span></td></tr>';
     echo '<tr><th scope="row">' . esc_html__( 'Prazo de entrega:', 'chavevertical-lite' ) . '</th><td>';
 
     if ( 'instock' === $status ) {
