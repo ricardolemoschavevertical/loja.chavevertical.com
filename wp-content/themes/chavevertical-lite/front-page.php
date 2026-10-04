@@ -232,6 +232,12 @@ $homepage_highlights = function_exists( 'cvl_get_homepage_highlights' )
             $highlight_image = function_exists( 'cvl_homepage_highlight_image_url' )
                 ? cvl_homepage_highlight_image_url( $highlight )
                 : '';
+            $highlight_images = function_exists( 'cvl_homepage_highlight_rotation_images' )
+                ? cvl_homepage_highlight_rotation_images( $highlight )
+                : array_filter( array( $highlight_image ) );
+            $highlight_rotation_seconds = isset( $highlight['rotation_seconds'] )
+                ? max( 2, min( 60, absint( $highlight['rotation_seconds'] ) ) )
+                : 5;
             $highlight_number = str_pad( (string) ( $highlight_index + 1 ), 2, '0', STR_PAD_LEFT );
             $highlight_style  = sprintf(
                 '--cvl-highlight-bg:%1$s;--cvl-highlight-color:%2$s;',
@@ -244,14 +250,24 @@ $homepage_highlights = function_exists( 'cvl_get_homepage_highlights' )
                 href="<?php echo esc_url( $highlight['url'] ); ?>"
                 style="<?php echo esc_attr( $highlight_style ); ?>"
             >
-                <span class="cvl-homepage-highlight-media<?php echo $highlight_image ? '' : ' is-empty'; ?>">
-                    <?php if ( $highlight_image ) : ?>
-                        <img
-                            src="<?php echo esc_url( $highlight_image ); ?>"
-                            alt="<?php echo esc_attr( $highlight['title'] ); ?>"
-                            loading="lazy"
-                            decoding="async"
-                        >
+                <span
+                    class="cvl-homepage-highlight-media<?php echo ! empty( $highlight_images ) ? '' : ' is-empty'; ?>"
+                    <?php if ( count( $highlight_images ) > 1 ) : ?>
+                        data-cvl-highlight-rotation
+                        data-cvl-rotation-ms="<?php echo esc_attr( (string) ( $highlight_rotation_seconds * 1000 ) ); ?>"
+                    <?php endif; ?>
+                >
+                    <?php if ( ! empty( $highlight_images ) ) : ?>
+                        <?php foreach ( $highlight_images as $highlight_image_index => $rotation_image ) : ?>
+                            <img
+                                class="cvl-homepage-highlight-slide<?php echo 0 === $highlight_image_index ? ' is-active' : ''; ?>"
+                                src="<?php echo esc_url( $rotation_image ); ?>"
+                                alt="<?php echo esc_attr( $highlight['title'] ); ?>"
+                                loading="lazy"
+                                decoding="async"
+                                aria-hidden="<?php echo 0 === $highlight_image_index ? 'false' : 'true'; ?>"
+                            >
+                        <?php endforeach; ?>
                     <?php else : ?>
                         <span class="cvl-homepage-highlight-placeholder" aria-hidden="true">CV</span>
                     <?php endif; ?>

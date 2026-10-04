@@ -53,6 +53,9 @@ function cvl_homepage_highlights_fallback_cards() {
             'text_color'             => '#ffffff',
             'image_id'               => 0,
             'image_url'              => '',
+            'rotation_image_ids'     => array(),
+            'rotation_image_urls'    => array(),
+            'rotation_seconds'       => 5,
             'fallback_category_slug' => '',
         ),
     );
@@ -87,6 +90,37 @@ function cvl_normalize_homepage_highlight( $card, $fallback = array() ) {
     $background = sanitize_hex_color( $card['background'] );
     $text_color = sanitize_hex_color( $card['text_color'] );
 
+    $rotation_ids_raw = isset( $card['rotation_image_ids'] ) ? $card['rotation_image_ids'] : array();
+    if ( is_string( $rotation_ids_raw ) ) {
+        $rotation_ids_raw = preg_split( '/\s*,\s*/', $rotation_ids_raw, -1, PREG_SPLIT_NO_EMPTY );
+    }
+    $rotation_image_ids = array_values(
+        array_unique(
+            array_filter(
+                array_map( 'absint', is_array( $rotation_ids_raw ) ? $rotation_ids_raw : array() )
+            )
+        )
+    );
+
+    $rotation_urls_raw = isset( $card['rotation_image_urls'] ) ? $card['rotation_image_urls'] : array();
+    if ( is_string( $rotation_urls_raw ) ) {
+        $rotation_urls_raw = preg_split( '/\r\n|\r|\n|,/', $rotation_urls_raw, -1, PREG_SPLIT_NO_EMPTY );
+    }
+    $rotation_image_urls = array();
+    foreach ( is_array( $rotation_urls_raw ) ? $rotation_urls_raw : array() as $rotation_url ) {
+        $rotation_url = trim( (string) $rotation_url );
+        if ( '' === $rotation_url ) {
+            continue;
+        }
+        $rotation_image_urls[] = 0 === strpos( $rotation_url, 'theme://' )
+            ? sanitize_text_field( $rotation_url )
+            : esc_url_raw( $rotation_url );
+    }
+    $rotation_image_urls = array_values( array_unique( array_filter( $rotation_image_urls ) ) );
+
+    $rotation_seconds = isset( $card['rotation_seconds'] ) ? absint( $card['rotation_seconds'] ) : 5;
+    $rotation_seconds = max( 2, min( 60, $rotation_seconds ) );
+
     return array(
         'eyebrow'                => sanitize_text_field( $card['eyebrow'] ),
         'title'                  => sanitize_text_field( $card['title'] ),
@@ -97,6 +131,9 @@ function cvl_normalize_homepage_highlight( $card, $fallback = array() ) {
         'text_color'             => $text_color ? $text_color : $base['text_color'],
         'image_id'               => absint( $card['image_id'] ),
         'image_url'              => $image_url,
+        'rotation_image_ids'     => $rotation_image_ids,
+        'rotation_image_urls'    => $rotation_image_urls,
+        'rotation_seconds'       => $rotation_seconds,
         'fallback_category_slug' => sanitize_title( $card['fallback_category_slug'] ),
     );
 }
@@ -200,6 +237,55 @@ function cvl_homepage_highlight_image_url( $card ) {
     return '';
 }
 
+/**
+ * Returns the ordered image set used by a rotating homepage highlight.
+ * The primary image is always first, followed by additional selected images.
+ */
+function cvl_homepage_highlight_rotation_images( $card ) {
+    if ( ! is_array( $card ) ) {
+        return array();
+    }
+
+    $images  = array();
+    $primary = cvl_homepage_highlight_image_url( $card );
+
+    if ( $primary ) {
+        $images[] = $primary;
+    }
+
+    $rotation_ids = isset( $card['rotation_image_ids'] ) && is_array( $card['rotation_image_ids'] )
+        ? $card['rotation_image_ids']
+        : array();
+
+    foreach ( $rotation_ids as $image_id ) {
+        $url = wp_get_attachment_image_url( absint( $image_id ), 'large' );
+        if ( $url ) {
+            $images[] = $url;
+        }
+    }
+
+    $rotation_urls = isset( $card['rotation_image_urls'] ) && is_array( $card['rotation_image_urls'] )
+        ? $card['rotation_image_urls']
+        : array();
+
+    foreach ( $rotation_urls as $url ) {
+        $url = trim( (string) $url );
+        if ( '' === $url ) {
+            continue;
+        }
+
+        if ( 0 === strpos( $url, 'theme://' ) ) {
+            $url = get_template_directory_uri() . '/' . ltrim( substr( $url, 8 ), '/' );
+        }
+
+        if ( $url ) {
+            $images[] = $url;
+        }
+    }
+
+    return array_values( array_unique( array_filter( $images ) ) );
+}
+
 add_action( 'admin_menu', function () {
     add_submenu_page(
         'woocommerce',
@@ -252,6 +338,53 @@ add_action( 'admin_enqueue_scripts', function ( $hook ) {
         card.find('.cvl-highlight-image-url').val('');
         card.find('.cvl-highlight-preview').hide().attr('src','');
         card.find('.cvl-highlight-preview-empty').show();
+    });
+
+    $(document).on('click','.cvl-highlight-select-rotation-images',function(e){
+        e.preventDefault();
+        var card = $(this).closest('.cvl-highlight-admin-card');
+        var frame = wp.media({
+            title: 'Selecionar imagens para rotação',
+            button: { text: 'Usar estas imagens' },
+            multiple: true
+        });
+
+        frame.on('select',function(){
+            var selection = frame.state().get('selection').toJSON();
+            var ids = [];
+            var preview = card.find('.cvl-highlight-rotation-preview');
+            preview.empty();
+
+            selection.forEach(function(attachment){
+                if (!attachment.id) {
+                    return;
+                }
+
+                ids.push(attachment.id);
+                var src = attachment.sizes && attachment.sizes.thumbnail
+                    ? attachment.sizes.thumbnail.url
+                    : attachment.url;
+
+                $('<img>', {
+                    src: src,
+                    alt: '',
+                    'data-id': attachment.id
+                }).appendTo(preview);
+            });
+
+            card.find('.cvl-highlight-rotation-ids').val(ids.join(','));
+            card.find('.cvl-highlight-rotation-empty').toggle(ids.length === 0);
+        });
+
+        frame.open();
+    });
+
+    $(document).on('click','.cvl-highlight-clear-rotation-images',function(e){
+        e.preventDefault();
+        var card = $(this).closest('.cvl-highlight-admin-card');
+        card.find('.cvl-highlight-rotation-ids').val('');
+        card.find('.cvl-highlight-rotation-preview').empty();
+        card.find('.cvl-highlight-rotation-empty').show();
     });
 })(jQuery);
 JS
@@ -319,6 +452,53 @@ function cvl_render_homepage_highlights_admin() {
                             <button type="button" class="button-link-delete cvl-highlight-remove-image"><?php esc_html_e( 'Remover imagem personalizada', 'chavevertical-lite' ); ?></button>
                         </p>
 
+                        <?php
+                        $rotation_ids = isset( $card['rotation_image_ids'] ) && is_array( $card['rotation_image_ids'] )
+                            ? array_values( array_filter( array_map( 'absint', $card['rotation_image_ids'] ) ) )
+                            : array();
+                        ?>
+                        <div class="cvl-highlight-rotation-box">
+                            <h3><?php esc_html_e( 'Rotação de imagens', 'chavevertical-lite' ); ?></h3>
+                            <p class="description"><?php esc_html_e( 'A imagem principal aparece primeiro. As imagens abaixo rodam a seguir automaticamente.', 'chavevertical-lite' ); ?></p>
+
+                            <input
+                                class="cvl-highlight-rotation-ids"
+                                type="hidden"
+                                name="cards[<?php echo esc_attr( $index ); ?>][rotation_image_ids]"
+                                value="<?php echo esc_attr( implode( ',', $rotation_ids ) ); ?>"
+                            >
+
+                            <div class="cvl-highlight-rotation-preview">
+                                <?php foreach ( $rotation_ids as $rotation_id ) : ?>
+                                    <?php $rotation_thumb = wp_get_attachment_image_url( $rotation_id, 'thumbnail' ); ?>
+                                    <?php if ( $rotation_thumb ) : ?>
+                                        <img src="<?php echo esc_url( $rotation_thumb ); ?>" alt="" data-id="<?php echo esc_attr( $rotation_id ); ?>">
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </div>
+
+                            <div class="cvl-highlight-rotation-empty" <?php echo ! empty( $rotation_ids ) ? 'style="display:none"' : ''; ?>>
+                                <?php esc_html_e( 'Sem imagens adicionais', 'chavevertical-lite' ); ?>
+                            </div>
+
+                            <p class="cvl-highlight-media-actions">
+                                <button type="button" class="button cvl-highlight-select-rotation-images"><?php esc_html_e( 'Escolher várias imagens', 'chavevertical-lite' ); ?></button>
+                                <button type="button" class="button-link-delete cvl-highlight-clear-rotation-images"><?php esc_html_e( 'Limpar rotação', 'chavevertical-lite' ); ?></button>
+                            </p>
+
+                            <label>
+                                <span><?php esc_html_e( 'Tempo entre imagens (segundos)', 'chavevertical-lite' ); ?></span>
+                                <input
+                                    type="number"
+                                    min="2"
+                                    max="60"
+                                    step="1"
+                                    name="cards[<?php echo esc_attr( $index ); ?>][rotation_seconds]"
+                                    value="<?php echo esc_attr( (string) $card['rotation_seconds'] ); ?>"
+                                >
+                            </label>
+                        </div>
+
                         <label>
                             <span><?php esc_html_e( 'Texto superior', 'chavevertical-lite' ); ?></span>
                             <input type="text" name="cards[<?php echo esc_attr( $index ); ?>][eyebrow]" value="<?php echo esc_attr( $card['eyebrow'] ); ?>">
@@ -370,6 +550,12 @@ function cvl_render_homepage_highlights_admin() {
         .cvl-highlight-admin-card label>span{display:block;margin-bottom:5px;font-weight:600}
         .cvl-highlight-admin-card input[type="text"],.cvl-highlight-admin-card textarea{width:100%}
         .cvl-highlight-media-actions{display:flex;align-items:center;gap:12px}
+        .cvl-highlight-rotation-box{margin:16px 0 4px;padding:14px;border:1px solid #dcdcde;border-radius:8px;background:#f8faf9}
+        .cvl-highlight-rotation-box h3{margin:0 0 4px}
+        .cvl-highlight-rotation-preview{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin:10px 0}
+        .cvl-highlight-rotation-preview img{width:100%;aspect-ratio:1/1;object-fit:cover;border:1px solid #dcdcde;border-radius:5px;background:#fff}
+        .cvl-highlight-rotation-empty{margin:10px 0;padding:12px;text-align:center;color:#6b7377;background:#fff;border:1px dashed #c9cecf}
+        .cvl-highlight-rotation-box input[type="number"]{width:110px}
         .cvl-highlight-color-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
         .cvl-highlight-color-row input[type="color"]{width:100%;height:38px;padding:2px}
         @media(max-width:800px){.cvl-highlight-admin-grid{grid-template-columns:1fr}}
