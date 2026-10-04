@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.54' );
+define( 'CVL_VERSION', '0.16.55' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -2085,7 +2085,13 @@ function cvl_product_category_search_layout(): void {
     $category_terms = get_terms(
         array(
             'taxonomy'   => 'product_cat',
-            'hide_empty' => true,
+            /*
+             * Não usar hide_empty=true aqui: uma categoria filha pode não ter
+             * produtos atribuídos diretamente e ainda assim ter produtos nas
+             * suas descendentes. Ela continua a fazer parte da navegação.
+             */
+            'hide_empty' => false,
+            'pad_counts' => true,
             'parent'     => (int) $navigation_parent->term_id,
             'orderby'    => 'name',
             'order'      => 'ASC',
