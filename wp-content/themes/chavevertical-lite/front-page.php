@@ -3,10 +3,11 @@ defined( 'ABSPATH' ) || exit;
 
 get_header();
 
-$shop_url   = cvl_shop_url();
-$categories = array();
-$products   = array();
-$brands     = array();
+$shop_url        = cvl_shop_url();
+$categories      = array();
+$recent_products = array();
+$promo_products  = array();
+$brands          = array();
 
 if ( taxonomy_exists( 'product_cat' ) ) {
     $excluded = array();
@@ -94,13 +95,35 @@ if ( taxonomy_exists( 'product_brand' ) ) {
 }
 
 if ( function_exists( 'wc_get_products' ) ) {
-    $products = wc_get_products( array(
+    $recent_products = wc_get_products( array(
         'status'  => 'publish',
-        'limit'   => 10,
+        'limit'   => 8,
         'orderby' => 'date',
         'order'   => 'DESC',
         'return'  => 'objects',
     ) );
+
+    if ( function_exists( 'wc_get_product_ids_on_sale' ) ) {
+        $sale_product_ids = array_values(
+            array_filter(
+                array_map( 'absint', wc_get_product_ids_on_sale() ),
+                static function ( $product_id ) {
+                    return $product_id > 0 && 'product' === get_post_type( $product_id );
+                }
+            )
+        );
+
+        if ( ! empty( $sale_product_ids ) ) {
+            $promo_products = wc_get_products( array(
+                'status'  => 'publish',
+                'include' => $sale_product_ids,
+                'limit'   => 16,
+                'orderby' => 'date',
+                'order'   => 'DESC',
+                'return'  => 'objects',
+            ) );
+        }
+    }
 }
 
 $cvl_category_image = static function ( $term, $size = 'large', $loading = 'lazy' ) {
@@ -296,6 +319,43 @@ $hero_side_style = sprintf(
 </section>
 <?php endif; ?>
 
+<?php if ( ! empty( $promo_products ) ) : ?>
+<section class="cvl-v4-products cvl-home-product-strip cvl-home-promo-products">
+    <div class="cvl-shell">
+        <header class="cvl-v4-section-head">
+            <div>
+                <span>PROMOÇÕES</span>
+                <h2>Oportunidades em destaque</h2>
+                <p>Produtos com preço promocional atualmente disponível na loja.</p>
+            </div>
+            <a href="<?php echo esc_url( add_query_arg( 'on_sale', '1', $shop_url ) ); ?>">VER PROMOÇÕES →</a>
+        </header>
+
+        <?php
+        if ( function_exists( 'woocommerce_product_loop_start' ) ) {
+            wc_set_loop_prop( 'columns', 8 );
+            woocommerce_product_loop_start();
+
+            global $post;
+
+            foreach ( $promo_products as $home_product ) {
+                $post = get_post( $home_product->get_id() );
+
+                if ( ! $post ) {
+                    continue;
+                }
+
+                setup_postdata( $post );
+                wc_get_template_part( 'content', 'product' );
+            }
+
+            wp_reset_postdata();
+            woocommerce_product_loop_end();
+        }
+        ?>
+    </div>
+</section>
+<?php endif; ?>
 
 
 <?php
@@ -367,43 +427,6 @@ $homepage_highlights = function_exists( 'cvl_get_homepage_highlights' )
 <?php endif; ?>
 
 
-<?php if ( ! empty( $products ) ) : ?>
-<section class="cvl-v4-products">
-    <div class="cvl-shell">
-        <header class="cvl-v4-section-head">
-            <div>
-                <span>NOVIDADES</span>
-                <h2>Produtos recentes</h2>
-            </div>
-            <a href="<?php echo esc_url( $shop_url ); ?>">VER TODOS →</a>
-        </header>
-
-        <?php
-        if ( function_exists( 'woocommerce_product_loop_start' ) ) {
-            wc_set_loop_prop( 'columns', 6 );
-            woocommerce_product_loop_start();
-
-            global $post;
-
-            foreach ( $products as $home_product ) {
-                $post = get_post( $home_product->get_id() );
-
-                if ( ! $post ) {
-                    continue;
-                }
-
-                setup_postdata( $post );
-                wc_get_template_part( 'content', 'product' );
-            }
-
-            wp_reset_postdata();
-            woocommerce_product_loop_end();
-        }
-        ?>
-    </div>
-</section>
-<?php endif; ?>
-
 <?php if ( ! empty( $brands ) ) : ?>
 <section class="cvl-brand-carousel-section" aria-label="<?php esc_attr_e( 'Marcas representadas', 'chavevertical-lite' ); ?>">
     <div class="cvl-shell cvl-brand-carousel-header">
@@ -459,6 +482,44 @@ $homepage_highlights = function_exists( 'cvl_get_homepage_highlights' )
                 </a>
             <?php endforeach; ?>
         </div>
+    </div>
+</section>
+<?php endif; ?>
+
+<?php if ( ! empty( $recent_products ) ) : ?>
+<section class="cvl-v4-products cvl-home-product-strip cvl-home-recent-products">
+    <div class="cvl-shell">
+        <header class="cvl-v4-section-head">
+            <div>
+                <span>NOVIDADES</span>
+                <h2>Produtos recentes</h2>
+                <p>As últimas referências adicionadas ao catálogo Chave Vertical.</p>
+            </div>
+            <a href="<?php echo esc_url( $shop_url ); ?>">VER TODOS →</a>
+        </header>
+
+        <?php
+        if ( function_exists( 'woocommerce_product_loop_start' ) ) {
+            wc_set_loop_prop( 'columns', 8 );
+            woocommerce_product_loop_start();
+
+            global $post;
+
+            foreach ( $recent_products as $home_product ) {
+                $post = get_post( $home_product->get_id() );
+
+                if ( ! $post ) {
+                    continue;
+                }
+
+                setup_postdata( $post );
+                wc_get_template_part( 'content', 'product' );
+            }
+
+            wp_reset_postdata();
+            woocommerce_product_loop_end();
+        }
+        ?>
     </div>
 </section>
 <?php endif; ?>
