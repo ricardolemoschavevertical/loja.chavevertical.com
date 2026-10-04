@@ -1,19 +1,30 @@
-timestamp_utc=2026-10-04T19:10:50Z
+timestamp_utc=2026-10-04T19:24:54Z
 runner_user=codex1
 plugin_active=yes
-plugin_version=0.1.5
+plugin_version=0.1.6
 settings={"endpoint":"https://127.0.0.1:19200","auth_type":"basic","username":"wordpress","index":"wordpress-chavevertical-products","enabled":true,"replace_native_search":true,"enable_instant_search":true,"enable_astro_api":true,"verify_ssl":true,"secret_present":true,"ca_file":"/home/chavevertical-loja/htdocs/loja.chavevertical.com/wp-content/plugins/cv-opensearch/certs/opensearch-ca.pem","ca_file_readable":true,"ca_pem_present":false}
 reindex_state={"status":"complete","processed":212,"total":212,"started":1791138565,"updated":1791138567,"message":"","finished":1791138567}
 
 client_health={"ok":true,"status":"green","cluster":"wordpress-search"}
 index_probe={"ok":true,"total":212,"items":1}
 public_health_http=200
-public_health_body={"ok":true,"configured":true,"enabled":true,"cluster":"wordpress-search","status":"green","index":"wordpress-chavevertical-products","plugin":"0.1.5"}
+public_health_body={"ok":true,"configured":true,"enabled":true,"cluster":"wordpress-search","status":"green","index":"wordpress-chavevertical-products","plugin":"0.1.6"}
 public_suggest_http=200
 public_suggest_body={"ok":true,"items":[{"id":3296,"parent_id":0,"name":"Gerador Diesel 15kVA Mono Trif\u00e1sico Hyundai DHY15000SE-T 12kW 230V\/400V","name_sort":"Gerador Diesel 15kVA Mono Trif\u00e1sico Hyundai DHY15000SE-T 12kW 230V\/400V","slug":"gerador-diesel-15kva-mono-trifasico-hyundai-dhy15000se-t-12kw-230v-400v","url":"https:\/\/chavevertical.com\/produto\/gerador-diesel-15kva-mono-trifasico-hyundai-dhy15000se-t-12kw-230v-400v\/","purchase_url":"https:\/\/loja.chavevertical.com\/produto\/gerador-diesel-15kva-mono-trifasico-hyundai-dhy15000se-t-12kw-230v-400v\/","sku":"GRVDHY15000SE-T","variation_skus":[],"guid":"","short_description":"Modelo: DHY15000SE-TPot\u00eancia Nominal: 13.8kVA (400V) \/ 11kW (230V)Pot\u00eancia M\u00e1xima: 15kVA (400V) \/ 12kW (230V)Tens\u00e3o: 230V \/ 400VFrequ\u00eancia: 50HzMotor: HY1000E, 997cc, 19HPArranque: El\u00e9trico \/ ATSCapacidade Dep\u00f3sito: 25LCapacidade \u00d3leo: 2,8LN\u00edvel de Ru\u00eddo: 72dBA (7m, 50% carga)Alternador: AL12","description":"\u2713 O Gerador Diesel 15kVA Mono Trif\u00e1sico Hyundai DHY15000SE-T 12kW 230V\/400V \u00e9 a solu\u00e7\u00e3o de alta performance ideal para quem procura fiabilidade em ambientes residenciais, comerciais ou industriais.\u2713 Este equipamento destaca-se pela sua tecnologia Full Power, que permite selecionar entre o modo monof\u00e1sico de 12kW e o modo trif\u00e1sico de 15kVA, garantindo a m\u00e1xima versatilidade para diferentes necessidades energ\u00e9ticas.\u2713 O motor HY1000E de 19HP, com funcionamento a 3000 rpm, assegura um desempenho robusto e constante em qualquer situa\u00e7\u00e3o.\u2713 O Gerador Diesel 15kVA Mono Trif\u00e1sico Hyundai DHY15000SE-T 12kW 230V\/400V inclui arranque el\u00e9trico e conector ATS, facilitando a gest\u00e3o autom\u00e1tica em sistemas fotovoltaicos ou redes el\u00e9tricas.\u2713 A sua estrutura insonorizada reduz o ru\u00eddo para apenas 72dBA, tornando-o adequado para locais onde o sil\u00eancio \u00e9 importante.\u2713 O painel de controlo est\u00e1 equipado com um ecr\u00e3 LED intuitivo para uma monitoriza\u00e7\u00e3o precisa da opera\u00e7\u00e3o.\u2713 A versatilidade de liga\u00e7\u00f5es \u00e9 garantida pelas sa\u00eddas de 16A Schuko, 32A Cetac monof\u00e1sico e 50A Cetac trif\u00e1sico.Destaques:Tecnologia Full Power para altern\u00e2ncia entre modos.Motor de 19HP de alta efici\u00eancia.Insonoriza\u00e7\u00e3o avan\u00e7ada para menor impacto sonoro.Conectividade ATS para automa\u00e7\u00e3o.Estrutura compacta e f\u00e1cil de transportar.Aplica\u00e7\u00f5es:Fonte de energia de emerg\u00eancia.Alimenta\u00e7\u00e3o el\u00e9trica em obras e estaleiros.Sistemas solares e fotovoltaicos.Eventos exteriores e locais remotos.","brand_names":["HYUNDAI"],"brand_slugs":["hyundai"],"brand_ids":[649],"brand_facets":["hyundai|HYUNDAI"],"category_names":["INSONORIZADOS"],"category_slugs":["insonorizados"],"category_ids":[264],"tag_names":[],"tag_ids":[],"attributes_text":"","custom_fields_text":"","price":4500,"regular_price":4500,"sale_price":0,"on_sale":false,"currency":"EUR","stock_status":"onbackorder","stock_quantity":0,"featured":false,"average_rating":0,"rating_count":0,"type":"simple","status":"publish","modified_gmt":"2026-10-04T16:48:09+00:00","categories":[{"id":264,"name":"INSONORIZADOS","slug":"insonorizados"}],"brands":[{"id":649,"name":"HYUNDAI","slug":"hyundai","logo":"https:\/\/loja.chavevertical.com\/wp-content\/uploads\/2026\/10\/brand-22917.png"}],"tags":[],"attributes":[],"gallery":[{"src":"https:\/\/imagens.chavevertical.com\/2026\/05\/gerador-diesel-15kva-mono-trifasico-hyundai-chavevertical-com-scaled-4.webp","alt":"Gerador Diesel 15kVA Mono Trif\u00e1sico Hyundai DHY15000SE-T 12kW 230V\/400V"},{"src":"https:\/\/imagens.chavevertical.com\/2026\/05\/gerador-diesel-15kva-mono-trifasico-hyundai-chavevertical-com-4-scaled-3.webp","alt":"Gerador Diesel 15kVA Mono Trif\u00e1sico Hyundai DHY15000SE-T 12kW 230V\/400V"},{"src":"https:\/\/imagens.chavevertical.com\/2026\/05\/gerador-diesel
 homepage_http=200
 homepage_has_cvos_script=yes
 homepage_has_cvos_config=yes
 homepage_has_theme_search=yes
-homepage_cvos_script_src=https://loja.chavevertical.com/wp-content/plugins/cv-opensearch/assets/search.js?ver=0.1.5
+homepage_cvos_script_src=https://loja.chavevertical.com/wp-content/plugins/cv-opensearch/assets/search.js?ver=0.1.6
 
+catalog_http=200
+catalog_summary={"ok":true,"source":"opensearch","total":1,"first_id":3296,"first_name":"Gerador Diesel 15kVA Mono Trifásico Hyundai DHY15000SE-T 12kW 230V/400V","first_category_match":true,"has_brand_facets":true,"has_category_facets":true,"has_price_facet":true}
+search_page_http=302
+search_has_filter_panel=no
+search_has_brand_filter=no
+search_has_category_filter=no
+search_has_price_filter=no
+search_has_category_label_in_product_card=no
+search_first_product_id=
+price_filtered_page_http=200
+price_filter_values_present=no
