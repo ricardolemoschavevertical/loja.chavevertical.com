@@ -1,0 +1,59 @@
+name: Configure Shop Categories Only
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/configure-shop-categories-only.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  configure:
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show only top-level categories on WooCommerce shop
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_ROOT=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+
+          echo -n "before="
+          wp --path="$WP_ROOT" option get woocommerce_shop_page_display 2>/dev/null || true
+          echo
+
+          # On the main Shop archive, "subcategories" means the direct children
+          # of the catalog root: only top-level product categories, no products.
+          wp --path="$WP_ROOT" option update woocommerce_shop_page_display 'subcategories'
+
+          wp --path="$WP_ROOT" transient delete --all >/dev/null 2>&1 || true
+          wp --path="$WP_ROOT" cache flush >/dev/null 2>&1 || true
+
+          echo -n "after="
+          wp --path="$WP_ROOT" option get woocommerce_shop_page_display 2>/dev/null || true
+          echo
+
+          curl -L --connect-timeout 10 --max-time 60 -sS             'https://loja.chavevertical.com/shop/?cvcategoriesonly=1'             -o /tmp/cv-shop-categories.html
+
+          CATEGORY_COUNT=$(grep -o '<li class="product-category product' /tmp/cv-shop-categories.html | wc -l || true)
+          PRODUCT_COUNT=$(grep -oE '<li[^>]*class="[^"]*product[^"]*post-[0-9]+[^"]*"[^>]*>' /tmp/cv-shop-categories.html | wc -l || true)
+
+          echo "category_count=$CATEGORY_COUNT"
+          echo "product_count=$PRODUCT_COUNT"
+
+          if [[ "$CATEGORY_COUNT" -lt 1 ]]; then
+            echo "Shop did not render categories."
+            exit 1
+          fi
+
+          if [[ "$PRODUCT_COUNT" -ne 0 ]]; then
+            echo "Shop still renders products."
+            exit 1
+          fi
+
+          echo "Shop verified: categories only."
