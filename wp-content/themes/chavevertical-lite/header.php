@@ -142,7 +142,9 @@ defined( 'ABSPATH' ) || exit;
                 ),
                 array(
                     'label' => 'PREÇO!',
-                    'url'   => 'https://chavevertical.com/',
+                    'url'   => function_exists( 'cvl_best_price_url' )
+                        ? cvl_best_price_url()
+                        : add_query_arg( 'melhor_preco', '1', home_url( '/shop/' ) ),
                     'badge' => 'MELHOR',
                     'badge_class' => 'is-best',
                 ),
