@@ -132,6 +132,57 @@ foreach ( $frontend_urls as $frontend_key => $frontend_url ) {
     );
 }
 
+
+$front_page_file = get_stylesheet_directory() . '/front-page.php';
+$front_page_source = is_file( $front_page_file ) ? (string) file_get_contents( $front_page_file ) : '';
+
+$result['home_layout_check'] = array(
+    'front_page_file' => $front_page_file,
+    'front_page_file_exists' => is_file( $front_page_file ),
+    'template_has_promo_block' => false !== strpos( $front_page_source, 'cvl-home-promo-products' ),
+    'template_has_recent_after_brands' => false !== strpos( $front_page_source, 'cvl-home-recent-products' ),
+    'template_has_limit_16' => false !== strpos( $front_page_source, "'limit'   => 16" ),
+    'template_has_limit_8' => false !== strpos( $front_page_source, "'limit'   => 8" ),
+);
+
+$home_probe_urls = array(
+    'public' => home_url( '/' ),
+    'cache_bust' => add_query_arg( 'cvl_home_probe', (string) time(), home_url( '/' ) ),
+);
+
+foreach ( $home_probe_urls as $probe_key => $probe_url ) {
+    $probe_response = wp_remote_get( $probe_url, array(
+        'timeout' => 20,
+        'redirection' => 3,
+        'headers' => array(
+            'Cache-Control' => 'no-cache',
+            'Pragma' => 'no-cache',
+        ),
+    ) );
+
+    if ( is_wp_error( $probe_response ) ) {
+        $result['home_layout_check'][ $probe_key ] = array(
+            'url' => $probe_url,
+            'error' => $probe_response->get_error_message(),
+        );
+        continue;
+    }
+
+    $probe_body = (string) wp_remote_retrieve_body( $probe_response );
+    $result['home_layout_check'][ $probe_key ] = array(
+        'url' => $probe_url,
+        'status' => (int) wp_remote_retrieve_response_code( $probe_response ),
+        'promo_section' => substr_count( $probe_body, 'cvl-home-promo-products' ),
+        'recent_section' => substr_count( $probe_body, 'cvl-home-recent-products' ),
+        'promo_heading' => substr_count( $probe_body, 'Oportunidades em destaque' ),
+        'recent_heading' => substr_count( $probe_body, 'Produtos recentes' ),
+        'brand_section' => substr_count( $probe_body, 'cvl-brand-carousel-section' ),
+        'theme_0155' => false !== strpos( $probe_body, 'ver=0.15.5' ),
+        'cache_status_header' => wp_remote_retrieve_header( $probe_response, 'cf-cache-status' ),
+        'age_header' => wp_remote_retrieve_header( $probe_response, 'age' ),
+    );
+}
+
 $response = wp_remote_get($target, array('timeout' => 20, 'redirection' => 3));
 
 if (is_wp_error($response)) {
