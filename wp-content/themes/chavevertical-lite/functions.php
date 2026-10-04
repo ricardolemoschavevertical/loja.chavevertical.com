@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.9.12' );
+define( 'CVL_VERSION', '0.9.13' );
 
 add_action( 'after_setup_theme', function () {
     load_theme_textdomain( 'chavevertical-lite', get_template_directory() . '/languages' );
@@ -96,6 +96,18 @@ add_filter( 'woocommerce_enqueue_styles', function ( $styles ) {
 add_filter( 'body_class', function ( $classes ) {
     $classes[] = 'cvl-site';
     return $classes;
+} );
+
+/**
+ * Placeholder visual para produtos WooCommerce sem imagem.
+ * Mantém a imagem dentro do tema para ser versionada e implantada com o site.
+ */
+function cvl_product_placeholder_url() {
+    return get_template_directory_uri() . '/assets/images/chavevertical-placeholder-produto.webp';
+}
+
+add_filter( 'woocommerce_placeholder_img_src', function ( $src ) {
+    return cvl_product_placeholder_url();
 } );
 
 function cvl_cart_url() {
