@@ -732,3 +732,28 @@ body.single-product.woocommerce .cvl-product-summary form.cart .single_add_to_ca
     font-size:16px!important;
   }
 }
+
+
+/* Remove brands upper box */
+.cvl-brand-carousel-section{
+  padding:0 0 48px!important;
+  margin:0!important;
+  background:transparent!important;
+  border-top:0!important;
+  border-bottom:0!important;
+  box-shadow:none!important;
+}
+
+.cvl-brand-carousel-section .cvl-brand-carousel-header{
+  min-height:0!important;
+  margin:0 0 18px!important;
+  padding:0!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+
+.cvl-brand-carousel-section .cvl-brand-carousel-kicker{
+  margin:0!important;
+  padding:0!important;
+}
