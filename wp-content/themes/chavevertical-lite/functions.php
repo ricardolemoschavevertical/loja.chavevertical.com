@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.11.3' );
+define( 'CVL_VERSION', '0.12.0' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -113,6 +113,15 @@ add_action( 'wp_enqueue_scripts', function () {
             array(),
             CVL_VERSION,
             true
+        );
+    }
+
+    if ( is_page_template( 'page-contactos.php' ) || is_page( 'contactos' ) ) {
+        wp_enqueue_style(
+            'cvl-v12',
+            get_template_directory_uri() . '/assets/css/v12.css',
+            array( 'cvl-v09' ),
+            CVL_VERSION
         );
     }
 

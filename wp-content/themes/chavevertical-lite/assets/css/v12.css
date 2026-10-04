@@ -1,0 +1,298 @@
+/* Chave Vertical Lite v0.12 — contactos com cor e sinalética visual */
+
+.cvl-contact-page{
+  --cvl-contact-green:#17820f;
+  --cvl-contact-blue:#2563eb;
+  --cvl-contact-orange:#ea7a13;
+  --cvl-contact-purple:#7c3aed;
+  --cvl-contact-red:#d62828;
+}
+
+.cvl-contact-hero{
+  position:relative;
+  overflow:hidden;
+  padding:30px;
+  border:1px solid #e1e8e3;
+  border-radius:18px;
+  background:
+    radial-gradient(circle at 92% 8%,rgba(23,130,15,.10),transparent 32%),
+    linear-gradient(135deg,#fbfdfb 0%,#f4f9f5 100%);
+  box-shadow:0 10px 30px rgba(28,55,35,.07);
+}
+
+.cvl-contact-hero::after{
+  content:"";
+  position:absolute;
+  right:-50px;
+  bottom:-70px;
+  width:180px;
+  height:180px;
+  border-radius:50%;
+  background:rgba(214,40,40,.055);
+  pointer-events:none;
+}
+
+.cvl-contact-kicker{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding:5px 9px;
+  border-radius:999px;
+  background:#eaf6e9;
+  color:#14730d;
+}
+
+.cvl-contact-hero h1{
+  margin-top:8px;
+}
+
+.cvl-contact-action{
+  border-radius:9px;
+  box-shadow:0 3px 10px rgba(20,35,28,.05);
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease,background .18s ease,color .18s ease;
+}
+
+.cvl-contact-action:hover,
+.cvl-contact-action:focus-visible{
+  transform:translateY(-1px);
+  box-shadow:0 7px 18px rgba(20,35,28,.10);
+}
+
+.cvl-contact-action.is-whatsapp{
+  border-color:#16a34a;
+  background:#ecf9f0;
+  color:#147d3a;
+}
+
+.cvl-contact-action.is-whatsapp:hover,
+.cvl-contact-action.is-whatsapp:focus-visible{
+  border-color:#12843c;
+  background:#16a34a;
+  color:#fff;
+}
+
+.cvl-contact-action.is-email{
+  border-color:#2563eb;
+  background:#eef4ff;
+  color:#1d4ed8;
+}
+
+.cvl-contact-action.is-email:hover,
+.cvl-contact-action.is-email:focus-visible{
+  border-color:#1d4ed8;
+  background:#2563eb;
+  color:#fff;
+}
+
+.cvl-contact-action.is-map{
+  border-color:#d62828;
+  background:#fff2f2;
+  color:#b91c1c;
+}
+
+.cvl-contact-action.is-map:hover,
+.cvl-contact-action.is-map:focus-visible{
+  border-color:#b91c1c;
+  background:#d62828;
+  color:#fff;
+}
+
+.cvl-contact-section-head span{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+}
+
+.cvl-contact-grid{
+  gap:16px;
+}
+
+.cvl-contact-card{
+  --contact-accent:#17820f;
+  --contact-soft:#eef8ed;
+  position:relative;
+  overflow:hidden;
+  padding:22px;
+  border:1px solid color-mix(in srgb,var(--contact-accent) 22%,#e2e7e8);
+  border-top:4px solid var(--contact-accent);
+  border-radius:16px;
+  background:
+    linear-gradient(180deg,var(--contact-soft) 0,rgba(255,255,255,.96) 64px,#fff 100%);
+  box-shadow:0 7px 20px rgba(25,35,40,.065);
+  transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;
+}
+
+.cvl-contact-card:hover{
+  transform:translateY(-3px);
+  box-shadow:0 14px 30px rgba(25,35,40,.11);
+}
+
+.cvl-contact-card.is-ecommerce{
+  --contact-accent:#17820f;
+  --contact-soft:#eff9ee;
+}
+
+.cvl-contact-card.is-commercial{
+  --contact-accent:#2563eb;
+  --contact-soft:#eef4ff;
+}
+
+.cvl-contact-card.is-service{
+  --contact-accent:#ea7a13;
+  --contact-soft:#fff6ea;
+}
+
+.cvl-contact-card.is-accounting{
+  --contact-accent:#7c3aed;
+  --contact-soft:#f5efff;
+}
+
+.cvl-contact-card.is-admin{
+  --contact-accent:#d62828;
+  --contact-soft:#fff0f0;
+}
+
+.cvl-contact-card-icon{
+  width:50px;
+  height:50px;
+  margin-bottom:15px;
+  border-radius:14px;
+  background:var(--contact-soft);
+  color:var(--contact-accent);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--contact-accent) 18%,transparent);
+}
+
+.cvl-contact-card h3{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  color:#22282c;
+}
+
+.cvl-contact-card-emoji{
+  font-size:19px;
+  line-height:1;
+}
+
+.cvl-contact-card-name{
+  color:var(--contact-accent);
+  font-weight:700;
+}
+
+.cvl-contact-card-list li{
+  display:flex;
+  align-items:flex-start;
+  gap:7px;
+}
+
+.cvl-contact-card-list li>span{
+  width:18px;
+  flex:0 0 18px;
+  line-height:1.4;
+  text-align:center;
+}
+
+.cvl-contact-card-list a{
+  font-weight:650;
+}
+
+.cvl-contact-card-list a:hover,
+.cvl-contact-card-list a:focus-visible{
+  color:var(--contact-accent);
+}
+
+.cvl-contact-card-actions a{
+  gap:5px;
+  border-radius:8px;
+  background:#fff;
+}
+
+.cvl-contact-card-actions a.is-whatsapp{
+  border-color:#bfe8cb;
+  background:#effaf2;
+  color:#16823f;
+}
+
+.cvl-contact-card-actions a.is-email{
+  border-color:#cbd9ff;
+  background:#f1f5ff;
+  color:#2551bd;
+}
+
+.cvl-contact-location{
+  position:relative;
+  padding:24px;
+  border:1px solid #e4e7ea;
+  border-top:4px solid #d62828;
+  border-radius:16px;
+  background:linear-gradient(180deg,#fff6f6 0,#fff 86px);
+  box-shadow:0 7px 20px rgba(35,35,35,.06);
+}
+
+.cvl-contact-location h3{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  color:#2a3034;
+}
+
+.cvl-contact-hours{
+  padding:6px 9px;
+  border-radius:8px;
+  background:#f1f7f1;
+  color:#285f27;
+}
+
+.cvl-contact-location-map{
+  overflow:hidden;
+  border-radius:0 0 14px 14px;
+}
+
+.cvl-contact-note{
+  overflow:hidden;
+  border-radius:16px;
+  background:
+    radial-gradient(circle at 95% 15%,rgba(255,255,255,.12),transparent 30%),
+    linear-gradient(135deg,#25312a 0%,#173e22 100%);
+  box-shadow:0 10px 26px rgba(19,48,28,.14);
+}
+
+.cvl-contact-note h2 span{
+  margin-right:4px;
+}
+
+.cvl-contact-note .cvl-contact-action.is-whatsapp{
+  border-color:#fff;
+  background:#fff;
+  color:#15803d;
+}
+
+.cvl-contact-note .cvl-contact-action.is-whatsapp:hover{
+  border-color:#16a34a;
+  background:#16a34a;
+  color:#fff;
+}
+
+@media(max-width:639.98px){
+  .cvl-contact-hero{
+    padding:22px 18px;
+  }
+
+  .cvl-contact-card{
+    padding:19px;
+  }
+
+  .cvl-contact-location{
+    padding:18px;
+  }
+}
+
+@supports not (color:color-mix(in srgb,red 50%,blue)){
+  .cvl-contact-card{
+    border-color:#e2e7e8;
+  }
+
+  .cvl-contact-card-icon{
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.06);
+  }
+}
