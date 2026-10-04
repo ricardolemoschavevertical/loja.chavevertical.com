@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.0' );
+define( 'CVL_VERSION', '0.16.1' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -818,18 +818,71 @@ function cvl_single_product_info_panel() {
     }
 
     if ( $sku ) {
-        echo '<tr><th scope="row">' . esc_html__( 'Referência:', 'chavevertical-lite' ) . '</th><td>' . esc_html( $sku ) . '</td></tr>';
+        echo '<tr><th scope="row">' . esc_html__( 'Referência:', 'chavevertical-lite' ) . '</th><td><span class="cvl-single-fact-reference-value">' . esc_html( $sku ) . '</span></td></tr>';
     }
 
     if ( $category ) {
-        echo '<tr><th scope="row">' . esc_html__( 'Categorias:', 'chavevertical-lite' ) . '</th><td>' . esc_html( $category->name ) . '</td></tr>';
+        echo '<tr class="cvl-single-fact-category"><th scope="row">' . esc_html__( 'Categorias:', 'chavevertical-lite' ) . '</th><td><span class="cvl-single-fact-category-value">' . esc_html( $category->name ) . '</span></td></tr>';
     }
 
-    echo '<tr><th scope="row">' . esc_html__( 'Etiquetas:', 'chavevertical-lite' ) . '</th><td>' . esc_html( $tag_text ) . '</td></tr>';
+    echo '<tr class="cvl-single-fact-tags"><th scope="row">' . esc_html__( 'Etiquetas:', 'chavevertical-lite' ) . '</th><td>' . esc_html( $tag_text ) . '</td></tr>';
     echo '</tbody></table></div>';
     echo '</section>';
 }
 add_action( 'woocommerce_single_product_summary', 'cvl_single_product_info_panel', 25 );
+
+/**
+ * Ação comercial secundária alinhada com o storefront Shopware.
+ *
+ * Mantém o formulário de compra nativo do WooCommerce intocado. A ação
+ * secundária abre o pedido comercial com produto e referência já preenchidos.
+ */
+function cvl_single_product_request_url( WC_Product $product, $request_type = 'quote' ) {
+    return add_query_arg(
+        array(
+            'produto' => $product->get_name(),
+            'sku'     => $product->get_sku(),
+            'tipo'    => sanitize_key( $request_type ),
+        ),
+        'https://chavevertical.com/contacto-pedido-de-cotacao/'
+    );
+}
+
+function cvl_single_product_proforma_action() {
+    global $product;
+
+    if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product ) {
+        return;
+    }
+
+    $url = cvl_single_product_request_url( $product, 'fatura-pro-forma' );
+
+    echo '<a class="cvl-single-proforma-button" href="' . esc_url( $url ) . '">';
+    echo esc_html__( 'SOLICITAR FATURA PRO-FORMA', 'chavevertical-lite' );
+    echo '</a>';
+}
+add_action( 'woocommerce_after_add_to_cart_button', 'cvl_single_product_proforma_action', 20 );
+
+function cvl_single_product_quote_only_action() {
+    global $product;
+
+    if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product ) {
+        return;
+    }
+
+    if ( $product->is_purchasable() && $product->is_in_stock() ) {
+        return;
+    }
+
+    $url = cvl_single_product_request_url( $product, 'orcamento' );
+
+    echo '<div class="cvl-single-quote-only">';
+    echo '<a class="cvl-single-proforma-button is-primary" href="' . esc_url( $url ) . '">';
+    echo esc_html__( 'SOLICITAR ORÇAMENTO', 'chavevertical-lite' );
+    echo '</a>';
+    echo '</div>';
+}
+add_action( 'woocommerce_single_product_summary', 'cvl_single_product_quote_only_action', 31 );
 
 /**
  * Partilha da ficha, posicionada pelo template junto à galeria.
@@ -880,13 +933,7 @@ function cvl_single_product_contact_tab_content() {
         return;
     }
 
-    $url = add_query_arg(
-        array(
-            'produto' => $product->get_name(),
-            'sku'     => $product->get_sku(),
-        ),
-        'https://chavevertical.com/contacto-pedido-de-cotacao/'
-    );
+    $url = cvl_single_product_request_url( $product, 'orcamento' );
 
     echo '<div class="cvl-single-contact-tab">';
     echo '<h3>' . esc_html__( 'Solicitar Orçamento ou Informação Adicional', 'chavevertical-lite' ) . '</h3>';
