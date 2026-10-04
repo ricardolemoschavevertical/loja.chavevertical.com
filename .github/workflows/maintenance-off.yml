@@ -1,0 +1,86 @@
+name: Disable Loja Maintenance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/maintenance-off.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: loja-maintenance-off
+  cancel-in-progress: false
+
+jobs:
+  disable:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 5
+    steps:
+      - name: Disable WooCommerce coming-soon mode
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_ROOT=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          test -f "$WP_ROOT/wp-load.php"
+
+          if [ -f "$WP_ROOT/.maintenance" ]; then
+            AGE=$(( $(date +%s) - $(stat -c %Y "$WP_ROOT/.maintenance") ))
+            echo "Core .maintenance file detected; age=${AGE}s"
+            if [ "$AGE" -gt 600 ]; then
+              rm -f "$WP_ROOT/.maintenance"
+              echo "Removed stale WordPress core .maintenance file."
+            else
+              echo "Recent .maintenance file kept to avoid interrupting a possible active update."
+            fi
+          else
+            echo "No WordPress core .maintenance file."
+          fi
+
+          cd "$WP_ROOT"
+          php <<'PHP'
+          <?php
+          define( 'WP_USE_THEMES', false );
+          require __DIR__ . '/wp-load.php';
+
+          $before = get_option( 'woocommerce_coming_soon', '(unset)' );
+          $scope  = get_option( 'woocommerce_store_pages_only', '(unset)' );
+
+          echo "woocommerce_coming_soon(before)=" . ( is_scalar( $before ) ? $before : gettype( $before ) ) . PHP_EOL;
+          echo "woocommerce_store_pages_only=" . ( is_scalar( $scope ) ? $scope : gettype( $scope ) ) . PHP_EOL;
+
+          if ( 'no' !== $before ) {
+              update_option( 'woocommerce_coming_soon', 'no' );
+          }
+
+          $after = get_option( 'woocommerce_coming_soon', '(unset)' );
+          echo "woocommerce_coming_soon(after)=" . ( is_scalar( $after ) ? $after : gettype( $after ) ) . PHP_EOL;
+
+          if ( 'no' !== $after ) {
+              fwrite( STDERR, "Failed to set WooCommerce site visibility to live." . PHP_EOL );
+              exit( 1 );
+          }
+          PHP
+
+      - name: Verify origin response
+        shell: bash
+        run: |
+          set -euo pipefail
+          BODY=$(mktemp)
+          trap 'rm -f "$BODY"' EXIT
+          CODE=$(curl -kLsS --max-time 20 --resolve loja.chavevertical.com:443:127.0.0.1 -o "$BODY" -w '%{http_code}' https://loja.chavevertical.com/)
+          echo "Origin HTTP status: $CODE"
+
+          if grep -Eiq 'coming[ -]?soon|maintenance|manuten[cç][aã]o|brevemente' "$BODY"; then
+            echo "Origin still contains maintenance/coming-soon wording."
+            exit 2
+          fi
+
+          if [ "$CODE" -ge 500 ]; then
+            echo "Origin returned server error."
+            exit 3
+          fi
+
+          echo "Origin no longer presents maintenance wording."
