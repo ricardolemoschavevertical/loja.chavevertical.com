@@ -246,7 +246,11 @@ final class CVOS_Plugin {
                         </tr>
                         <tr>
                             <th><label for="cvos-index">Índice</label></th>
-                            <td><input id="cvos-index" type="text" name="settings[index_name]" value="<?php echo esc_attr( $settings['index_name'] ); ?>"></td>
+                            <td><input id="cvos-index" class="regular-text code" type="text" name="settings[index_name]" value="<?php echo esc_attr( $settings['index_name'] ); ?>"><p class="description">Para este servidor use um nome dentro de <code>wordpress-chavevertical-*</code>, por exemplo <code>wordpress-chavevertical-products</code>.</p></td>
+                        </tr>
+                        <tr>
+                            <th><label for="cvos-ca-file">Certificado CA</label></th>
+                            <td><input id="cvos-ca-file" class="large-text code" type="text" name="settings[ca_file]" value="<?php echo esc_attr( $settings['ca_file'] ?? '' ); ?>" placeholder="/caminho/privado/opensearch-ca.pem"><p class="description">Caminho absoluto no servidor WordPress para <code>opensearch-ca.pem</code>. O ficheiro deve ficar fora da pasta pública sempre que possível.</p></td>
                         </tr>
                         <tr>
                             <th>Segurança TLS</th>
@@ -366,7 +370,7 @@ final class CVOS_Plugin {
                     <section style="background:#fff;border:1px solid #dcdcde;padding:18px">
                         <h2 style="margin-top:0">Segurança</h2>
                         <p>O Astro não recebe credenciais do OpenSearch. Consulta a API somente-leitura deste plugin.</p>
-                        <p>Em produção pode guardar segredos em <code>wp-config.php</code> através de <code>CVOS_ENDPOINT</code>, <code>CVOS_USERNAME</code>, <code>CVOS_PASSWORD</code> ou <code>CVOS_BEARER_TOKEN</code>.</p>
+                        <p>Em produção pode guardar segredos em <code>wp-config.php</code> através de <code>CVOS_ENDPOINT</code>, <code>CVOS_USERNAME</code>, <code>CVOS_PASSWORD</code> ou <code>CVOS_BEARER_TOKEN</code>. O caminho da CA também pode ser definido em <code>CVOS_CA_FILE</code>.</p>
                     </section>
                 </aside>
             </div>
