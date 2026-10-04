@@ -44,7 +44,7 @@ h1,h2,h3,h4,h5,h6,.woocommerce-loop-product__title{font-family:"Manrope","DM San
 .cvl-meta-social .cvl-social-play{fill:#fff;stroke:none}
 .cvl-meta-social .cvl-social-dot{fill:currentColor;stroke:none}
 
-.cvl-header-main{min-height:102px!important;display:grid!important;grid-template-columns:minmax(185px,230px) minmax(320px,1fr) auto!important;align-items:center;gap:30px!important}
+.cvl-header-main{min-height:102px!important;display:grid!important;grid-template-columns:minmax(185px,1fr) minmax(320px,666px) minmax(185px,1fr)!important;align-items:center;gap:30px!important}
 .cvl-brand,.cvl-brand .custom-logo-link{display:flex;align-items:center}
 .cvl-brand .custom-logo,.cvl-default-logo{display:block;width:min(100%,205px)!important;max-width:205px!important;height:auto!important;max-height:70px!important;object-fit:contain}
 .cvl-search{width:100%;max-width:666px!important;height:50px!important;justify-self:center;border:2px solid #168a91!important;border-radius:2px!important;background:#fff;overflow:hidden;box-shadow:none!important}
@@ -223,7 +223,7 @@ h1,h2,h3,h4,h5,h6,.woocommerce-loop-product__title{font-family:"Manrope","DM San
   .cvl-v4-category-grid{grid-template-columns:repeat(5,minmax(0,1fr))!important}
 }
 @media(max-width:1199.98px){
-  .cvl-header-main{grid-template-columns:185px minmax(260px,1fr) auto!important;gap:20px!important}
+  .cvl-header-main{grid-template-columns:minmax(165px,1fr) minmax(320px,666px) minmax(165px,1fr)!important;gap:20px!important}
   .cvl-phone{margin-right:10px;padding-right:12px}
   .cvl-phone-copy small{display:none}
   .cvl-phone-copy strong{font-size:14px!important}
@@ -435,5 +435,22 @@ h1,h2,h3,h4,h5,h6,.woocommerce-loop-product__title{font-family:"Manrope","DM San
     width:40px!important;
     height:40px!important;
     margin-left:4px!important;
+  }
+}
+
+
+/* v0.13.8 — keep the search field geometrically centred */
+@media(min-width:992px){
+  .cvl-search{
+    grid-column:2;
+    width:100%!important;
+    max-width:666px!important;
+    justify-self:center!important;
+  }
+
+  .cvl-header-actions{
+    grid-column:3;
+    justify-self:stretch;
+    justify-content:flex-end!important;
   }
 }
