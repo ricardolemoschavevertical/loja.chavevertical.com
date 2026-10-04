@@ -119,3 +119,48 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 });
+
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('[data-cvl-brand-auto-filter]').forEach(function (form) {
+    var search = form.querySelector('[data-cvl-brand-search]');
+    var empty = form.querySelector('[data-cvl-brand-search-empty]');
+
+    if (!search) {
+      return;
+    }
+
+    var chips = Array.prototype.slice.call(form.querySelectorAll('.cvl-final-brand-chip'));
+
+    function normalizeBrandSearch(value) {
+      var text = String(value || '').toLocaleLowerCase('pt-PT');
+
+      if (typeof text.normalize === 'function') {
+        text = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      }
+
+      return text.trim();
+    }
+
+    function filterBrands() {
+      var query = normalizeBrandSearch(search.value);
+      var visible = 0;
+
+      chips.forEach(function (chip) {
+        var matches = !query || normalizeBrandSearch(chip.textContent).indexOf(query) !== -1;
+        chip.hidden = !matches;
+
+        if (matches) {
+          visible += 1;
+        }
+      });
+
+      if (empty) {
+        empty.hidden = visible !== 0;
+      }
+    }
+
+    search.addEventListener('input', filterBrands);
+    search.addEventListener('search', filterBrands);
+    filterBrands();
+  });
+});
