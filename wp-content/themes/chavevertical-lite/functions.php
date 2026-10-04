@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.56' );
+define( 'CVL_VERSION', '0.16.57' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -1806,6 +1806,38 @@ function cvl_category_archive_branch_ids( WP_Term $term ): array {
     return array_values( array_unique( array_merge( array( (int) $term->term_id ), $children ) ) );
 }
 
+
+/**
+ * Devolve todos os produtos publicados associados a qualquer categoria do ramo.
+ * É independente da query nativa do arquivo e inclui produtos atribuídos apenas
+ * às categorias filhas/netas.
+ */
+function cvl_category_archive_product_ids( array $category_ids ): array {
+    global $wpdb;
+
+    $category_ids = array_values( array_filter( array_map( 'absint', $category_ids ) ) );
+    if ( ! $category_ids ) {
+        return array();
+    }
+
+    $placeholders = implode( ',', array_fill( 0, count( $category_ids ), '%d' ) );
+
+    $sql = "
+        SELECT DISTINCT p.ID
+        FROM {$wpdb->posts} p
+        INNER JOIN {$wpdb->term_relationships} tr ON tr.object_id = p.ID
+        INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
+        WHERE p.post_type = 'product'
+          AND p.post_status = 'publish'
+          AND tt.taxonomy = 'product_cat'
+          AND tt.term_id IN ({$placeholders})
+    ";
+
+    $ids = $wpdb->get_col( $wpdb->prepare( $sql, $category_ids ) );
+
+    return array_values( array_unique( array_filter( array_map( 'absint', $ids ) ) ) );
+}
+
 function cvl_category_archive_selected_category( WP_Term $base_term ): ?WP_Term {
     $slug = isset( $_GET['categoria'] ) ? sanitize_title( wp_unslash( $_GET['categoria'] ) ) : '';
 
@@ -1982,41 +2014,25 @@ add_action( 'pre_get_posts', function ( WP_Query $query ) {
         return;
     }
 
+    $selected_category = cvl_category_archive_selected_category( $base_term );
+    $branch_term       = $selected_category instanceof WP_Term ? $selected_category : $base_term;
+    $branch_ids        = cvl_category_archive_branch_ids( $branch_term );
+    $product_ids       = cvl_category_archive_product_ids( $branch_ids );
+
     /*
-     * Mantém os filtros WooCommerce já aplicados (por exemplo visibilidade),
-     * mas elimina qualquer cláusula product_cat anterior. Assim evitamos que o
-     * filtro nativo do URL intersecte a árvore explícita definida abaixo.
+     * A consulta principal deixa de depender da cláusula product_cat nativa.
+     * post__in contém explicitamente produtos da categoria atual + todos os
+     * produtos das filhas/netas, inclusive quando não pertencem diretamente à mãe.
      */
     $tax_query = cvl_category_archive_without_taxonomy(
         (array) $query->get( 'tax_query' ),
         'product_cat'
     );
 
-    /*
-     * A categoria mãe agrega explicitamente todos os produtos da sua árvore.
-     * Quando o utilizador escolhe uma categoria do carrossel, o mesmo princípio
-     * aplica-se apenas a esse ramo: categoria escolhida + todos os descendentes.
-     */
-    $selected_category = cvl_category_archive_selected_category( $base_term );
-    $branch_term       = $selected_category instanceof WP_Term ? $selected_category : $base_term;
-    $branch_ids        = cvl_category_archive_branch_ids( $branch_term );
-
-    if ( $branch_ids ) {
-        $tax_query[] = array(
-            'taxonomy'         => 'product_cat',
-            'field'            => 'term_id',
-            'terms'            => $branch_ids,
-            'include_children' => false,
-            'operator'         => 'IN',
-        );
-    }
-
-    /*
-     * O WordPress voltaria a criar automaticamente outra cláusula product_cat
-     * a partir do slug do arquivo. Limpamos apenas essa query var e guardamos a
-     * categoria original para o template/SEO da página.
-     */
+    $query->set( 'post_type', 'product' );
+    $query->set( 'post__in', $product_ids ?: array( 0 ) );
     $query->set( 'cvl_base_product_cat_id', (int) $base_term->term_id );
+    $query->set( 'cvl_branch_product_cat_id', (int) $branch_term->term_id );
     $query->set( 'product_cat', '' );
 
     if ( 'product_cat' === (string) $query->get( 'taxonomy' ) ) {
@@ -2024,31 +2040,81 @@ add_action( 'pre_get_posts', function ( WP_Query $query ) {
         $query->set( 'term', '' );
     }
 
-    // Preserva explicitamente o objeto consultado como sendo a categoria mãe do URL.
-    $query->queried_object    = $base_term;
-    $query->queried_object_id = (int) $base_term->term_id;
+    $children = get_terms(
+        array(
+            'taxonomy'   => 'product_cat',
+            'hide_empty' => false,
+            'parent'     => (int) $branch_term->term_id,
+            'fields'     => 'ids',
+            'number'     => 1,
+        )
+    );
+    $is_final = is_wp_error( $children ) || empty( $children );
+    $query->set( 'cvl_is_final_category', $is_final ? 1 : 0 );
 
-    $brand_slug = isset( $_GET['marca'] ) ? sanitize_title( wp_unslash( $_GET['marca'] ) ) : '';
-    if ( $brand_slug && taxonomy_exists( 'product_brand' ) ) {
-        $brand = get_term_by( 'slug', $brand_slug, 'product_brand' );
+    /*
+     * Regra comercial:
+     * - mãe/intermédia: só categorias;
+     * - final: marcas + preço.
+     */
+    if ( $is_final ) {
+        $brand_slug = isset( $_GET['marca'] ) ? sanitize_title( wp_unslash( $_GET['marca'] ) ) : '';
 
-        if ( $brand instanceof WP_Term ) {
-            $tax_query[] = array(
-                'taxonomy' => 'product_brand',
-                'field'    => 'term_id',
-                'terms'    => array( (int) $brand->term_id ),
-                'operator' => 'IN',
+        if ( $brand_slug && taxonomy_exists( 'product_brand' ) ) {
+            $brand = get_term_by( 'slug', $brand_slug, 'product_brand' );
+
+            if ( $brand instanceof WP_Term ) {
+                $tax_query[] = array(
+                    'taxonomy' => 'product_brand',
+                    'field'    => 'term_id',
+                    'terms'    => array( (int) $brand->term_id ),
+                    'operator' => 'IN',
+                );
+            }
+        }
+
+        $min_price = isset( $_GET['min_price'] )
+            ? max( 0, (float) wc_format_decimal( wp_unslash( $_GET['min_price'] ) ) )
+            : 0.0;
+        $max_price = isset( $_GET['max_price'] )
+            ? max( 0, (float) wc_format_decimal( wp_unslash( $_GET['max_price'] ) ) )
+            : 0.0;
+
+        if ( $min_price > 0 || $max_price > 0 ) {
+            $meta_query = (array) $query->get( 'meta_query' );
+            $price_rule = array(
+                'key'     => '_price',
+                'type'    => 'NUMERIC',
             );
+
+            if ( $min_price > 0 && $max_price > 0 ) {
+                $price_rule['value']   = array( $min_price, $max_price );
+                $price_rule['compare'] = 'BETWEEN';
+            } elseif ( $min_price > 0 ) {
+                $price_rule['value']   = $min_price;
+                $price_rule['compare'] = '>=';
+            } else {
+                $price_rule['value']   = $max_price;
+                $price_rule['compare'] = '<=';
+            }
+
+            $meta_query[] = $price_rule;
+            $query->set( 'meta_query', $meta_query );
         }
     }
 
     if ( $tax_query ) {
         $query->set( 'tax_query', $tax_query );
+    } else {
+        $query->set( 'tax_query', array() );
     }
 
-    // Todos os produtos continuam acessíveis; carregamento progressivo evita uma página excessivamente pesada.
+    $query->queried_object    = $base_term;
+    $query->queried_object_id = (int) $base_term->term_id;
+
+    // Todos os produtos do ramo ficam acessíveis através de carregamento progressivo.
     $query->set( 'posts_per_page', 24 );
-}, 25 );
+}, 999 );
 
 function cvl_product_category_search_layout(): void {
     global $wp_query;
@@ -2065,20 +2131,11 @@ function cvl_product_category_search_layout(): void {
     }
 
     $selected_category = cvl_category_archive_selected_category( $base_term );
-    $selected_brand = isset( $_GET['marca'] ) ? sanitize_title( wp_unslash( $_GET['marca'] ) ) : '';
-    $min_price = isset( $_GET['min_price'] ) ? max( 0, (float) wc_format_decimal( wp_unslash( $_GET['min_price'] ) ) ) : 0.0;
-    $max_price = isset( $_GET['max_price'] ) ? max( 0, (float) wc_format_decimal( wp_unslash( $_GET['max_price'] ) ) ) : 0.0;
-
-    $facet_term = $selected_category instanceof WP_Term ? $selected_category : $base_term;
-    $facet_category_ids = cvl_category_archive_branch_ids( $facet_term );
-
-    $brand_facets = cvl_category_archive_brand_facets( $facet_category_ids, $min_price, $max_price );
-    list( $price_floor_raw, $price_ceil_raw ) = cvl_category_archive_price_bounds( $facet_category_ids, $selected_brand );
 
     /*
-     * Categorias disponíveis no nível atual.
-     * Numa categoria final não existem filhas, por isso desaparece o filtro
-     * "CATEGORIAS" e ficam apenas MARCAS + PREÇO.
+     * O nível atualmente navegado define se estamos numa mãe/intermédia ou numa
+     * categoria final. Mães/intermédias mostram apenas CATEGORIAS; finais mostram
+     * apenas MARCAS + PREÇO.
      */
     $navigation_parent = $selected_category instanceof WP_Term ? $selected_category : $base_term;
 
@@ -2098,6 +2155,30 @@ function cvl_product_category_search_layout(): void {
         )
     );
     $category_terms = is_wp_error( $category_terms ) ? array() : $category_terms;
+
+    $is_final = empty( $category_terms );
+
+    $selected_brand = $is_final && isset( $_GET['marca'] )
+        ? sanitize_title( wp_unslash( $_GET['marca'] ) )
+        : '';
+    $min_price = $is_final && isset( $_GET['min_price'] )
+        ? max( 0, (float) wc_format_decimal( wp_unslash( $_GET['min_price'] ) ) )
+        : 0.0;
+    $max_price = $is_final && isset( $_GET['max_price'] )
+        ? max( 0, (float) wc_format_decimal( wp_unslash( $_GET['max_price'] ) ) )
+        : 0.0;
+
+    $facet_category_ids = cvl_category_archive_branch_ids( $navigation_parent );
+    $brand_facets = $is_final
+        ? cvl_category_archive_brand_facets( $facet_category_ids, $min_price, $max_price )
+        : array();
+
+    if ( $is_final ) {
+        list( $price_floor_raw, $price_ceil_raw ) = cvl_category_archive_price_bounds( $facet_category_ids, $selected_brand );
+    } else {
+        $price_floor_raw = 0.0;
+        $price_ceil_raw  = 0.0;
+    }
 
     // O carrossel usa exatamente o mesmo nível hierárquico dos filtros.
     $carousel_parent = $navigation_parent;
@@ -2135,7 +2216,7 @@ function cvl_product_category_search_layout(): void {
     global $wp_query;
     $found = (int) $wp_query->found_posts;
     ?>
-    <div class="cvl-shell cvl-content cvl-search-page cvl-category-catalog-page<?php echo empty( $category_terms ) ? ' is-final-category' : ' is-parent-category'; ?>">
+    <div class="cvl-shell cvl-content cvl-search-page cvl-category-catalog-page<?php echo $is_final ? ' is-final-category' : ' is-parent-category'; ?>">
         <header class="cvl-search-heading cvl-search-heading-compact">
             <span><?php esc_html_e( 'CATEGORIA', 'chavevertical-lite' ); ?></span>
             <h1><?php echo esc_html( $base_term->name ); ?></h1>
@@ -2268,7 +2349,7 @@ function cvl_product_category_search_layout(): void {
                     </section>
                 <?php endif; ?>
 
-                <?php if ( $brand_facets ) : ?>
+                <?php if ( $is_final && $brand_facets ) : ?>
                     <section class="cvl-search-filter-group">
                         <h2><?php esc_html_e( 'MARCAS', 'chavevertical-lite' ); ?></h2>
                         <div class="cvl-search-filter-list">
@@ -2289,6 +2370,7 @@ function cvl_product_category_search_layout(): void {
                     </section>
                 <?php endif; ?>
 
+                <?php if ( $is_final ) : ?>
                 <section class="cvl-search-filter-group">
                     <h2><?php esc_html_e( 'PREÇO', 'chavevertical-lite' ); ?></h2>
                     <form class="cvl-search-price-filter" method="get" action="<?php echo esc_url( $base_url ); ?>">
@@ -2313,6 +2395,7 @@ function cvl_product_category_search_layout(): void {
                         <button type="submit"><?php esc_html_e( 'APLICAR PREÇO', 'chavevertical-lite' ); ?></button>
                     </form>
                 </section>
+                <?php endif; ?>
             </aside>
 
             <section class="cvl-search-products woocommerce">
