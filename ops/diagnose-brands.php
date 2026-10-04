@@ -94,6 +94,44 @@ if ( post_type_exists( 'product' ) ) {
 
 
 $target = isset($result['page']['permalink']) ? $result['page']['permalink'] : home_url('/?pagename=marcas');
+
+$frontend_urls = array(
+    'home' => home_url( '/' ),
+    'shop' => function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'shop' ) : home_url( '/shop/' ),
+);
+
+$result['frontend_brand_render'] = array();
+
+foreach ( $frontend_urls as $frontend_key => $frontend_url ) {
+    $frontend_response = wp_remote_get( $frontend_url, array(
+        'timeout' => 20,
+        'redirection' => 3,
+        'headers' => array(
+            'Cache-Control' => 'no-cache',
+        ),
+    ) );
+
+    if ( is_wp_error( $frontend_response ) ) {
+        $result['frontend_brand_render'][ $frontend_key ] = array(
+            'url' => $frontend_url,
+            'error' => $frontend_response->get_error_message(),
+        );
+        continue;
+    }
+
+    $frontend_body = (string) wp_remote_retrieve_body( $frontend_response );
+    $result['frontend_brand_render'][ $frontend_key ] = array(
+        'url' => $frontend_url,
+        'status' => (int) wp_remote_retrieve_response_code( $frontend_response ),
+        'product_cards' => substr_count( $frontend_body, 'class="product ' ),
+        'brand_rows' => substr_count( $frontend_body, 'cvl-product-brand-row' ),
+        'brand_logos' => substr_count( $frontend_body, 'cvl-product-brand-logo' ),
+        'brand_names' => substr_count( $frontend_body, 'cvl-product-brand-name' ),
+        'v13_loaded' => false !== strpos( $frontend_body, '/assets/css/v13.css' ),
+        'theme_version_loaded' => false !== strpos( $frontend_body, 'ver=0.15.3' ),
+    );
+}
+
 $response = wp_remote_get($target, array('timeout' => 20, 'redirection' => 3));
 
 if (is_wp_error($response)) {
