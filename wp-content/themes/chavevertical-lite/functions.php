@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.60' );
+define( 'CVL_VERSION', '0.16.61' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -2216,7 +2216,7 @@ function cvl_product_category_search_layout(): void {
     <div class="cvl-shell cvl-content cvl-search-page cvl-category-catalog-page<?php echo $is_final ? ' is-final-category' : ' is-parent-category'; ?>">
         <header class="cvl-search-heading cvl-search-heading-compact">
             <span><?php esc_html_e( 'CATEGORIA', 'chavevertical-lite' ); ?></span>
-            <h1><?php echo esc_html( $base_term->name ); ?></h1>
+            <h1><?php echo esc_html( $navigation_parent->name ); ?></h1>
             <p class="cvl-search-count">
                 <?php
                 printf(
