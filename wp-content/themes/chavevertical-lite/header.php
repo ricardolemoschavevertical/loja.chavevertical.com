@@ -70,7 +70,11 @@ defined( 'ABSPATH' ) || exit;
                 <span class="cvl-action-label">Conta</span>
             </a>
 
-            <?php if ( is_front_page() ) : ?>
+            <?php
+            $cvl_hide_wishlist = ( function_exists( 'is_cart' ) && is_cart() )
+                || ( function_exists( 'is_checkout' ) && is_checkout() );
+            ?>
+            <?php if ( ! $cvl_hide_wishlist ) : ?>
                 <a class="cvl-header-action cvl-wishlist-link" href="<?php echo esc_url( cvl_wishlist_url() ); ?>" aria-label="<?php esc_attr_e( 'Favoritos', 'chavevertical-lite' ); ?>">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.8a5.5 5.5 0 0 0-7.8 0L12 5.8l-1-1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.4a5.5 5.5 0 0 0 0-7.8Z"></path></svg>
                     <span class="cvl-action-label">Favoritos</span>
