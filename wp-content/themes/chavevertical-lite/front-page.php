@@ -366,8 +366,7 @@ $hero_side_style = sprintf(
 <section class="cvl-shell cvl-v4-section cvl-v4-categories-section">
     <header class="cvl-v4-section-head">
         <div>
-            <span>CATÁLOGO PROFISSIONAL</span>
-            <h2>Comprar por categoria</h2>
+            <span>CATEGORIAS EM DESTAQUE</span>
             <p>Escolha a área e aceda diretamente às respetivas subcategorias e produtos.</p>
         </div>
         <a href="<?php echo esc_url( $shop_url ); ?>">VER TODAS AS CATEGORIAS</a>
@@ -411,7 +410,6 @@ $hero_side_style = sprintf(
         <header class="cvl-v4-section-head">
             <div>
                 <span>PROMOÇÕES</span>
-                <h2>Oportunidades em destaque</h2>
                 <p>Produtos com preço promocional atualmente disponível na loja.</p>
             </div>
             <a href="<?php echo esc_url( add_query_arg( 'on_sale', '1', $shop_url ) ); ?>">VER PROMOÇÕES →</a>
@@ -578,7 +576,6 @@ $homepage_highlights = function_exists( 'cvl_get_homepage_highlights' )
         <header class="cvl-v4-section-head">
             <div>
                 <span>NOVIDADES</span>
-                <h2>Produtos recentes</h2>
                 <p>As últimas referências adicionadas ao catálogo Chave Vertical.</p>
             </div>
             <a href="<?php echo esc_url( $shop_url ); ?>">VER TODOS →</a>

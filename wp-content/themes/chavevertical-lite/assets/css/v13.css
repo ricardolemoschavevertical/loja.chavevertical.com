@@ -441,6 +441,28 @@
 }
 
 
+/* Home section labels — simplified hierarchy */
+.cvl-v4-categories-section .cvl-v4-section-head>div>span,
+.cvl-home-product-strip .cvl-v4-section-head>div>span{
+  display:block!important;
+  font-size:18px!important;
+  font-weight:900!important;
+  line-height:1.15!important;
+  letter-spacing:.07em!important;
+}
+
+.cvl-v4-categories-section .cvl-v4-section-head>div>p,
+.cvl-home-product-strip .cvl-v4-section-head>div>p{
+  margin-top:8px!important;
+}
+
+@media(max-width:767.98px){
+  .cvl-v4-categories-section .cvl-v4-section-head>div>span,
+  .cvl-home-product-strip .cvl-v4-section-head>div>span{
+    font-size:16px!important;
+  }
+}
+
 /* Home product strips — 8 recent / 16 promotional products */
 .cvl-home-product-strip{
   padding:56px 0 64px!important;
