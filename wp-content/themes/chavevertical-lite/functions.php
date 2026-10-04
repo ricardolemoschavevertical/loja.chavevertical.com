@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.66' );
+define( 'CVL_VERSION', '0.16.67' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -116,6 +116,16 @@ add_action( 'wp_enqueue_scripts', function () {
         wp_enqueue_script(
             'cvl-category',
             get_template_directory_uri() . '/assets/js/category.js',
+            array(),
+            CVL_VERSION,
+            true
+        );
+    }
+
+    if ( is_page_template( 'page-marcas.php' ) || is_page( 'marcas' ) ) {
+        wp_enqueue_script(
+            'cvl-brands',
+            get_template_directory_uri() . '/assets/js/brands.js',
             array(),
             CVL_VERSION,
             true
