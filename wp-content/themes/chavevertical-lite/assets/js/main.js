@@ -80,6 +80,13 @@
 
   if (contactMenu) {
     const desktop = window.matchMedia('(min-width: 992px)');
+    const contactDirect = contactMenu.querySelector('.cvl-contact-menu-direct');
+
+    if (contactDirect) {
+      contactDirect.addEventListener('click', (event) => {
+        event.stopPropagation();
+      });
+    }
 
     contactMenu.addEventListener('mouseenter', () => {
       if (desktop.matches) contactMenu.open = true;
