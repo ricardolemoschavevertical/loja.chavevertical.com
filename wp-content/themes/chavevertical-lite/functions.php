@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.38' );
+define( 'CVL_VERSION', '0.16.39' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -461,7 +461,8 @@ add_action( 'woocommerce_after_shop_loop_item_title', 'cvl_loop_product_meta', 4
  * - 1 unidade: SÓ 1 EM STOCK;
  * - 2 unidades: ÚLTIMAS UNIDADES;
  * - destaque: MELHOR PREÇO!;
- * - restantes estados mantêm promoção / stock / encomenda.
+ * - por encomenda: sem etiqueta pública;
+ * - restantes estados mantêm promoção / stock.
  *
  * Utilizadores com gestão WooCommerce veem também a quantidade exata
  * quando o produto gere stock diretamente.
@@ -483,8 +484,8 @@ function cvl_product_image_badge_data( WC_Product $product ) {
         return null;
     }
 
-    $class = 'is-backorder';
-    $label = __( 'POR ENCOMENDA', 'chavevertical-lite' );
+    $class = '';
+    $label = '';
 
     if ( $product->get_featured() ) {
         $class = 'is-featured';
@@ -506,11 +507,16 @@ function cvl_product_image_badge_data( WC_Product $product ) {
     if ( $can_manage && null !== $stock_quantity ) {
         $stock_label = sprintf( __( '%d EM STOCK', 'chavevertical-lite' ), $stock_quantity );
 
-        if ( 'is-stock' === $class ) {
+        if ( '' === $label || 'is-stock' === $class ) {
+            $class = '' === $class ? 'is-unavailable' : $class;
             $label = $stock_label;
         } elseif ( ! ( 'is-low-stock' === $class && 1 === $stock_quantity ) ) {
             $label .= ' · ' . $stock_label;
         }
+    }
+
+    if ( '' === $label ) {
+        return null;
     }
 
     return array(

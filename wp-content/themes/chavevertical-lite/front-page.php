@@ -515,7 +515,6 @@ $homepage_highlights = function_exists( 'cvl_get_homepage_highlights' )
 <section class="cvl-brand-carousel-section" aria-label="<?php esc_attr_e( 'Marcas representadas', 'chavevertical-lite' ); ?>">
     <div class="cvl-shell cvl-brand-carousel-header">
         <span class="cvl-brand-carousel-kicker"><?php esc_html_e( 'Marcas representadas', 'chavevertical-lite' ); ?></span>
-        <h2><?php esc_html_e( 'As ferramentas em que os profissionais confiam.', 'chavevertical-lite' ); ?></h2>
     </div>
 
     <div class="cvl-brand-carousel-shell" aria-hidden="true">
