@@ -112,7 +112,7 @@ defined( 'ABSPATH' ) || exit;
                 ),
                 array(
                     'label' => 'QUEM SOMOS',
-                    'url'   => 'https://chavevertical.com/sobrenos/',
+                    'url'   => cvl_about_page_url(),
                 ),
                 array(
                     'label' => 'CONTACTOS',

@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.11.2' );
+define( 'CVL_VERSION', '0.11.3' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -179,6 +179,18 @@ function cvl_contact_page_url() {
     }
 
     return home_url( '/?pagename=contactos' );
+}
+
+function cvl_about_page_url() {
+    foreach ( array( 'sobre-nos', 'sobrenos' ) as $slug ) {
+        $page = get_page_by_path( $slug, OBJECT, 'page' );
+
+        if ( $page instanceof WP_Post ) {
+            return get_permalink( $page->ID );
+        }
+    }
+
+    return 'https://chavevertical.com/sobrenos/';
 }
 
 function cvl_cart_count() {
