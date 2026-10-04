@@ -115,7 +115,20 @@ final class CVOS_Settings {
         }
 
         $path = trim( (string) $this->get( 'ca_file', '' ) );
-        return $path ? wp_normalize_path( $path ) : '';
+        if ( $path ) {
+            return wp_normalize_path( $path );
+        }
+
+        $bundled = defined( 'CVOS_PATH' ) ? CVOS_PATH . 'certs/opensearch-ca.pem' : '';
+        return $bundled && is_readable( $bundled ) ? wp_normalize_path( $bundled ) : '';
+    }
+
+    public function using_bundled_ca(): bool {
+        $configured = trim( (string) $this->get( 'ca_file', '' ) );
+        if ( defined( 'CVOS_CA_FILE' ) && CVOS_CA_FILE ) {
+            return false;
+        }
+        return '' === $configured && is_readable( CVOS_PATH . 'certs/opensearch-ca.pem' );
     }
 
     public function ca_pem(): string {

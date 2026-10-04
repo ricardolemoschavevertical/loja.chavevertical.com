@@ -271,7 +271,13 @@ final class CVOS_Plugin {
                         </tr>
                         <tr>
                             <th><label for="cvos-ca-file">Certificado CA — ficheiro</label></th>
-                            <td><input id="cvos-ca-file" class="large-text code" type="text" name="settings[ca_file]" value="<?php echo esc_attr( $settings['ca_file'] ?? '' ); ?>" placeholder="/caminho/privado/opensearch-ca.pem"><p class="description">Opcional. Caminho absoluto para um ficheiro PEM privado no servidor. Se este campo estiver preenchido, tem prioridade sobre o certificado colado abaixo.</p></td>
+                            <td>
+                                <input id="cvos-ca-file" class="large-text code" type="text" name="settings[ca_file]" value="<?php echo esc_attr( $settings['ca_file'] ?? '' ); ?>" placeholder="/caminho/privado/opensearch-ca.pem">
+                                <p class="description">Opcional. Caminho absoluto para um ficheiro PEM privado no servidor. Se este campo estiver preenchido, tem prioridade sobre o certificado colado abaixo.</p>
+                                <?php if ( $this->settings->using_bundled_ca() ) : ?>
+                                    <p><strong>Certificado integrado no plugin ativo:</strong> <code><?php echo esc_html( CVOS_PATH . 'certs/opensearch-ca.pem' ); ?></code></p>
+                                <?php endif; ?>
+                            </td>
                         </tr>
                         <tr>
                             <th><label for="cvos-ca-pem">Colar certificado CA (PEM)</label></th>
