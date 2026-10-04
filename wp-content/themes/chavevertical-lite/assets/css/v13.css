@@ -143,7 +143,7 @@
 
 /* Marca — logótipo quando existe; nome quando não existe */
 :is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-brand-row{
-  min-height:30px!important;
+  min-height:34px!important;
   margin:1px 10px 0!important;
   display:flex!important;
   align-items:center!important;
@@ -164,9 +164,9 @@
 :is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-brand-logo{
   display:block!important;
   width:auto!important;
-  max-width:96px!important;
+  max-width:118px!important;
   height:auto!important;
-  max-height:24px!important;
+  max-height:30px!important;
   margin:0 auto!important;
   object-fit:contain!important;
   padding:0!important;
@@ -195,9 +195,9 @@
 
 /* Referência */
 :is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-sku-row{
-  min-height:28px!important;
+  min-height:30px!important;
   margin:0 10px!important;
-  padding:5px 0 7px!important;
+  padding:6px 0 7px!important;
   display:flex!important;
   align-items:center!important;
   justify-content:center!important;
@@ -212,11 +212,11 @@
   display:flex!important;
   align-items:center!important;
   justify-content:center!important;
-  gap:5px!important;
+  gap:6px!important;
   overflow:hidden!important;
-  color:#78828a!important;
-  font-size:8px!important;
-  font-weight:700!important;
+  color:#66727a!important;
+  font-size:9.5px!important;
+  font-weight:800!important;
   line-height:1!important;
   text-align:center!important;
   text-overflow:ellipsis!important;
@@ -224,9 +224,9 @@
 }
 
 :is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-sku i{
-  width:15px!important;
-  height:10px!important;
-  flex:0 0 15px!important;
+  width:17px!important;
+  height:11px!important;
+  flex:0 0 17px!important;
   background:repeating-linear-gradient(90deg,#4b5563 0 1px,transparent 1px 3px,#4b5563 3px 5px,transparent 5px 6px,#4b5563 6px 7px,transparent 7px 9px)!important;
   opacity:.8!important;
 }
