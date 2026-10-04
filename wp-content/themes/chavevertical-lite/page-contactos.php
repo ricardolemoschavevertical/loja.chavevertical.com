@@ -153,8 +153,8 @@ $locations = array(
                 <h3><span class="cvl-contact-card-emoji" aria-hidden="true">🛠️</span><?php esc_html_e( 'Serviço Pós-Venda', 'chavevertical-lite' ); ?></h3>
                 <p class="cvl-contact-card-name">Samuel</p>
                 <ul class="cvl-contact-card-list">
-                    <li><span aria-hidden="true">📱</span><a href="tel:+351928065970">928 065 970</a></li>
                     <li><span aria-hidden="true">☎️</span><a href="tel:+351234020500">234 020 500</a></li>
+                    <li><span aria-hidden="true">📱</span><a href="tel:+351928065970">928 065 970</a></li>
                     <li><span aria-hidden="true">✉️</span><a href="mailto:spv@chavevertical.pt">spv@chavevertical.pt</a></li>
                 </ul>
             </article>
