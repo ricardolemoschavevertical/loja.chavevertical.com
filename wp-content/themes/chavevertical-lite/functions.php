@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.27' );
+define( 'CVL_VERSION', '0.16.28' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -1040,7 +1040,7 @@ function cvl_single_product_trust_strip() {
 
     echo '</div>';
 }
-add_action( 'woocommerce_single_product_summary', 'cvl_single_product_trust_strip', 32 );
+// Faixa inferior de confiança removida: informação consolidada nos cartões superiores.
 
 /**
  * Partilha da ficha, posicionada pelo template junto à galeria.
