@@ -828,3 +828,54 @@
     padding:20px;
   }
 }
+
+
+/* v0.9.10 — department SVG icons and store maps */
+.cvl-contact-card-icon{
+  width:46px;
+  height:46px;
+  display:grid;
+  place-items:center;
+  border-radius:12px;
+  background:#f1f7f0;
+  color:#17820f;
+  box-shadow:inset 0 0 0 1px rgba(23,130,15,.10);
+}
+
+.cvl-contact-card-icon svg{
+  width:22px;
+  height:22px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.75;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.cvl-contact-location{
+  overflow:hidden;
+}
+
+.cvl-contact-location-map{
+  margin:18px -24px -24px;
+  border-top:1px solid #e2e7e8;
+  background:#eef1f1;
+}
+
+.cvl-contact-location-map iframe{
+  display:block;
+  width:100%;
+  height:280px;
+  border:0;
+}
+
+@media(max-width:639.98px){
+  .cvl-contact-location-map{
+    margin:18px -18px -18px;
+  }
+
+  .cvl-contact-location-map iframe{
+    height:230px;
+  }
+}

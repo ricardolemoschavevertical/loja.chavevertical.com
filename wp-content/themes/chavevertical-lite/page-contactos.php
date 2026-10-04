@@ -44,7 +44,7 @@ $locations = array(
 
         <div class="cvl-contact-grid">
             <article class="cvl-contact-card is-online">
-                <div class="cvl-contact-card-icon" aria-hidden="true">↗</div>
+                <div class="cvl-contact-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 8H7"></path><circle cx="10" cy="20" r="1.2"></circle><circle cx="18" cy="20" r="1.2"></circle></svg></div>
                 <h3><?php esc_html_e( 'Encomendas On-line', 'chavevertical-lite' ); ?></h3>
                 <p class="cvl-contact-card-name">Ricardo Lemos</p>
                 <ul class="cvl-contact-card-list">
@@ -59,7 +59,7 @@ $locations = array(
             </article>
 
             <article class="cvl-contact-card">
-                <div class="cvl-contact-card-icon" aria-hidden="true">C</div>
+                <div class="cvl-contact-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2"></path></svg></div>
                 <h3><?php esc_html_e( 'Departamento Comercial', 'chavevertical-lite' ); ?></h3>
                 <p class="cvl-contact-card-name">Ricardo · José · Joana · Samuel · Andreia · Luis</p>
                 <ul class="cvl-contact-card-list">
@@ -71,7 +71,7 @@ $locations = array(
             </article>
 
             <article class="cvl-contact-card">
-                <div class="cvl-contact-card-icon" aria-hidden="true">SPV</div>
+                <div class="cvl-contact-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.6 6.4a4.5 4.5 0 0 0-5.7 5.7L3.5 17.5a2.1 2.1 0 0 0 3 3l5.4-5.4a4.5 4.5 0 0 0 5.7-5.7l-2.7 2.7-3-3 2.7-2.7Z"></path></svg></div>
                 <h3><?php esc_html_e( 'Serviço Pós-Venda', 'chavevertical-lite' ); ?></h3>
                 <p class="cvl-contact-card-name">Samuel</p>
                 <ul class="cvl-contact-card-list">
@@ -82,7 +82,7 @@ $locations = array(
             </article>
 
             <article class="cvl-contact-card">
-                <div class="cvl-contact-card-icon" aria-hidden="true">€</div>
+                <div class="cvl-contact-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"></path><path d="M15 3v5h5M9 12h6M9 16h6"></path></svg></div>
                 <h3><?php esc_html_e( 'Contabilidade', 'chavevertical-lite' ); ?></h3>
                 <p class="cvl-contact-card-name">João Colaço</p>
                 <ul class="cvl-contact-card-list">
@@ -93,7 +93,7 @@ $locations = array(
             </article>
 
             <article class="cvl-contact-card">
-                <div class="cvl-contact-card-icon" aria-hidden="true">A</div>
+                <div class="cvl-contact-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21h16M6 21V8l6-4 6 4v13M9 11h2M13 11h2M9 15h2M13 15h2"></path></svg></div>
                 <h3><?php esc_html_e( 'Administração', 'chavevertical-lite' ); ?></h3>
                 <p class="cvl-contact-card-name">Rui Lemos</p>
                 <ul class="cvl-contact-card-list">
@@ -112,13 +112,26 @@ $locations = array(
 
         <div class="cvl-contact-locations">
             <?php foreach ( $locations as $location ) : ?>
-                <?php $maps_url = 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode( $location['maps'] ); ?>
+                <?php
+                $maps_url      = 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode( $location['maps'] );
+                $map_embed_url = 'https://www.google.com/maps?q=' . rawurlencode( $location['maps'] ) . '&output=embed';
+                ?>
                 <article class="cvl-contact-location">
                     <h3><?php echo esc_html( $location['name'] ); ?></h3>
                     <p><?php echo nl2br( esc_html( $location['address'] ) ); ?></p>
                     <span class="cvl-contact-hours"><?php esc_html_e( 'Segunda a sexta · 09:00–18:00', 'chavevertical-lite' ); ?></span>
                     <div>
                         <a class="cvl-contact-action" href="<?php echo esc_url( $maps_url ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Como chegar', 'chavevertical-lite' ); ?></a>
+                    </div>
+
+                    <div class="cvl-contact-location-map">
+                        <iframe
+                            src="<?php echo esc_url( $map_embed_url ); ?>"
+                            title="<?php echo esc_attr( sprintf( __( 'Mapa — %s', 'chavevertical-lite' ), $location['name'] ) ); ?>"
+                            loading="lazy"
+                            allowfullscreen
+                            referrerpolicy="no-referrer-when-downgrade"
+                        ></iframe>
                     </div>
                 </article>
             <?php endforeach; ?>
