@@ -122,7 +122,7 @@ h1,h2,h3,h4,h5,h6,.woocommerce-loop-product__title{font-family:"Manrope","DM San
 .cvl-ref-benefit-grid{min-height:102px;display:grid;grid-template-columns:repeat(4,1fr);align-items:center}
 .cvl-ref-benefit-grid>div{min-height:54px;padding:0 26px;display:flex;align-items:center;gap:13px;border-right:1px solid var(--cvl-ref-line)}
 .cvl-ref-benefit-grid>div:first-child{padding-left:0}.cvl-ref-benefit-grid>div:last-child{border-right:0;padding-right:0}
-.cvl-ref-benefit-icon{width:39px;height:39px;flex:0 0 39px;display:grid;place-items:center;border-radius:50%;background:var(--cvl-ref-teal-soft);font-size:19px}
+.cvl-ref-benefit-icon{width:44px;height:44px;flex:0 0 44px;display:grid;place-items:center;border:1px solid rgba(18,112,101,.12);border-radius:13px;background:linear-gradient(145deg,#f1faf8,#e5f4f1);font-size:21px;line-height:1;box-shadow:0 5px 13px rgba(18,112,101,.08)}
 .cvl-ref-benefit-grid b{display:block;font-size:13px}.cvl-ref-benefit-grid small{display:block;margin-top:3px;color:var(--cvl-ref-muted);font-size:10px}
 
 /* Home sections harmonised with Shopware */
