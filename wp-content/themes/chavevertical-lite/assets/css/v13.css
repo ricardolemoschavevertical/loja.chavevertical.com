@@ -662,3 +662,12 @@ body.search-results .cvl-search-products li.product-category{display:none!import
     font-size:30px;
   }
 }
+
+
+/* Global 10% side gutters */
+body.cvl-site .cvl-shell{
+  width:80%!important;
+  max-width:none!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
