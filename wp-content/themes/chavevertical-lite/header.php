@@ -108,7 +108,7 @@ defined( 'ABSPATH' ) || exit;
                 ),
                 array(
                     'label' => 'MARCAS',
-                    'url'   => 'https://chavevertical.com/marcas/',
+                    'url'   => home_url( '/marcas/' ),
                 ),
                 array(
                     'label' => 'QUEM SOMOS',

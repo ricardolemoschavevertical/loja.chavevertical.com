@@ -7,6 +7,7 @@ on:
       - "wp-content/themes/chavevertical-lite/**"
       - ".github/workflows/chavevertical-lite.yml"
       - "ops/deploy-theme.sh"
+      - "ops/ensure-brands-page.php"
   workflow_dispatch:
 
 permissions:
@@ -33,6 +34,7 @@ jobs:
           test -f "$THEME/functions.php"
           test -f "$THEME/index.php"
           find "$THEME" -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          php -l ops/ensure-brands-page.php
 
       - name: Build installable ZIP
         shell: bash
@@ -71,3 +73,7 @@ jobs:
         env:
           THEME_ZIP: ${{ runner.temp }}/chavevertical-lite-${{ github.run_id }}-${{ github.run_attempt }}/chavevertical-lite.zip
         run: bash ops/deploy-theme.sh "$THEME_ZIP"
+
+      - name: Ensure brands page
+        shell: bash
+        run: php ops/ensure-brands-page.php
