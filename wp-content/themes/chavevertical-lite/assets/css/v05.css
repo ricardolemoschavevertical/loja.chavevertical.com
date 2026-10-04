@@ -402,3 +402,38 @@ h1,h2,h3,h4,h5,h6,.woocommerce-loop-product__title{font-family:"Manrope","DM San
     height:18px!important;
   }
 }
+
+
+/* v0.13.6 — homepage wishlist action beside cart */
+.cvl-wishlist-link svg{
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.7;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+@media(max-width:575.98px){
+  .cvl-header-main{
+    grid-template-columns:minmax(120px,1fr) auto!important;
+    gap:8px!important;
+  }
+
+  .cvl-brand .custom-logo,
+  .cvl-default-logo{
+    max-width:135px!important;
+  }
+
+  .cvl-header-action{
+    min-width:42px!important;
+    width:42px;
+    height:48px;
+    padding:0 6px!important;
+  }
+
+  .cvl-menu-toggle{
+    width:40px!important;
+    height:40px!important;
+    margin-left:4px!important;
+  }
+}

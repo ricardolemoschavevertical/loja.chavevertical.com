@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.13.5' );
+define( 'CVL_VERSION', '0.13.6' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -179,6 +179,36 @@ function cvl_cart_url() {
 
 function cvl_account_url() {
     return function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'myaccount' ) : home_url( '/my-account/' );
+}
+
+function cvl_wishlist_url() {
+    if ( function_exists( 'tinv_url_wishlist_default' ) ) {
+        $url = tinv_url_wishlist_default();
+
+        if ( ! empty( $url ) ) {
+            return $url;
+        }
+    }
+
+    $yith_page_id = absint( get_option( 'yith_wcwl_wishlist_page_id' ) );
+
+    if ( $yith_page_id ) {
+        $url = get_permalink( $yith_page_id );
+
+        if ( $url ) {
+            return $url;
+        }
+    }
+
+    foreach ( array( 'lista-de-desejos', 'favoritos', 'wishlist' ) as $slug ) {
+        $page = get_page_by_path( $slug, OBJECT, 'page' );
+
+        if ( $page instanceof WP_Post ) {
+            return get_permalink( $page->ID );
+        }
+    }
+
+    return home_url( '/lista-de-desejos/' );
 }
 
 function cvl_shop_url() {
