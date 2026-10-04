@@ -166,10 +166,10 @@ $cvl_category_image = static function ( $term, $size = 'large', $loading = 'lazy
 
 <section class="cvl-ref-benefits" aria-label="Vantagens Chave Vertical">
     <div class="cvl-shell cvl-ref-benefit-grid">
-        <div><span class="cvl-ref-benefit-icon">↗</span><span><b>Entregas em Portugal</b><small>Transporte adequado ao equipamento</small></span></div>
-        <div><span class="cvl-ref-benefit-icon">✓</span><span><b>Compra acompanhada</b><small>Informação clara antes da encomenda</small></span></div>
+        <div><span class="cvl-ref-benefit-icon">↗</span><span><b>Entregas em Portugal</b><small>Encomendas iguais ou superiores a 100 € + IVA</small></span></div>
+        <div><span class="cvl-ref-benefit-icon">✓</span><span><b>Produtos em stock</b><small>Entrega rápida nos artigos disponíveis</small></span></div>
         <div><span class="cvl-ref-benefit-icon">◎</span><span><b>Apoio especializado</b><small>Comercial, técnico e pós-venda</small></span></div>
-        <div class="cvl-ref-benefit-highlight"><span class="cvl-ref-benefit-icon cvl-ref-benefit-count">30K+</span><span><b>Mais de 30.000 referências</b><small>Máquinas, ferramentas e consumíveis</small></span></div>
+        <div><span class="cvl-ref-benefit-icon">▦</span><span><b>Mais de 30.000 referências</b><small>Máquinas, ferramentas e consumíveis</small></span></div>
     </div>
 </section>
 
