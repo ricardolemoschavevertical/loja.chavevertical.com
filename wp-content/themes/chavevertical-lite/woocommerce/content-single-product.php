@@ -24,9 +24,6 @@ if ( post_password_required() ) {
         <aside class="cvl-product-gallery-wrap">
             <?php do_action( 'woocommerce_before_single_product_summary' ); ?>
 
-            <?php if ( function_exists( 'cvl_single_product_share' ) ) : ?>
-                <?php cvl_single_product_share(); ?>
-            <?php endif; ?>
         </aside>
 
         <section class="summary entry-summary cvl-product-summary">

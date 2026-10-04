@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.6' );
+define( 'CVL_VERSION', '0.16.7' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -602,17 +602,17 @@ function cvl_single_product_service_strip() {
     echo '<div class="cvl-single-service-strip">';
     echo '<a href="' . esc_url( $quote_url ) . '">';
     echo '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6z"></path><path d="M9 7h6M9 11h6M9 15h4"></path></svg>';
-    echo '<span>' . esc_html__( 'Peça cotação personalizada', 'chavevertical-lite' ) . '</span>';
+    echo '<span class="cvl-single-service-copy"><strong>' . esc_html__( 'Peça cotação personalizada', 'chavevertical-lite' ) . '</strong><small>' . esc_html__( 'Soluções à medida do seu pedido', 'chavevertical-lite' ) . '</small></span>';
     echo '</a>';
 
     echo '<span>';
     echo '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13v-2a8 8 0 0 1 16 0v2"></path><path d="M4 13h3v6H5a1 1 0 0 1-1-1zM20 13h-3v6h2a1 1 0 0 0 1-1z"></path></svg>';
-    echo '<span>' . esc_html__( 'Apoio técnico especializado', 'chavevertical-lite' ) . '</span>';
+    echo '<span class="cvl-single-service-copy"><strong>' . esc_html__( 'Apoio técnico especializado', 'chavevertical-lite' ) . '</strong><small>' . esc_html__( 'Fale com a nossa equipa', 'chavevertical-lite' ) . '</small></span>';
     echo '</span>';
 
     echo '<span>';
     echo '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"></path><circle cx="7" cy="18" r="2"></circle><circle cx="18" cy="18" r="2"></circle></svg>';
-    echo '<span>' . esc_html__( 'Envio para todo o país', 'chavevertical-lite' ) . '</span>';
+    echo '<span class="cvl-single-service-copy"><strong>' . esc_html__( 'Envio para todo o país', 'chavevertical-lite' ) . '</strong><small>' . esc_html__( 'Consulte as condições de entrega', 'chavevertical-lite' ) . '</small></span>';
     echo '</span>';
     echo '</div>';
 }
@@ -632,19 +632,17 @@ function cvl_single_product_badge() {
     $class  = 'is-backorder';
     $label  = __( 'SOB ENCOMENDA', 'chavevertical-lite' );
 
-    if ( $product->is_on_sale() ) {
+    $stock_quantity = $product->managing_stock() ? $product->get_stock_quantity() : null;
+
+    if ( 'instock' === $status && 1 === (int) $stock_quantity ) {
+        $class = 'is-stock';
+        $label = __( 'SÓ 1 EM STOCK', 'chavevertical-lite' );
+    } elseif ( $product->is_on_sale() ) {
         $class = 'is-sale';
         $label = __( 'PROMOÇÃO', 'chavevertical-lite' );
     } elseif ( 'instock' === $status ) {
         $class = 'is-stock';
-
-        $stock_quantity = $product->managing_stock() ? $product->get_stock_quantity() : null;
-
-        if ( 1 === (int) $stock_quantity ) {
-            $label = __( 'SÓ 1 EM STOCK', 'chavevertical-lite' );
-        } else {
-            $label = __( 'EM STOCK', 'chavevertical-lite' );
-        }
+        $label = __( 'EM STOCK', 'chavevertical-lite' );
     } elseif ( 'outofstock' === $status ) {
         $class = 'is-danger';
         $label = __( 'SOB CONSULTA', 'chavevertical-lite' );
@@ -711,7 +709,7 @@ function cvl_single_product_rating_row() {
 
     echo '</div>';
 }
-add_action( 'woocommerce_single_product_summary', 'cvl_single_product_rating_row', 10 );
+
 
 /**
  * Marca / logótipo numa linha própria.
@@ -749,7 +747,22 @@ function cvl_single_product_brand_block() {
 
     echo '</div>';
 }
-add_action( 'woocommerce_single_product_summary', 'cvl_single_product_brand_block', 12 );
+
+/**
+ * Avaliação e marca numa linha estrutural real, como no mockup aprovado.
+ */
+function cvl_single_product_rating_brand_row() {
+    echo '<div class="cvl-single-rating-brand-row">';
+    echo '<div class="cvl-single-rating-slot">';
+    cvl_single_product_rating_row();
+    echo '</div>';
+    echo '<div class="cvl-single-brand-slot">';
+    cvl_single_product_brand_block();
+    echo '</div>';
+    echo '</div>';
+}
+add_action( 'woocommerce_single_product_summary', 'cvl_single_product_rating_brand_row', 10 );
+
 
 /**
  * Devolve a primeira taxa de imposto aplicável ao produto.
