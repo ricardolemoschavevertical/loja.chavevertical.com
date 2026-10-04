@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.5' );
+define( 'CVL_VERSION', '0.16.6' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -1115,7 +1115,7 @@ function cvl_shop_root_category_grid() {
     }
 
     echo '<section class="cvl-shop-category-section">';
-    echo '<header class="cvl-section-heading"><span>' . esc_html__( 'CATÁLOGO POR ÁREA', 'chavevertical-lite' ) . '</span><h2>' . esc_html__( 'Categorias', 'chavevertical-lite' ) . '</h2></header>';
+    echo '<header class="cvl-shop-catalog-heading"><h1>' . esc_html__( 'CATÁLOGO', 'chavevertical-lite' ) . '</h1></header>';
     echo '<div class="cvl-category-grid cvl-category-grid-premium cvl-category-grid-page">';
 
     foreach ( $terms as $term ) {
@@ -1152,7 +1152,7 @@ function cvl_shop_root_category_grid() {
 
     echo '</div></section>';
 }
-add_action( 'woocommerce_archive_description', 'cvl_shop_root_category_grid', 20 );
+// Renderizado diretamente em woocommerce.php para evitar a grelha nativa duplicada.
 
 
 /**

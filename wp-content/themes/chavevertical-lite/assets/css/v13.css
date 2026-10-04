@@ -630,3 +630,35 @@ body.search-results .cvl-search-products li.product-category{display:none!import
     max-width:320px;
   }
 }
+
+
+/* Shop root — single catalog heading v0.16.6 */
+.cvl-shop-category-section{
+  padding-top:30px;
+  padding-bottom:56px;
+}
+.cvl-shop-catalog-heading{
+  margin:0 0 24px;
+}
+.cvl-shop-catalog-heading h1{
+  margin:0;
+  color:#253239;
+  font-family:"Manrope","DM Sans",system-ui,sans-serif;
+  font-size:clamp(34px,4vw,48px);
+  font-weight:900;
+  letter-spacing:-.035em;
+  line-height:1;
+  text-transform:uppercase;
+}
+@media(max-width:767.98px){
+  .cvl-shop-category-section{
+    padding-top:24px;
+    padding-bottom:42px;
+  }
+  .cvl-shop-catalog-heading{
+    margin-bottom:18px;
+  }
+  .cvl-shop-catalog-heading h1{
+    font-size:30px;
+  }
+}

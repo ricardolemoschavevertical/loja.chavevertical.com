@@ -89,3 +89,29 @@ jobs:
       - name: Ensure pretty permalinks
         shell: bash
         run: php ops/ensure-pretty-permalinks.php
+
+      - name: Verify shop catalog layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -L --connect-timeout 10 --max-time 60 -sS             'https://loja.chavevertical.com/shop/?cvlcatalogverify=1'             -o /tmp/cvl-shop-catalog.html
+
+          CUSTOM_GRID_COUNT=$(grep -o 'cvl-category-grid-page' /tmp/cvl-shop-catalog.html | wc -l || true)
+          CUSTOM_CARD_COUNT=$(grep -o 'class="cvl-category-card"' /tmp/cvl-shop-catalog.html | wc -l || true)
+          NATIVE_CATEGORY_COUNT=$(grep -o '<li class="product-category product' /tmp/cvl-shop-catalog.html | wc -l || true)
+          PRODUCT_COUNT=$(grep -oE '<li[^>]*class="[^"]*product[^"]*post-[0-9]+[^"]*"[^>]*>' /tmp/cvl-shop-catalog.html | wc -l || true)
+
+          echo "custom_grid_count=$CUSTOM_GRID_COUNT"
+          echo "custom_card_count=$CUSTOM_CARD_COUNT"
+          echo "native_category_count=$NATIVE_CATEGORY_COUNT"
+          echo "product_count=$PRODUCT_COUNT"
+
+          test "$CUSTOM_GRID_COUNT" -eq 1
+          test "$CUSTOM_CARD_COUNT" -gt 0
+          test "$NATIVE_CATEGORY_COUNT" -eq 0
+          test "$PRODUCT_COUNT" -eq 0
+          grep -q '<h1>CATÁLOGO</h1>' /tmp/cvl-shop-catalog.html
+          if grep -Eq '<h1[^>]*>Shop</h1>|<h2[^>]*>Categorias</h2>' /tmp/cvl-shop-catalog.html; then
+            echo "Unexpected Shop/Categorias heading still present."
+            exit 1
+          fi
