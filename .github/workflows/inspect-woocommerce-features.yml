@@ -1,0 +1,28 @@
+name: Inspect WooCommerce Features
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/inspect-woocommerce-features.yml"
+      - "ops/inspect-woocommerce-features.php"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Inspect WooCommerce feature state
+        shell: bash
+        run: |
+          set -euo pipefail
+          php ops/inspect-woocommerce-features.php
