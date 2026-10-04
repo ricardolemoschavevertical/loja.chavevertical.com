@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.36' );
+define( 'CVL_VERSION', '0.16.37' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -454,7 +454,73 @@ function cvl_loop_product_meta() {
 add_action( 'woocommerce_after_shop_loop_item_title', 'cvl_loop_product_meta', 4 );
 
 /**
- * Estado comercial no canto superior da imagem, como no layout Shopware.
+ * Dados da etiqueta comercial sobre a imagem.
+ *
+ * Público:
+ * - sem stock: sem etiqueta;
+ * - 1 unidade: SÓ 1 EM STOCK;
+ * - 2 unidades: ÚLTIMAS UNIDADES;
+ * - destaque: MELHOR PREÇO!;
+ * - restantes estados mantêm promoção / stock / encomenda.
+ *
+ * Utilizadores com gestão WooCommerce veem também a quantidade exata
+ * quando o produto gere stock diretamente.
+ */
+function cvl_product_image_badge_data( WC_Product $product ) {
+    $status         = $product->get_stock_status();
+    $stock_quantity = $product->managing_stock() ? $product->get_stock_quantity() : null;
+    $stock_quantity = null !== $stock_quantity ? max( 0, (int) $stock_quantity ) : null;
+    $can_manage     = is_user_logged_in() && current_user_can( 'manage_woocommerce' );
+
+    if ( 'outofstock' === $status ) {
+        if ( $can_manage && null !== $stock_quantity ) {
+            return array(
+                'class' => 'is-unavailable',
+                'label' => sprintf( __( '%d EM STOCK', 'chavevertical-lite' ), $stock_quantity ),
+            );
+        }
+
+        return null;
+    }
+
+    $class = 'is-backorder';
+    $label = __( 'POR ENCOMENDA', 'chavevertical-lite' );
+
+    if ( $product->get_featured() ) {
+        $class = 'is-featured';
+        $label = __( 'MELHOR PREÇO!', 'chavevertical-lite' );
+    } elseif ( 'instock' === $status && 1 === $stock_quantity ) {
+        $class = 'is-low-stock';
+        $label = __( 'SÓ 1 EM STOCK', 'chavevertical-lite' );
+    } elseif ( 'instock' === $status && 2 === $stock_quantity ) {
+        $class = 'is-low-stock';
+        $label = __( 'ÚLTIMAS UNIDADES', 'chavevertical-lite' );
+    } elseif ( $product->is_on_sale() ) {
+        $class = 'is-sale';
+        $label = __( 'PROMOÇÃO', 'chavevertical-lite' );
+    } elseif ( 'instock' === $status ) {
+        $class = 'is-stock';
+        $label = __( 'EM STOCK', 'chavevertical-lite' );
+    }
+
+    if ( $can_manage && null !== $stock_quantity ) {
+        $stock_label = sprintf( __( '%d EM STOCK', 'chavevertical-lite' ), $stock_quantity );
+
+        if ( 'is-stock' === $class ) {
+            $label = $stock_label;
+        } elseif ( ! ( 'is-low-stock' === $class && 1 === $stock_quantity ) ) {
+            $label .= ' · ' . $stock_label;
+        }
+    }
+
+    return array(
+        'class' => $class,
+        'label' => $label,
+    );
+}
+
+/**
+ * Etiqueta comercial centrada sobre a imagem dos cards.
  */
 function cvl_loop_product_badge() {
     global $product;
@@ -463,21 +529,13 @@ function cvl_loop_product_badge() {
         return;
     }
 
-    $status = $product->get_stock_status();
-    $class  = '';
-    $label  = __( 'POR ENCOMENDA', 'chavevertical-lite' );
+    $badge = cvl_product_image_badge_data( $product );
 
-    if ( $product->is_on_sale() ) {
-        $class = 'is-sale';
-        $label = __( 'PROMOÇÃO', 'chavevertical-lite' );
-    } elseif ( 'instock' === $status ) {
-        $label = __( 'EM STOCK', 'chavevertical-lite' );
-    } elseif ( 'outofstock' === $status ) {
-        $class = 'is-unavailable';
-        $label = __( 'SOB CONSULTA', 'chavevertical-lite' );
+    if ( empty( $badge ) ) {
+        return;
     }
 
-    echo '<span class="cvl-product-badge ' . esc_attr( $class ) . '">' . esc_html( $label ) . '</span>';
+    echo '<span class="cvl-product-badge ' . esc_attr( $badge['class'] ) . '">' . esc_html( $badge['label'] ) . '</span>';
 }
 add_action( 'woocommerce_before_shop_loop_item_title', 'cvl_loop_product_badge', 5 );
 
@@ -623,7 +681,7 @@ function cvl_single_product_service_strip() {
 add_action( 'woocommerce_single_product_summary', 'cvl_single_product_service_strip', 4 );
 
 /**
- * Badge comercial por cima da galeria.
+ * Etiqueta comercial centrada sobre a imagem principal.
  */
 function cvl_single_product_badge() {
     global $product;
@@ -632,27 +690,13 @@ function cvl_single_product_badge() {
         return;
     }
 
-    $status = $product->get_stock_status();
-    $class  = 'is-backorder';
-    $label  = __( 'SOB ENCOMENDA', 'chavevertical-lite' );
+    $badge = cvl_product_image_badge_data( $product );
 
-    $stock_quantity = $product->managing_stock() ? $product->get_stock_quantity() : null;
-
-    if ( 'instock' === $status && 1 === (int) $stock_quantity ) {
-        $class = 'is-stock';
-        $label = __( 'SÓ 1 EM STOCK', 'chavevertical-lite' );
-    } elseif ( $product->is_on_sale() ) {
-        $class = 'is-sale';
-        $label = __( 'PROMOÇÃO', 'chavevertical-lite' );
-    } elseif ( 'instock' === $status ) {
-        $class = 'is-stock';
-        $label = __( 'EM STOCK', 'chavevertical-lite' );
-    } elseif ( 'outofstock' === $status ) {
-        $class = 'is-danger';
-        $label = __( 'SOB CONSULTA', 'chavevertical-lite' );
+    if ( empty( $badge ) ) {
+        return;
     }
 
-    echo '<span class="cvl-single-image-badge ' . esc_attr( $class ) . '">' . esc_html( $label ) . '</span>';
+    echo '<span class="cvl-single-image-badge ' . esc_attr( $badge['class'] ) . '">' . esc_html( $badge['label'] ) . '</span>';
 }
 add_action( 'woocommerce_before_single_product_summary', 'cvl_single_product_badge', 5 );
 

@@ -69,25 +69,37 @@
   position:absolute!important;
   z-index:3!important;
   top:8px!important;
-  left:8px!important;
+  left:50%!important;
   right:auto!important;
+  transform:translateX(-50%)!important;
+  max-width:calc(100% - 16px)!important;
   min-width:auto!important;
   min-height:auto!important;
-  padding:4px 10px!important;
+  padding:5px 12px!important;
   border:0!important;
-  border-radius:0!important;
+  border-radius:4px!important;
   background:#ff7a21!important;
   color:#fff!important;
   box-shadow:0 2px 5px rgba(0,0,0,.18)!important;
-  clip-path:polygon(0 0,100% 0,92% 100%,0 100%)!important;
+  clip-path:none!important;
   font-size:10px!important;
   font-weight:800!important;
   letter-spacing:.05em!important;
   line-height:1.2!important;
+  text-align:center!important;
   text-transform:uppercase!important;
   white-space:nowrap!important;
 }
 
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-badge.is-stock{
+  background:#079653!important;
+}
+
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-badge.is-low-stock{
+  background:#d97706!important;
+}
+
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-badge.is-featured,
 :is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-badge.is-sale{
   background:var(--cvl-ref-red)!important;
 }

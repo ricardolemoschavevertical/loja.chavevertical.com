@@ -127,11 +127,14 @@ body.admin-bar.single-product .cvl-product-gallery-wrap{top:204px}
   position:absolute;
   z-index:8;
   top:16px;
-  left:16px;
+  left:50%;
+  transform:translateX(-50%);
+  max-width:calc(100% - 32px);
   min-height:31px;
   padding:7px 15px;
   display:flex;
   align-items:center;
+  justify-content:center;
   border-radius:4px;
   background:#c97900;
   color:#fff;
@@ -140,11 +143,15 @@ body.admin-bar.single-product .cvl-product-gallery-wrap{top:204px}
   font-weight:900;
   line-height:1;
   letter-spacing:.02em;
+  text-align:center;
   text-transform:uppercase;
+  white-space:nowrap;
 }
 .single-product .cvl-single-image-badge.is-stock{background:#079653}
+.single-product .cvl-single-image-badge.is-low-stock{background:#d97706}
+.single-product .cvl-single-image-badge.is-featured,
 .single-product .cvl-single-image-badge.is-sale{background:var(--cvl-red)}
-.single-product .cvl-single-image-badge.is-danger{background:#b72a2a}
+.single-product .cvl-single-image-badge.is-unavailable{background:#6b7280}
 .single-product .cvl-single-image-badge.is-backorder{background:#c97900}
 
 .single-product .cvl-product-gallery-wrap .flex-control-thumbs{
