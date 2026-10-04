@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.1' );
+define( 'CVL_VERSION', '0.16.2' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -178,6 +178,37 @@ add_filter( 'body_class', function ( $classes ) {
     $classes[] = 'cvl-site';
     return $classes;
 } );
+
+
+/**
+ * A pesquisa de produtos deve permanecer numa página de resultados, mesmo
+ * quando existe apenas um produto, para manter filtros e contexto.
+ */
+add_filter(
+    'woocommerce_redirect_single_search_result',
+    static function ( $redirect ) {
+        return is_search() ? false : $redirect;
+    },
+    20
+);
+
+/**
+ * O WooCommerce tenta usar o template de arquivo para pesquisas de produto.
+ * Forçamos o search.php do tema, onde os filtros são alimentados pelo
+ * OpenSearch e só são renderizados produtos.
+ */
+add_filter(
+    'template_include',
+    static function ( $template ) {
+        if ( is_admin() || ! is_search() || 'product' !== get_query_var( 'post_type' ) ) {
+            return $template;
+        }
+
+        $search_template = get_template_directory() . '/search.php';
+        return is_readable( $search_template ) ? $search_template : $template;
+    },
+    999
+);
 
 /**
  * Placeholder visual para produtos WooCommerce sem imagem.
