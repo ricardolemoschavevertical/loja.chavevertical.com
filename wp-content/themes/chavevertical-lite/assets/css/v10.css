@@ -10,7 +10,7 @@
 
 .single-product .cvl-woocommerce-shell{
   width:var(--cvl-shell)!important;
-  max-width:var(--cvl-ref-site)!important;
+  max-width:none!important;
   margin-left:auto!important;
   margin-right:auto!important;
   padding:10px 0 72px!important;
