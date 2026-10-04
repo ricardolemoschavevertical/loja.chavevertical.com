@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.10.0' );
+define( 'CVL_VERSION', '0.11.0' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -93,6 +93,23 @@ add_action( 'wp_enqueue_scripts', function () {
         wp_enqueue_script(
             'cvl-product',
             get_template_directory_uri() . '/assets/js/product.js',
+            array(),
+            CVL_VERSION,
+            true
+        );
+    }
+
+    if ( function_exists( 'is_product_category' ) && is_product_category() ) {
+        wp_enqueue_style(
+            'cvl-v11',
+            get_template_directory_uri() . '/assets/css/v11.css',
+            array( 'cvl-v09' ),
+            CVL_VERSION
+        );
+
+        wp_enqueue_script(
+            'cvl-category',
+            get_template_directory_uri() . '/assets/js/category.js',
             array(),
             CVL_VERSION,
             true
@@ -1001,4 +1018,289 @@ function cvl_render_category_drawer_items( array $tree, int $parent = 0, int $de
     }
 
     echo '</ul>';
+}
+
+
+/**
+ * Categorias WooCommerce — layout de três colunas inspirado no storefront
+ * de backup.chavevertical.com: categorias à esquerda, catálogo ao centro e
+ * apoio comercial à direita.
+ *
+ * É deliberadamente limitado a taxonomias product_cat; shop, produto,
+ * carrinho e checkout mantêm o layout existente.
+ */
+add_action( 'wp', function () {
+    if ( ! function_exists( 'is_product_category' ) || ! is_product_category() ) {
+        return;
+    }
+
+    remove_action( 'woocommerce_before_main_content', 'woocommerce_output_content_wrapper', 10 );
+    remove_action( 'woocommerce_after_main_content', 'woocommerce_output_content_wrapper_end', 10 );
+    remove_action( 'woocommerce_before_main_content', 'woocommerce_breadcrumb', 20 );
+    remove_action( 'woocommerce_sidebar', 'woocommerce_get_sidebar', 10 );
+
+    add_action( 'woocommerce_before_main_content', 'cvl_backup_category_layout_open', 5 );
+    add_action( 'woocommerce_after_main_content', 'cvl_backup_category_layout_close', 50 );
+}, 20 );
+
+add_filter( 'woocommerce_show_page_title', function ( $show ) {
+    if ( function_exists( 'is_product_category' ) && is_product_category() ) {
+        return false;
+    }
+
+    return $show;
+} );
+
+/**
+ * Abre o shell da categoria e mantém o H1 semanticamente disponível.
+ */
+function cvl_backup_category_layout_open() {
+    $term  = get_queried_object();
+    $title = $term instanceof WP_Term ? $term->name : single_term_title( '', false );
+
+    echo '<section class="cvl-backup-category-page">';
+    echo '<div class="cvl-backup-category-breadcrumbs">';
+
+    if ( function_exists( 'woocommerce_breadcrumb' ) ) {
+        woocommerce_breadcrumb(
+            array(
+                'delimiter'   => '<span class="cvl-breadcrumb-delimiter" aria-hidden="true">›</span>',
+                'wrap_before' => '<nav class="woocommerce-breadcrumb" aria-label="' . esc_attr__( 'Navegação estrutural', 'chavevertical-lite' ) . '">',
+                'wrap_after'  => '</nav>',
+                'before'      => '<span class="cvl-breadcrumb-current">',
+                'after'       => '</span>',
+                'home'        => __( 'Home', 'chavevertical-lite' ),
+            )
+        );
+    }
+
+    echo '</div>';
+
+    if ( $title ) {
+        echo '<h1 class="screen-reader-text">' . esc_html( $title ) . '</h1>';
+    }
+
+    echo '<div class="cvl-backup-category-layout">';
+    echo '<main class="cvl-backup-category-main" aria-label="' . esc_attr__( 'Produtos e subcategorias', 'chavevertical-lite' ) . '">';
+}
+
+/**
+ * Fecha o catálogo central e injeta as duas barras laterais.
+ */
+function cvl_backup_category_layout_close() {
+    echo '</main>';
+
+    cvl_backup_category_left_sidebar();
+    cvl_backup_category_right_sidebar();
+
+    echo '</div>';
+    echo '</section>';
+}
+
+/**
+ * Resolve a raiz comercial da categoria atual para manter uma navegação
+ * consistente dentro da mesma família.
+ */
+function cvl_backup_category_root_id( WP_Term $term ) {
+    $ancestors = get_ancestors( $term->term_id, 'product_cat', 'taxonomy' );
+
+    if ( empty( $ancestors ) ) {
+        return (int) $term->term_id;
+    }
+
+    return (int) end( $ancestors );
+}
+
+/**
+ * Renderiza a árvore de categorias no formato do sidebar do backup.
+ */
+function cvl_backup_category_sidebar_nodes( array $tree, int $parent_id, int $current_id, int $depth = 0 ) {
+    if ( empty( $tree[ $parent_id ] ) || $depth > 2 ) {
+        return;
+    }
+
+    echo '<ul class="cv-cat-list">';
+
+    foreach ( $tree[ $parent_id ] as $term ) {
+        $url = get_term_link( $term );
+
+        if ( is_wp_error( $url ) ) {
+            continue;
+        }
+
+        $is_current = (int) $term->term_id === $current_id;
+
+        echo '<li style="--cv-cat-level:' . esc_attr( (string) $depth ) . ';">';
+        echo '<a class="cv-cat-link' . ( $is_current ? ' is-current' : '' ) . '" href="' . esc_url( $url ) . '"' . ( $is_current ? ' aria-current="page"' : '' ) . '>';
+        echo '<span class="cv-bullet" aria-hidden="true"></span>';
+        echo '<span class="cv-cat-text">' . esc_html( $term->name ) . '</span>';
+        echo '</a>';
+
+        if ( ! empty( $tree[ (int) $term->term_id ] ) ) {
+            cvl_backup_category_sidebar_nodes(
+                $tree,
+                (int) $term->term_id,
+                $current_id,
+                $depth + 1
+            );
+        }
+
+        echo '</li>';
+    }
+
+    echo '</ul>';
+}
+
+/**
+ * Sidebar esquerda: categorias da família atual, com colapso em mobile.
+ */
+function cvl_backup_category_left_sidebar() {
+    $term = get_queried_object();
+
+    if ( ! $term instanceof WP_Term || 'product_cat' !== $term->taxonomy ) {
+        return;
+    }
+
+    $tree       = cvl_get_product_category_tree();
+    $root_id    = cvl_backup_category_root_id( $term );
+    $list_root  = $root_id;
+
+    if ( empty( $tree[ $list_root ] ) && $term->parent ) {
+        $list_root = (int) $term->parent;
+    }
+
+    if ( empty( $tree[ $list_root ] ) ) {
+        $list_root = 0;
+    }
+
+    echo '<aside class="cvl-backup-category-sidebar cvl-backup-category-sidebar--left" aria-label="' . esc_attr__( 'Categorias', 'chavevertical-lite' ) . '">';
+    echo '<div class="cv-sidebar-inner">';
+    echo '<h2 class="cv-sidebar-title">' . esc_html__( 'Categorias', 'chavevertical-lite' ) . '</h2>';
+    echo '<button type="button" class="cv-cat-toggle" aria-expanded="true" aria-controls="cvl-category-sidebar-groups">';
+    echo '<span class="cv-cat-toggle-inner">';
+    echo '<span class="cv-cat-toggle-text">' . esc_html__( 'Ocultar categorias', 'chavevertical-lite' ) . '</span>';
+    echo '<span class="cv-cat-toggle-icon" aria-hidden="true">−</span>';
+    echo '</span>';
+    echo '</button>';
+    echo '<div id="cvl-category-sidebar-groups" class="cv-category-groups">';
+
+    cvl_backup_category_sidebar_nodes(
+        $tree,
+        $list_root,
+        (int) $term->term_id
+    );
+
+    echo '</div>';
+    echo '</div>';
+    echo '</aside>';
+}
+
+/**
+ * SVGs locais para os cartões de contacto, evitando dependência externa
+ * de Font Awesome.
+ */
+function cvl_backup_category_contact_icon( $type ) {
+    switch ( $type ) {
+        case 'whatsapp':
+            return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.04 2a9.91 9.91 0 0 0-8.59 14.86L2.05 22l5.25-1.38A9.9 9.9 0 1 0 12.04 2Zm5.79 14.1c-.24.68-1.4 1.25-1.92 1.32-.5.07-1.14.1-3.32-.8-2.79-1.15-4.58-4.01-4.72-4.2-.14-.19-1.13-1.5-1.13-2.86 0-1.36.71-2.03.96-2.31.25-.28.56-.35.75-.35.19 0 .37 0 .53.01.17.01.4.06.61.57.24.57.81 1.98.88 2.12.07.14.12.31.02.5-.09.19-.14.31-.28.47-.14.17-.3.37-.43.5-.14.14-.29.3-.12.59.16.28.73 1.2 1.56 1.94 1.07.95 1.97 1.25 2.25 1.39.28.14.45.12.61-.07.17-.19.72-.84.91-1.13.19-.28.38-.24.64-.14.26.09 1.66.78 1.95.92.28.14.47.21.54.33.07.12.07.7-.17 1.38Z"></path></svg>';
+
+        case 'phone':
+            return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.8 3.6 9.1 7.5c.3.5.2 1.1-.2 1.5l-1.5 1.2a13.8 13.8 0 0 0 6.4 6.4l1.2-1.5c.4-.4 1-.5 1.5-.2l3.9 2.3c.5.3.8.9.6 1.5l-.6 1.8c-.2.6-.8 1-1.5 1C9.7 21.5 2.5 14.3 2.5 5.1c0-.7.4-1.3 1-1.5l1.8-.6c.6-.2 1.2.1 1.5.6Z"></path></svg>';
+
+        case 'email':
+            return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5h18v13H3z"></path><path d="m4.5 7 7.5 6 7.5-6"></path></svg>';
+
+        default:
+            return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5V3Z"></path><path d="M14 3v5h5M8 12h8M8 16h6"></path></svg>';
+    }
+}
+
+/**
+ * Escolhe um produto real da loja para o bloco "Produto em destaque".
+ */
+function cvl_backup_category_featured_product() {
+    if ( ! function_exists( 'wc_get_products' ) ) {
+        return null;
+    }
+
+    $featured_ids = function_exists( 'wc_get_featured_product_ids' )
+        ? array_values( array_filter( array_map( 'absint', wc_get_featured_product_ids() ) ) )
+        : array();
+
+    if ( ! empty( $featured_ids ) ) {
+        foreach ( $featured_ids as $product_id ) {
+            $product = wc_get_product( $product_id );
+
+            if ( $product instanceof WC_Product && 'publish' === $product->get_status() && $product->is_visible() ) {
+                return $product;
+            }
+        }
+    }
+
+    $products = wc_get_products(
+        array(
+            'limit'   => 1,
+            'status'  => 'publish',
+            'orderby' => 'date',
+            'order'   => 'DESC',
+        )
+    );
+
+    return ! empty( $products ) && $products[0] instanceof WC_Product
+        ? $products[0]
+        : null;
+}
+
+/**
+ * Sidebar direita: cartões de contacto do backup e produto em destaque.
+ */
+function cvl_backup_category_right_sidebar() {
+    $featured = cvl_backup_category_featured_product();
+
+    echo '<aside class="cvl-backup-category-sidebar cvl-backup-category-sidebar--right" aria-label="' . esc_attr__( 'Apoio comercial', 'chavevertical-lite' ) . '">';
+    echo '<div class="cv-quote-widget">';
+    echo '<div class="cv-quote-title">' . esc_html__( 'Solicitar Cotação / Orçamento', 'chavevertical-lite' ) . '</div>';
+
+    echo '<a class="cv-contact-card cv-whatsapp-card" href="https://wa.me/351914580410?text=' . rawurlencode( 'Olá, pretendo solicitar uma cotação / orçamento.' ) . '" target="_blank" rel="noopener noreferrer">';
+    echo '<span class="cv-contact-icon is-fill">' . cvl_backup_category_contact_icon( 'whatsapp' ) . '</span>';
+    echo '<span class="cv-contact-text"><span class="cv-help">' . esc_html__( 'Como podemos ajudar?', 'chavevertical-lite' ) . ' <span class="cv-status">' . esc_html__( 'Online', 'chavevertical-lite' ) . '</span></span><span class="cv-contact">' . esc_html__( 'Fale Connosco pelo WhatsApp', 'chavevertical-lite' ) . '</span></span>';
+    echo '</a>';
+
+    echo '<div class="cv-contact-card cv-phone-card">';
+    echo '<span class="cv-contact-icon">' . cvl_backup_category_contact_icon( 'phone' ) . '</span>';
+    echo '<span class="cv-contact-text"><span class="cv-help">' . esc_html__( 'Prefere falar connosco?', 'chavevertical-lite' ) . ' <span class="cv-status">' . esc_html__( 'Telefone', 'chavevertical-lite' ) . '</span></span>';
+    echo '<span class="cv-contact cv-phone-numbers"><a href="tel:+351234020500">234 020 500</a><span class="cv-phone-separator">|</span><a href="tel:+351914938100">914 938 100</a></span></span>';
+    echo '</div>';
+
+    $mail_subject = rawurlencode( 'Pedido de Cotação / Orçamento' );
+    echo '<a class="cv-contact-card cv-email-card" href="mailto:geral@chavevertical.pt?subject=' . esc_attr( $mail_subject ) . '">';
+    echo '<span class="cv-contact-icon">' . cvl_backup_category_contact_icon( 'email' ) . '</span>';
+    echo '<span class="cv-contact-text"><span class="cv-help">' . esc_html__( 'Também pode contactar por email', 'chavevertical-lite' ) . ' <span class="cv-status">' . esc_html__( 'Email', 'chavevertical-lite' ) . '</span></span><span class="cv-contact">geral@chavevertical.pt</span></span>';
+    echo '</a>';
+
+    echo '<a class="cv-contact-card cv-form-card" href="https://chavevertical.com/contacto-pedido-de-cotacao/">';
+    echo '<span class="cv-contact-icon">' . cvl_backup_category_contact_icon( 'form' ) . '</span>';
+    echo '<span class="cv-contact-text"><span class="cv-help">' . esc_html__( 'Prefere enviar os dados?', 'chavevertical-lite' ) . ' <span class="cv-status">' . esc_html__( 'Formulário', 'chavevertical-lite' ) . '</span></span><span class="cv-contact">' . esc_html__( 'Pedir Cotação por Formulário', 'chavevertical-lite' ) . '</span></span>';
+    echo '</a>';
+
+    echo '</div>';
+
+    if ( $featured instanceof WC_Product ) {
+        echo '<section class="cvl-category-featured-product">';
+        echo '<h2 class="cvl-category-widget-title">' . esc_html__( 'PRODUTO EM DESTAQUE', 'chavevertical-lite' ) . '</h2>';
+        echo '<a class="cvl-category-featured-link" href="' . esc_url( $featured->get_permalink() ) . '" aria-label="' . esc_attr( $featured->get_name() ) . '">';
+        echo wp_kses_post(
+            $featured->get_image(
+                'woocommerce_single',
+                array(
+                    'loading' => 'lazy',
+                    'alt'     => $featured->get_name(),
+                )
+            )
+        );
+        echo '</a>';
+        echo '</section>';
+    }
+
+    echo '</aside>';
 }
