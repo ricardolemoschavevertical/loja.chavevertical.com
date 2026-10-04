@@ -27,4 +27,15 @@ if ($page instanceof WP_Post) {
 
 $result['template_file_exists'] = is_file(get_stylesheet_directory() . '/page-marcas.php');
 
+$target = isset($result['page']['permalink']) ? $result['page']['permalink'] : home_url('/?pagename=marcas');
+$response = wp_remote_get($target, array('timeout' => 20, 'redirection' => 3));
+
+if (is_wp_error($response)) {
+    $result['http_error'] = $response->get_error_message();
+} else {
+    $body = (string) wp_remote_retrieve_body($response);
+    $result['http_status'] = (int) wp_remote_retrieve_response_code($response);
+    $result['renders_brands_template'] = false !== strpos($body, 'cvl-brands-page');
+}
+
 echo json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
