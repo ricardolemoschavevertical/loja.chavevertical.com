@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.57' );
+define( 'CVL_VERSION', '0.16.58' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -2002,129 +2002,8 @@ function cvl_category_archive_without_taxonomy( array $tax_query, string $taxono
     return $filtered;
 }
 
-add_action( 'pre_get_posts', function ( WP_Query $query ) {
-    if ( is_admin() || ! $query->is_main_query() || ! $query->is_tax( 'product_cat' ) ) {
-        return;
-    }
-
-    $base_slug = sanitize_title( (string) $query->get( 'product_cat' ) );
-    $base_term = $base_slug ? get_term_by( 'slug', $base_slug, 'product_cat' ) : null;
-
-    if ( ! $base_term instanceof WP_Term ) {
-        return;
-    }
-
-    $selected_category = cvl_category_archive_selected_category( $base_term );
-    $branch_term       = $selected_category instanceof WP_Term ? $selected_category : $base_term;
-    $branch_ids        = cvl_category_archive_branch_ids( $branch_term );
-    $product_ids       = cvl_category_archive_product_ids( $branch_ids );
-
-    /*
-     * A consulta principal deixa de depender da cláusula product_cat nativa.
-     * post__in contém explicitamente produtos da categoria atual + todos os
-     * produtos das filhas/netas, inclusive quando não pertencem diretamente à mãe.
-     */
-    $tax_query = cvl_category_archive_without_taxonomy(
-        (array) $query->get( 'tax_query' ),
-        'product_cat'
-    );
-
-    $query->set( 'post_type', 'product' );
-    $query->set( 'post__in', $product_ids ?: array( 0 ) );
-    $query->set( 'cvl_base_product_cat_id', (int) $base_term->term_id );
-    $query->set( 'cvl_branch_product_cat_id', (int) $branch_term->term_id );
-    $query->set( 'product_cat', '' );
-
-    if ( 'product_cat' === (string) $query->get( 'taxonomy' ) ) {
-        $query->set( 'taxonomy', '' );
-        $query->set( 'term', '' );
-    }
-
-    $children = get_terms(
-        array(
-            'taxonomy'   => 'product_cat',
-            'hide_empty' => false,
-            'parent'     => (int) $branch_term->term_id,
-            'fields'     => 'ids',
-            'number'     => 1,
-        )
-    );
-    $is_final = is_wp_error( $children ) || empty( $children );
-    $query->set( 'cvl_is_final_category', $is_final ? 1 : 0 );
-
-    /*
-     * Regra comercial:
-     * - mãe/intermédia: só categorias;
-     * - final: marcas + preço.
-     */
-    if ( $is_final ) {
-        $brand_slug = isset( $_GET['marca'] ) ? sanitize_title( wp_unslash( $_GET['marca'] ) ) : '';
-
-        if ( $brand_slug && taxonomy_exists( 'product_brand' ) ) {
-            $brand = get_term_by( 'slug', $brand_slug, 'product_brand' );
-
-            if ( $brand instanceof WP_Term ) {
-                $tax_query[] = array(
-                    'taxonomy' => 'product_brand',
-                    'field'    => 'term_id',
-                    'terms'    => array( (int) $brand->term_id ),
-                    'operator' => 'IN',
-                );
-            }
-        }
-
-        $min_price = isset( $_GET['min_price'] )
-            ? max( 0, (float) wc_format_decimal( wp_unslash( $_GET['min_price'] ) ) )
-            : 0.0;
-        $max_price = isset( $_GET['max_price'] )
-            ? max( 0, (float) wc_format_decimal( wp_unslash( $_GET['max_price'] ) ) )
-            : 0.0;
-
-        if ( $min_price > 0 || $max_price > 0 ) {
-            $meta_query = (array) $query->get( 'meta_query' );
-            $price_rule = array(
-                'key'     => '_price',
-                'type'    => 'NUMERIC',
-            );
-
-            if ( $min_price > 0 && $max_price > 0 ) {
-                $price_rule['value']   = array( $min_price, $max_price );
-                $price_rule['compare'] = 'BETWEEN';
-            } elseif ( $min_price > 0 ) {
-                $price_rule['value']   = $min_price;
-                $price_rule['compare'] = '>=';
-            } else {
-                $price_rule['value']   = $max_price;
-                $price_rule['compare'] = '<=';
-            }
-
-            $meta_query[] = $price_rule;
-            $query->set( 'meta_query', $meta_query );
-        }
-    }
-
-    if ( $tax_query ) {
-        $query->set( 'tax_query', $tax_query );
-    } else {
-        $query->set( 'tax_query', array() );
-    }
-
-    $query->queried_object    = $base_term;
-    $query->queried_object_id = (int) $base_term->term_id;
-
-    // Todos os produtos do ramo ficam acessíveis através de carregamento progressivo.
-    $query->set( 'posts_per_page', 24 );
-}, 999 );
-
 function cvl_product_category_search_layout(): void {
-    global $wp_query;
-
-    $base_term_id = $wp_query instanceof WP_Query
-        ? absint( $wp_query->get( 'cvl_base_product_cat_id' ) )
-        : 0;
-    $base_term = $base_term_id
-        ? get_term( $base_term_id, 'product_cat' )
-        : get_queried_object();
+    $base_term = get_queried_object();
 
     if ( ! $base_term instanceof WP_Term || 'product_cat' !== $base_term->taxonomy ) {
         return;
@@ -2213,8 +2092,99 @@ function cvl_product_category_search_layout(): void {
         );
     };
 
-    global $wp_query;
-    $found = (int) $wp_query->found_posts;
+    /*
+     * Consulta própria do catálogo.
+     *
+     * Não usa a query principal do WooCommerce. Assim a categoria mãe e as
+     * intermédias incluem sempre produtos atribuídos apenas às filhas/netas.
+     */
+    $catalog_page = isset( $_GET['cvl_page'] )
+        ? max( 1, absint( wp_unslash( $_GET['cvl_page'] ) ) )
+        : 1;
+
+    $catalog_tax_query = array(
+        array(
+            'taxonomy'         => 'product_cat',
+            'field'            => 'term_id',
+            'terms'            => array( (int) $navigation_parent->term_id ),
+            'include_children' => true,
+            'operator'         => 'IN',
+        ),
+    );
+
+    if ( $is_final && $selected_brand && taxonomy_exists( 'product_brand' ) ) {
+        $catalog_tax_query[] = array(
+            'taxonomy' => 'product_brand',
+            'field'    => 'slug',
+            'terms'    => array( $selected_brand ),
+            'operator' => 'IN',
+        );
+    }
+
+    if ( function_exists( 'wc_get_product_visibility_term_ids' ) ) {
+        $visibility_ids = wc_get_product_visibility_term_ids();
+        $excluded_visibility = array();
+
+        if ( ! empty( $visibility_ids['exclude-from-catalog'] ) ) {
+            $excluded_visibility[] = (int) $visibility_ids['exclude-from-catalog'];
+        }
+
+        if (
+            'yes' === get_option( 'woocommerce_hide_out_of_stock_items' )
+            && ! empty( $visibility_ids['outofstock'] )
+        ) {
+            $excluded_visibility[] = (int) $visibility_ids['outofstock'];
+        }
+
+        if ( $excluded_visibility ) {
+            $catalog_tax_query[] = array(
+                'taxonomy' => 'product_visibility',
+                'field'    => 'term_id',
+                'terms'    => $excluded_visibility,
+                'operator' => 'NOT IN',
+            );
+        }
+    }
+
+    $catalog_meta_query = array();
+
+    if ( $is_final && ( $min_price > 0 || $max_price > 0 ) ) {
+        $price_rule = array(
+            'key'  => '_price',
+            'type' => 'NUMERIC',
+        );
+
+        if ( $min_price > 0 && $max_price > 0 ) {
+            $price_rule['value']   = array( $min_price, $max_price );
+            $price_rule['compare'] = 'BETWEEN';
+        } elseif ( $min_price > 0 ) {
+            $price_rule['value']   = $min_price;
+            $price_rule['compare'] = '>=';
+        } else {
+            $price_rule['value']   = $max_price;
+            $price_rule['compare'] = '<=';
+        }
+
+        $catalog_meta_query[] = $price_rule;
+    }
+
+    $catalog_args = array(
+        'post_type'              => 'product',
+        'post_status'            => 'publish',
+        'posts_per_page'         => 24,
+        'paged'                  => $catalog_page,
+        'ignore_sticky_posts'    => true,
+        'no_found_rows'          => false,
+        'tax_query'              => $catalog_tax_query,
+        'meta_query'             => $catalog_meta_query,
+        'orderby'                => array(
+            'menu_order' => 'ASC',
+            'date'       => 'DESC',
+        ),
+    );
+
+    $catalog_query = new WP_Query( $catalog_args );
+    $found         = (int) $catalog_query->found_posts;
     ?>
     <div class="cvl-shell cvl-content cvl-search-page cvl-category-catalog-page<?php echo $is_final ? ' is-final-category' : ' is-parent-category'; ?>">
         <header class="cvl-search-heading cvl-search-heading-compact">
@@ -2399,19 +2369,26 @@ function cvl_product_category_search_layout(): void {
             </aside>
 
             <section class="cvl-search-products woocommerce">
-                <?php if ( have_posts() ) : ?>
+                <?php if ( $catalog_query->have_posts() ) : ?>
+                    <?php
+                    wc_set_loop_prop( 'total', $catalog_query->found_posts );
+                    wc_set_loop_prop( 'total_pages', $catalog_query->max_num_pages );
+                    wc_set_loop_prop( 'current_page', $catalog_page );
+                    wc_set_loop_prop( 'per_page', 24 );
+                    wc_set_loop_prop( 'is_paginated', true );
+                    ?>
                     <?php woocommerce_product_loop_start(); ?>
-                    <?php while ( have_posts() ) : the_post(); ?>
-                        <?php if ( 'product' === get_post_type() ) : ?>
-                            <?php wc_get_template_part( 'content', 'product' ); ?>
-                        <?php endif; ?>
+                    <?php while ( $catalog_query->have_posts() ) : $catalog_query->the_post(); ?>
+                        <?php wc_get_template_part( 'content', 'product' ); ?>
                     <?php endwhile; ?>
                     <?php woocommerce_product_loop_end(); ?>
+                    <?php wp_reset_postdata(); ?>
 
                     <?php
-                    $current_page = max( 1, absint( get_query_var( 'paged' ) ) );
-                    $max_pages = max( 1, (int) $wp_query->max_num_pages );
-                    $next_url = $current_page < $max_pages ? get_next_posts_page_link( $max_pages ) : '';
+                    $max_pages = max( 1, (int) $catalog_query->max_num_pages );
+                    $next_url = $catalog_page < $max_pages
+                        ? add_query_arg( 'cvl_page', $catalog_page + 1, $filter_url() )
+                        : '';
                     ?>
                     <?php if ( $next_url ) : ?>
                         <div class="cvl-search-load-more-wrap">
@@ -2431,6 +2408,7 @@ function cvl_product_category_search_layout(): void {
                         <a class="cvl-button cvl-button-primary" href="<?php echo esc_url( $base_url ); ?>"><?php esc_html_e( 'LIMPAR FILTROS', 'chavevertical-lite' ); ?></a>
                     </div>
                 <?php endif; ?>
+                <?php wc_reset_loop(); ?>
             </section>
         </div>
     </div>
