@@ -46,6 +46,9 @@ jobs:
           echo "category_count=$CATEGORY_COUNT"
           echo "product_count=$PRODUCT_COUNT"
 
+          echo "headings:"
+          grep -oE '<h[12][^>]*>[^<]*</h[12]>' /tmp/cv-shop-categories.html | head -20 || true
+
           if [[ "$CATEGORY_COUNT" -lt 1 ]]; then
             echo "Shop did not render categories."
             exit 1
