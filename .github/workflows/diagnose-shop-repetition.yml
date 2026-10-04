@@ -1,0 +1,69 @@
+name: Diagnose Shop Repetition
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/diagnose-shop-repetition.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Inspect live shop
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_ROOT=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+
+          curl -L --connect-timeout 10 --max-time 60 -sS             'https://loja.chavevertical.com/shop/?cvdiag=1'             -o /tmp/cv-shop.html
+
+          echo "=== LIVE SHOP SUMMARY ==="
+          echo "http_bytes=$(wc -c < /tmp/cv-shop.html)"
+          echo "products_ul_count=$(grep -o '<ul class=\"products[^\"]*\"' /tmp/cv-shop.html | wc -l)"
+          echo "product_li_count=$(grep -oE 'class=\"[^\"]*post-[0-9]+[^\"]*product[^\"]*\"' /tmp/cv-shop.html | wc -l)"
+          echo "unique_product_ids=$(grep -oE 'class=\"[^\"]*post-[0-9]+[^\"]*product[^\"]*\"' /tmp/cv-shop.html | grep -oE 'post-[0-9]+' | sort -u | wc -l)"
+
+          echo "=== DUPLICATE PRODUCT IDS ==="
+          grep -oE 'class=\"[^\"]*post-[0-9]+[^\"]*product[^\"]*\"' /tmp/cv-shop.html             | grep -oE 'post-[0-9]+'             | sort             | uniq -c             | awk '$1 > 1 {print}'             | head -50 || true
+
+          echo "=== PRODUCT IDS IN RENDER ORDER ==="
+          grep -oE 'class=\"[^\"]*post-[0-9]+[^\"]*product[^\"]*\"' /tmp/cv-shop.html             | grep -oE 'post-[0-9]+'             | head -80 || true
+
+          echo "=== SHOP / WOO SETTINGS ==="
+          wp --path="$WP_ROOT" eval '
+            $shop_id = wc_get_page_id("shop");
+            echo "shop_id=".$shop_id.PHP_EOL;
+            echo "shop_permalink=".get_permalink($shop_id).PHP_EOL;
+            echo "shop_title=".get_the_title($shop_id).PHP_EOL;
+            echo "shop_status=".get_post_status($shop_id).PHP_EOL;
+            echo "shop_content=".wp_json_encode(get_post_field("post_content",$shop_id), JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE).PHP_EOL;
+            echo "posts_per_page=".get_option("posts_per_page").PHP_EOL;
+            echo "theme=".wp_get_theme()->get("Name")." ".wp_get_theme()->get("Version").PHP_EOL;
+          '
+
+          echo "=== WOO LOOP HOOKS (selected) ==="
+          wp --path="$WP_ROOT" eval '
+            global $wp_filter;
+            foreach (array("woocommerce_before_shop_loop","woocommerce_after_shop_loop","woocommerce_before_shop_loop_item_title","woocommerce_after_shop_loop_item_title") as $hook) {
+              echo $hook.PHP_EOL;
+              if (empty($wp_filter[$hook])) { echo "  none".PHP_EOL; continue; }
+              foreach ($wp_filter[$hook]->callbacks as $prio=>$callbacks) {
+                foreach ($callbacks as $cb) {
+                  $fn=$cb["function"];
+                  if (is_string($fn)) $name=$fn;
+                  elseif (is_array($fn)) $name=(is_object($fn[0])?get_class($fn[0]):$fn[0])."::".$fn[1];
+                  elseif ($fn instanceof Closure) $name="Closure";
+                  else $name="callable";
+                  echo "  ".$prio." ".$name.PHP_EOL;
+                }
+              }
+            }
+          '
