@@ -190,7 +190,7 @@ foreach ( $home_probe_urls as $probe_key => $probe_url ) {
 $result['product_layout_check'] = array();
 
 if ( function_exists( 'wc_get_product_id_by_sku' ) ) {
-    $probe_product_id = (int) wc_get_product_id_by_sku( 'JBM54037' );
+    $probe_product_id = (int) 3562;
 
     if ( $probe_product_id > 0 ) {
         $probe_product_url = get_permalink( $probe_product_id );
@@ -246,7 +246,7 @@ if ( function_exists( 'wc_get_product_id_by_sku' ) ) {
             }
         }
     } else {
-        $result['product_layout_check']['error'] = 'Probe product JBM54037 not found.';
+        $result['product_layout_check']['error'] = 'Probe product 3562 not found.';
     }
 }
 
