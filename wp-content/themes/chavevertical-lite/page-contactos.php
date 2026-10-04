@@ -128,12 +128,11 @@ $locations = array(
                 <p class="cvl-contact-card-name">Ricardo Lemos</p>
                 <ul class="cvl-contact-card-list">
                     <li><span aria-hidden="true">📱</span><a href="tel:+351914580410">914 580 410</a></li>
-                    <li><span aria-hidden="true">✉️</span><a href="mailto:ricardo@chavevertical.pt">ricardo@chavevertical.pt</a></li>
                     <li><span aria-hidden="true">✉️</span><a href="mailto:ricardo@chavevertical.com">ricardo@chavevertical.com</a></li>
                 </ul>
                 <div class="cvl-contact-card-actions">
                     <a class="is-whatsapp" href="https://wa.me/351914580410" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">💬</span><?php esc_html_e( 'WhatsApp', 'chavevertical-lite' ); ?></a>
-                    <a class="is-email" href="mailto:ricardo@chavevertical.pt"><span aria-hidden="true">✉️</span><?php esc_html_e( 'Email', 'chavevertical-lite' ); ?></a>
+                    <a class="is-email" href="mailto:ricardo@chavevertical.com"><span aria-hidden="true">✉️</span><?php esc_html_e( 'Email', 'chavevertical-lite' ); ?></a>
                 </div>
             </article>
 
@@ -145,7 +144,6 @@ $locations = array(
                     <li><span aria-hidden="true">☎️</span><a href="tel:+351234020500">234 020 500</a></li>
                     <li><span aria-hidden="true">📱</span><a href="tel:+351914938100">914 938 100</a></li>
                     <li><span aria-hidden="true">✉️</span><a href="mailto:geral@chavevertical.pt">geral@chavevertical.pt</a></li>
-                    <li><span aria-hidden="true">✉️</span><a href="mailto:info@chavevertical.com">info@chavevertical.com</a></li>
                 </ul>
             </article>
 
