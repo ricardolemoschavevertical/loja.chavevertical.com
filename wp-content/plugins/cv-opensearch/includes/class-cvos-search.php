@@ -4,6 +4,7 @@ defined( 'ABSPATH' ) || exit;
 final class CVOS_Search {
     private CVOS_Settings $settings;
     private CVOS_Client $client;
+    private bool $assets_localized = false;
 
     public function __construct( CVOS_Settings $settings, CVOS_Client $client ) {
         $this->settings = $settings;
@@ -31,15 +32,33 @@ final class CVOS_Search {
             CVOS_VERSION,
             true
         );
+
+        /*
+         * The Chave Vertical theme has its own hard-coded header search form and
+         * therefore does not pass through get_search_form(). Enqueue the instant
+         * search client globally when the engine is active so that the existing
+         * header field can be enhanced without replacing its design.
+         */
+        if ( $this->settings->is_yes( 'enabled' ) && $this->settings->is_yes( 'enable_instant_search' ) ) {
+            $this->enqueue_assets();
+        }
     }
 
     private function enqueue_assets(): void {
-        if ( ! $this->settings->is_yes( 'enable_instant_search' ) ) {
+        if (
+            ! $this->settings->is_yes( 'enabled' )
+            || ! $this->settings->is_yes( 'enable_instant_search' )
+        ) {
             return;
         }
 
         wp_enqueue_style( 'cv-opensearch' );
         wp_enqueue_script( 'cv-opensearch' );
+
+        if ( $this->assets_localized ) {
+            return;
+        }
+
         wp_localize_script(
             'cv-opensearch',
             'CVOpenSearch',
@@ -50,6 +69,8 @@ final class CVOS_Search {
                 'searchUrl' => home_url( '/' ),
             )
         );
+
+        $this->assets_localized = true;
     }
 
     public function shortcode(): string {
