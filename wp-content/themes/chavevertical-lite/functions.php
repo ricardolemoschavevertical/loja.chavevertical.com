@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.18' );
+define( 'CVL_VERSION', '0.16.19' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -949,6 +949,11 @@ function cvl_single_product_request_url( WC_Product $product, $request_type = 'q
     );
 }
 
+
+add_filter( 'woocommerce_product_single_add_to_cart_text', function () {
+    return __( 'Adicionar ao carrinho', 'chavevertical-lite' );
+} );
+
 function cvl_single_product_quote_action() {
     global $product;
 
@@ -979,8 +984,9 @@ function cvl_single_product_quote_only_action() {
     $url = cvl_single_product_request_url( $product, 'orcamento' );
 
     echo '<div class="cvl-single-quote-only">';
-    echo '<a class="cvl-single-proforma-button is-primary" href="' . esc_url( $url ) . '">';
-    echo esc_html__( 'SOLICITAR ORÇAMENTO', 'chavevertical-lite' );
+    echo '<a class="cvl-single-proforma-button cvl-single-quote-button" href="' . esc_url( $url ) . '">';
+    echo '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6z"></path><path d="M9 7h6M9 11h6M9 15h4"></path></svg>';
+    echo '<span>' . esc_html__( 'SOLICITAR ORÇAMENTO', 'chavevertical-lite' ) . '</span>';
     echo '</a>';
     echo '</div>';
 }
