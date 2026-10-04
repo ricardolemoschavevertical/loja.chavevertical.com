@@ -591,6 +591,7 @@ body.admin-bar.single-product .cvl-product-gallery-wrap{top:204px}
 .single-product .cvl-product-summary-tabs .woocommerce-tabs ul.tabs{
   margin:0!important;
   padding:0!important;
+  list-style:none!important;
   display:flex!important;
   align-items:flex-end!important;
   gap:28px!important;
@@ -608,10 +609,17 @@ body.admin-bar.single-product .cvl-product-gallery-wrap{top:204px}
 .single-product .cvl-product-summary-tabs .woocommerce-tabs ul.tabs li{
   margin:0!important;
   padding:0!important;
+  list-style:none!important;
   border:0!important;
   border-radius:0!important;
   background:none!important;
 }
+
+.single-product .cvl-product-summary-tabs .woocommerce-tabs ul.tabs li::marker{
+  content:""!important;
+  font-size:0!important;
+}
+
 .single-product .cvl-product-summary-tabs .woocommerce-tabs ul.tabs li a{
   min-height:0!important;
   margin:0!important;
