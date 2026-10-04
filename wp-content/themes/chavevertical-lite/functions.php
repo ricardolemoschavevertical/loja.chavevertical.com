@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.4' );
+define( 'CVL_VERSION', '0.16.5' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -857,16 +857,19 @@ function cvl_single_product_info_panel() {
         return;
     }
 
-    $status = $product->get_stock_status();
-    $class  = 'is-onbackorder';
-    $label  = __( 'Disponível por encomenda', 'chavevertical-lite' );
+    $status         = $product->get_stock_status();
+    $class          = 'is-onbackorder';
+    $label          = __( 'Disponível por encomenda', 'chavevertical-lite' );
+    $delivery_label = __( 'Prazo sujeito a confirmação', 'chavevertical-lite' );
 
     if ( 'instock' === $status ) {
-        $class = 'is-instock';
-        $label = __( 'Disponível para entrega imediata', 'chavevertical-lite' );
+        $class          = 'is-instock';
+        $label          = __( 'Em stock', 'chavevertical-lite' );
+        $delivery_label = __( 'Entrega prevista: 4 a 5 dias úteis', 'chavevertical-lite' );
     } elseif ( 'outofstock' === $status ) {
-        $class = 'is-outofstock';
-        $label = __( 'Sob consulta', 'chavevertical-lite' );
+        $class          = 'is-outofstock';
+        $label          = __( 'Sob consulta', 'chavevertical-lite' );
+        $delivery_label = __( 'Consulte-nos para confirmar o prazo', 'chavevertical-lite' );
     }
 
     $sku      = $product->get_sku();
@@ -885,17 +888,22 @@ function cvl_single_product_info_panel() {
     echo '<section class="cvl-single-info-panel">';
     echo '<div class="cvl-single-availability-row">';
     echo '<a class="cvl-single-availability ' . esc_attr( $class ) . '" href="' . esc_url( $whatsapp_url ) . '" target="_blank" rel="noopener nofollow">';
-    echo '<span class="cvl-single-wa" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.91 9.91 0 1 0 4.74-18.62Zm5.79 14.1c-.24.68-1.4 1.25-1.92 1.32-.5.07-1.14.1-3.32-.8-2.79-1.15-4.58-4.01-4.72-4.2-.14-.19-1.13-1.5-1.13-2.86 0-1.36.71-2.03.96-2.31.25-.28.56-.35.75-.35.19 0 .37 0 .53.01.17.01.4.06.61.57.24.57.81 1.98.88 2.12.07.14.12.31.02.5-.09.19-.14.31-.28.47-.14.17-.3.37-.43.5-.14.14-.29.3-.12.59.16.28.73 1.2 1.56 1.94 1.07.95 1.97 1.25 2.25 1.39.28.14.45.12.61-.07.17-.19.72-.84.91-1.13.19-.28.38-.24.64-.14.26.09 1.66.78 1.95.92.28.14.47.21.54.33.07.12.07.7-.17 1.38Z"></path></svg></span>';
-    echo '<span class="cvl-single-availability-copy"><strong>' . esc_html( $label ) . '</strong><small>' . esc_html__( 'Consulte aqui o prazo de entrega', 'chavevertical-lite' ) . '</small></span>';
+    echo '<span class="cvl-single-availability-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5z"></path><path d="m4 7.5 8 4.5 8-4.5M12 12v9"></path></svg></span>';
+    echo '<span class="cvl-single-availability-copy"><strong>' . esc_html( $label ) . '</strong><small>' . esc_html( $delivery_label ) . '</small></span>';
     echo '</a>';
     echo '</div>';
 
     echo '<div class="cvl-single-facts"><table><tbody>';
     echo '<tr><th scope="row">' . esc_html__( 'Disponibilidade:', 'chavevertical-lite' ) . '</th><td><span class="cvl-single-stock-state ' . esc_attr( $class ) . '"><i aria-hidden="true"></i>' . esc_html( $label ) . '</span></td></tr>';
+    echo '<tr><th scope="row">' . esc_html__( 'Prazo de entrega:', 'chavevertical-lite' ) . '</th><td>';
 
-    if ( 'onbackorder' === $status ) {
-        echo '<tr><th scope="row">' . esc_html__( 'Prazo de entrega:', 'chavevertical-lite' ) . '</th><td><a href="' . esc_url( $whatsapp_url ) . '" target="_blank" rel="noopener nofollow">' . esc_html__( 'Sujeito a confirmação do fornecedor', 'chavevertical-lite' ) . '</a></td></tr>';
+    if ( 'instock' === $status ) {
+        echo esc_html( $delivery_label );
+    } else {
+        echo '<a href="' . esc_url( $whatsapp_url ) . '" target="_blank" rel="noopener nofollow">' . esc_html( $delivery_label ) . '</a>';
     }
+
+    echo '</td></tr>';
 
     if ( $sku ) {
         echo '<tr><th scope="row">' . esc_html__( 'Referência:', 'chavevertical-lite' ) . '</th><td><span class="cvl-single-fact-reference-value">' . esc_html( $sku ) . '</span></td></tr>';
@@ -964,6 +972,51 @@ function cvl_single_product_quote_only_action() {
     echo '</div>';
 }
 add_action( 'woocommerce_single_product_summary', 'cvl_single_product_quote_only_action', 31 );
+
+/**
+ * Faixa de confiança sob as ações, visualmente equivalente ao mockup final.
+ */
+function cvl_single_product_trust_strip() {
+    echo '<div class="cvl-single-trust-strip" aria-label="' . esc_attr__( 'Informações de compra', 'chavevertical-lite' ) . '">';
+
+    $items = array(
+        array(
+            'icon'  => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5c0 4.9 3 8.2 7.5 10 4.5-1.8 7.5-5.1 7.5-10V6z"></path><path d="m9 12 2 2 4-4"></path></svg>',
+            'title' => __( 'Compra online', 'chavevertical-lite' ),
+            'text'  => __( 'Processo de compra integrado', 'chavevertical-lite' ),
+        ),
+        array(
+            'icon'  => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"></path><circle cx="7" cy="18" r="2"></circle><circle cx="18" cy="18" r="2"></circle></svg>',
+            'title' => __( 'Envio nacional', 'chavevertical-lite' ),
+            'text'  => __( 'Envio para todo o país', 'chavevertical-lite' ),
+        ),
+        array(
+            'icon'  => '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 10h18M7 15h4"></path></svg>',
+            'title' => __( 'Pagamento', 'chavevertical-lite' ),
+            'text'  => __( 'Opções disponíveis no checkout', 'chavevertical-lite' ),
+        ),
+        array(
+            'icon'  => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13v-2a8 8 0 0 1 16 0v2"></path><path d="M4 13h3v6H5a1 1 0 0 1-1-1zM20 13h-3v6h2a1 1 0 0 0 1-1z"></path></svg>',
+            'title' => __( 'Apoio técnico', 'chavevertical-lite' ),
+            'text'  => __( 'Especialistas no setor', 'chavevertical-lite' ),
+        ),
+    );
+
+    foreach ( $items as $item ) {
+        echo '<div class="cvl-single-trust-item">';
+        echo '<span class="cvl-single-trust-icon">' . wp_kses( $item['icon'], array(
+            'svg' => array( 'viewbox' => true, 'aria-hidden' => true ),
+            'path' => array( 'd' => true ),
+            'circle' => array( 'cx' => true, 'cy' => true, 'r' => true ),
+            'rect' => array( 'x' => true, 'y' => true, 'width' => true, 'height' => true, 'rx' => true ),
+        ) ) . '</span>';
+        echo '<span class="cvl-single-trust-copy"><strong>' . esc_html( $item['title'] ) . '</strong><small>' . esc_html( $item['text'] ) . '</small></span>';
+        echo '</div>';
+    }
+
+    echo '</div>';
+}
+add_action( 'woocommerce_single_product_summary', 'cvl_single_product_trust_strip', 32 );
 
 /**
  * Partilha da ficha, posicionada pelo template junto à galeria.

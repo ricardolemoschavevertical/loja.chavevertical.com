@@ -1483,3 +1483,258 @@ body.admin-bar.single-product .cvl-product-gallery-wrap{
     font-size:10px!important;
   }
 }
+
+
+/* =========================================================
+   Product page — selected final mockup refinements
+   ========================================================= */
+@media(min-width:992px){
+  .single-product .cvl-product-detail-grid{
+    grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr)!important;
+    gap:28px!important;
+  }
+}
+
+.single-product .cvl-single-service-strip{
+  gap:12px!important;
+  margin-bottom:16px!important;
+}
+
+.single-product .woocommerce div.product .cvl-product-summary .product_title{
+  font-size:clamp(24px,1.65vw,30px)!important;
+  line-height:1.18!important;
+}
+
+.single-product .cvl-single-rating-row{
+  margin-bottom:10px!important;
+}
+
+/* Só o logótipo/nome da marca, alinhado à direita como no mockup. */
+.single-product .cvl-single-brand-block{
+  min-height:38px!important;
+  margin:-40px 0 14px!important;
+  justify-content:flex-end!important;
+  pointer-events:none;
+}
+
+.single-product .cvl-single-brand-block img,
+.single-product .cvl-single-brand-logo{
+  max-width:170px!important;
+  max-height:42px!important;
+  object-position:right center!important;
+}
+
+.single-product .cvl-single-brand-block strong{
+  font-size:22px!important;
+}
+
+/* Caixa de preço limpa, sem o bloco comercial lateral removido no mockup. */
+.single-product .cvl-single-price-box{
+  margin:0 0 14px!important;
+  padding:16px 20px 14px!important;
+  border:1px solid #dde4e7!important;
+  border-left:1px solid #dde4e7!important;
+  border-radius:8px!important;
+  background:#fff!important;
+}
+
+.single-product .woocommerce div.product .cvl-single-price,
+.single-product .woocommerce div.product .cvl-single-price .price,
+.single-product .woocommerce div.product .cvl-single-price .woocommerce-Price-amount{
+  color:#06864d!important;
+  font-size:clamp(30px,2vw,38px)!important;
+  font-weight:850!important;
+}
+
+.single-product .cvl-single-price-net{
+  margin-top:5px!important;
+  font-size:13px!important;
+}
+
+.single-product .cvl-product-summary .woocommerce-product-details__short-description{
+  margin:0 0 14px!important;
+  padding:13px 16px!important;
+  border-color:#dfe5e8!important;
+  border-radius:8px!important;
+}
+
+/* Disponibilidade a toda a largura, como a faixa verde do mockup. */
+.single-product .cvl-single-availability-row{
+  padding:0!important;
+  border-bottom:1px solid #e5eaed!important;
+  background:#fff!important;
+}
+
+.single-product .cvl-single-availability{
+  width:100%!important;
+  min-height:70px!important;
+  padding:12px 16px!important;
+  border:0!important;
+  border-left:3px solid #d97706!important;
+  border-radius:0!important;
+  background:linear-gradient(90deg,rgba(217,119,6,.08),rgba(217,119,6,.025))!important;
+  box-shadow:none!important;
+}
+
+.single-product .cvl-single-availability.is-instock{
+  border-left-color:#08a05c!important;
+  background:linear-gradient(90deg,rgba(8,160,92,.09),rgba(8,160,92,.025))!important;
+}
+
+.single-product .cvl-single-availability.is-outofstock{
+  border-left-color:#b91c1c!important;
+  background:linear-gradient(90deg,rgba(185,28,28,.08),rgba(185,28,28,.025))!important;
+}
+
+.single-product .cvl-single-availability-icon{
+  width:42px;
+  height:42px;
+  flex:0 0 42px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  background:rgba(217,119,6,.12);
+  color:#d97706;
+}
+
+.single-product .cvl-single-availability-icon svg{
+  width:23px;
+  height:23px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.7;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.single-product .cvl-single-availability.is-instock .cvl-single-availability-icon{
+  background:rgba(8,160,92,.13);
+  color:#08a05c;
+}
+
+.single-product .cvl-single-availability.is-outofstock .cvl-single-availability-icon{
+  background:rgba(185,28,28,.11);
+  color:#b91c1c;
+}
+
+.single-product .cvl-single-availability-copy strong{
+  font-size:14px!important;
+}
+
+.single-product .cvl-single-availability-copy small{
+  font-size:11.5px!important;
+}
+
+.single-product .cvl-single-info-panel{
+  margin:0 0 14px!important;
+}
+
+/* Ações */
+.single-product .cvl-product-summary form.cart:not(.variations_form),
+.single-product .cvl-product-summary .woocommerce-variation-add-to-cart{
+  grid-template-columns:98px minmax(210px,1.18fr) minmax(190px,.82fr)!important;
+  gap:10px!important;
+}
+
+/* Faixa de confiança do mockup, sem alegações comerciais específicas não definidas. */
+.single-product .cvl-single-trust-strip{
+  margin:10px 0 4px;
+  padding:0 4px 10px;
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+  border-bottom:1px solid #e4e8ea;
+}
+
+.single-product .cvl-single-trust-item{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.single-product .cvl-single-trust-icon{
+  width:28px;
+  height:28px;
+  flex:0 0 28px;
+  display:grid;
+  place-items:center;
+  color:#304555;
+}
+
+.single-product .cvl-single-trust-icon svg{
+  width:22px;
+  height:22px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.7;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.single-product .cvl-single-trust-copy{
+  min-width:0;
+  display:grid;
+  gap:2px;
+}
+
+.single-product .cvl-single-trust-copy strong{
+  color:#293842;
+  font-size:9.5px;
+  font-weight:800;
+  line-height:1.15;
+}
+
+.single-product .cvl-single-trust-copy small{
+  overflow:hidden;
+  color:#7b858c;
+  font-size:8.5px;
+  line-height:1.2;
+  text-overflow:ellipsis;
+}
+
+/* Tabs mais próximos da faixa de ações, como no desenho final. */
+.single-product .cvl-product-summary-tabs{
+  margin-top:0!important;
+  border-top:0!important;
+}
+
+.single-product .cvl-product-summary-tabs .woocommerce-tabs ul.tabs li a{
+  min-height:44px!important;
+  padding-top:12px!important;
+  padding-bottom:10px!important;
+}
+
+@media(max-width:1199.98px){
+  .single-product .cvl-single-brand-block{
+    margin:-34px 0 14px!important;
+  }
+
+  .single-product .cvl-single-trust-strip{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+@media(max-width:991.98px){
+  .single-product .cvl-single-brand-block{
+    margin:0 0 14px!important;
+    justify-content:flex-start!important;
+  }
+
+  .single-product .cvl-single-brand-block img,
+  .single-product .cvl-single-brand-logo{
+    object-position:left center!important;
+  }
+}
+
+@media(max-width:575.98px){
+  .single-product .cvl-single-trust-strip{
+    grid-template-columns:1fr 1fr;
+    gap:10px 8px;
+  }
+
+  .single-product .cvl-product-summary form.cart:not(.variations_form),
+  .single-product .cvl-product-summary .woocommerce-variation-add-to-cart{
+    grid-template-columns:98px minmax(0,1fr)!important;
+  }
+}
