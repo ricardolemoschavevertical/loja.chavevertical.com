@@ -12,8 +12,8 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVAB_VERSION', '0.3.4' );
-define( 'CVAB_EXPECTED_WORKER_RELEASE', '2026.10.05.07' );
+define( 'CVAB_VERSION', '0.3.5' );
+define( 'CVAB_EXPECTED_WORKER_RELEASE', '2026.10.05.08' );
 define( 'CVAB_STATUS_OPTION', 'cvab_worker_status' );
 define( 'CVAB_FILE', __FILE__ );
 define( 'CVAB_OPTION', 'cvab_settings' );
@@ -43,6 +43,10 @@ final class CV_Astro_Bridge {
         add_action( 'woocommerce_update_product', array( $this, 'product_changed' ), 30, 1 );
         add_action( 'woocommerce_new_product', array( $this, 'product_changed' ), 30, 1 );
         add_action( 'woocommerce_update_product_variation', array( $this, 'variation_changed' ), 30, 1 );
+
+        add_action( 'created_product_brand', array( $this, 'brand_changed' ), 30, 1 );
+        add_action( 'edited_product_brand', array( $this, 'brand_changed' ), 30, 1 );
+        add_action( 'delete_product_brand', array( $this, 'brand_changed' ), 30, 1 );
     }
 
     public static function activate(): void {
@@ -416,6 +420,25 @@ final class CV_Astro_Bridge {
         if ( $variation && $variation->get_parent_id() ) {
             $this->product_changed( $variation->get_parent_id() );
         }
+    }
+
+    public function brand_changed( int $term_id ): void {
+        if ( ! taxonomy_exists( 'product_brand' ) ) {
+            return;
+        }
+
+        $this->notify_worker_brands();
+    }
+
+    private function notify_worker_brands() {
+        $body = wp_json_encode(
+            array(
+                'taxonomy'   => 'product_brand',
+                'changed_at' => gmdate( 'c' ),
+            )
+        );
+
+        return $this->signed_worker_request( '/api/cv-admin/cache/brands', $body );
     }
 
     private function notify_worker_product( int $product_id, bool $warm ) {
