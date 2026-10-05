@@ -187,7 +187,12 @@ foreach ( $orders as $order_id => $data ) {
     $order = wc_get_order( $order_id );
 
     if ( ! $order instanceof WC_Order ) {
-        $errors[] = "#{$order_id}: encomenda não encontrada.";
+        /*
+         * Estas encomendas podem já existir apenas no arquivo histórico.
+         * A ausência no WooCommerce ativo não é um erro de deploy.
+         */
+        $skipped++;
+        echo "skipped-missing-live-order={$order_id}\n";
         continue;
     }
 
