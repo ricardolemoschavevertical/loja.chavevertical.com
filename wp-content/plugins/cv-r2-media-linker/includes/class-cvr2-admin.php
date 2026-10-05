@@ -129,7 +129,7 @@ final class CVR2_Admin {
 
         $state = array(
             'status'      => 'running',
-            'phase'       => 'images_only' === $import_mode ? 'products' : 'structure',
+            'phase'       => 'products',
             'page'        => 1,
             'total_pages' => 0,
             'total'       => 0,
@@ -201,35 +201,19 @@ final class CVR2_Admin {
         }
 
         if ( 'structure' === ( $state['phase'] ?? 'products' ) ) {
-            @set_time_limit( 180 );
-
-            $structure = CVR2_Product_Importer::sync_structure();
-            $state['structure']    = $structure;
-            $state['phase']        = 'products';
-            $state['page']         = 1;
-            $state['batch_index']  = 0;
-            $state['updated_at']   = time();
-
-            if ( ! empty( $structure['warnings'] ) ) {
-                foreach ( (array) $structure['warnings'] as $warning ) {
-                    $state['errors'][] = 'Estrutura: ' . sanitize_text_field( (string) $warning );
-                }
-                $state['errors'] = array_slice( $state['errors'], -20 );
-            }
-
+            // Compatibilidade com estados guardados por versões anteriores:
+            // não bloquear o arranque numa sincronização estrutural completa.
+            $state['phase']       = 'products';
+            $state['page']        = max( 1, absint( $state['page'] ?? 1 ) );
+            $state['batch_index'] = 0;
+            $state['updated_at']  = time();
             update_option( CVR2_STATE_OPTION, $state, false );
 
             wp_send_json_success(
                 array(
                     'done'    => false,
                     'state'   => $state,
-                    'message' => sprintf(
-                        'Estrutura sincronizada antes da importação: %1$d categorias, %2$d etiquetas, %3$d marcas e %4$d atributos.',
-                        absint( $structure['categories'] ?? 0 ),
-                        absint( $structure['tags'] ?? 0 ),
-                        absint( $structure['brands'] ?? 0 ),
-                        absint( $structure['attributes'] ?? 0 )
-                    ),
+                    'message' => 'Importação iniciada. Os atributos são garantidos produto a produto.',
                 )
             );
         }
@@ -657,7 +641,7 @@ final class CVR2_Admin {
                         <label><input type="radio" name="cvr2_import_mode" value="update_existing" checked> Atualizar produtos existentes e criar produtos novos</label>
                         <label><input type="radio" name="cvr2_import_mode" value="create_only"> Ignorar produtos existentes e criar apenas produtos novos</label>
                         <label><input type="radio" name="cvr2_import_mode" value="images_only"> Apenas atualizar imagens dos produtos existentes</label>
-                        <small>Na importação completa são preservados os estados Publicado, Rascunho, Pendente e Privado e a estrutura é sincronizada automaticamente antes dos produtos, incluindo atributos globais e respetivos termos. No modo de imagens só são atualizadas imagem principal, galeria e imagens das variações existentes.</small>
+                        <small>Na importação completa são preservados os estados Publicado, Rascunho, Pendente e Privado. Os atributos globais, termos, atributos locais, atributos de variação e valores por defeito são garantidos durante o processamento de cada produto, sem bloquear o arranque numa sincronização completa da estrutura. No modo de imagens só são atualizadas imagem principal, galeria e imagens das variações existentes.</small>
 
                         <div class="cvr2-batch-size">
                             <label for="cvr2-batch-size"><strong>Quantidade por lote</strong></label>
