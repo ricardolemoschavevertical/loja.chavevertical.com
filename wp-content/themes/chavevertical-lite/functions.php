@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.79' );
+define( 'CVL_VERSION', '0.16.80' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -637,19 +637,26 @@ function cvl_loop_product_stock() {
 add_action( 'woocommerce_after_shop_loop_item_title', 'cvl_loop_product_stock', 7 );
 
 /**
- * Ações do card: botão principal WooCommerce + botão Ver.
+ * Ações do card: uma única ação comercial.
+ * - compra direta: 🛒 ADICIONAR
+ * - restantes produtos: 👁️ VER
  */
 function cvl_loop_actions_open() {
     echo '<div class="cvl-product-actions">';
 }
 add_action( 'woocommerce_after_shop_loop_item', 'cvl_loop_actions_open', 9 );
 
+function cvl_loop_actions_close() {
+    echo '</div>';
+}
+add_action( 'woocommerce_after_shop_loop_item', 'cvl_loop_actions_close', 11 );
+
 add_filter( 'woocommerce_product_add_to_cart_text', function ( $text, $product ) {
     if ( class_exists( 'WC_Product' ) && $product instanceof WC_Product && $product->is_type( 'simple' ) && $product->is_purchasable() && $product->is_in_stock() ) {
-        return __( 'ADICIONAR', 'chavevertical-lite' );
+        return __( '🛒 ADICIONAR', 'chavevertical-lite' );
     }
 
-    return __( 'Ver produto', 'chavevertical-lite' );
+    return __( '👁️ VER', 'chavevertical-lite' );
 }, 10, 2 );
 
 add_filter( 'woocommerce_loop_add_to_cart_link', function ( $html, $product ) {
@@ -657,16 +664,20 @@ add_filter( 'woocommerce_loop_add_to_cart_link', function ( $html, $product ) {
         return $html;
     }
 
-    /*
-     * O card final usa o carrinho apenas quando a compra pode acontecer
-     * diretamente na listagem. Nos restantes casos fica apenas a ação VER,
-     * evitando dois botões com a mesma função.
-     */
-    if ( ! $product->is_type( 'simple' ) || ! $product->is_purchasable() || ! $product->is_in_stock() ) {
-        return '';
+    $can_add_directly = $product->is_type( 'simple' )
+        && $product->is_purchasable()
+        && $product->is_in_stock();
+
+    if ( ! $can_add_directly ) {
+        return sprintf(
+            '<a href="%1$s" class="button cvl-view-product" aria-label="%2$s"><span class="cvl-view-product-label">%3$s</span></a>',
+            esc_url( $product->get_permalink() ),
+            esc_attr( sprintf( __( 'Ver %s', 'chavevertical-lite' ), $product->get_name() ) ),
+            esc_html__( '👁️ VER', 'chavevertical-lite' )
+        );
     }
 
-    $label = esc_html__( 'ADICIONAR', 'chavevertical-lite' );
+    $label = esc_html__( '🛒 ADICIONAR', 'chavevertical-lite' );
     $replacement = '><span class="cvl-cart-button-label">' . $label . '</span></a>';
 
     $html = preg_replace( '/>[^<]*<\/a>$/', $replacement, $html, 1 );
