@@ -20,19 +20,51 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: chavevertical-lite-deploy
-  cancel-in-progress: false
-
 jobs:
   package:
     if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      should_deploy: ${{ steps.latest.outputs.should_deploy }}
+      latest_relevant_sha: ${{ steps.latest.outputs.latest_relevant_sha }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Keep only the latest relevant theme commit
+        id: latest
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --prune --no-tags
+
+          LATEST_RELEVANT_SHA=$(git log -1 --format=%H origin/main -- \
+            wp-content/themes/chavevertical-lite \
+            .github/workflows/chavevertical-lite.yml \
+            ops/deploy-theme.sh \
+            ops/assets \
+            ops/ensure-brands-page.php \
+            ops/ensure-contactos-page.php \
+            ops/ensure-quem-somos-page.php \
+            ops/ensure-entregas-ao-domicilio-page.php \
+            ops/ensure-termos-e-condicoes-page.php \
+            ops/ensure-politica-de-privacidade-page.php \
+            ops/ensure-pretty-permalinks.php)
+
+          echo "latest_relevant_sha=$LATEST_RELEVANT_SHA" >> "$GITHUB_OUTPUT"
+
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" || "$GITHUB_SHA" == "$LATEST_RELEVANT_SHA" ]]; then
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            echo "This run is the latest relevant theme revision: $GITHUB_SHA"
+          else
+            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping obsolete theme revision $GITHUB_SHA; latest relevant revision is $LATEST_RELEVANT_SHA"
+          fi
 
       - name: Validate PHP
+        if: steps.latest.outputs.should_deploy == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -50,6 +82,7 @@ jobs:
           php -l ops/ensure-pretty-permalinks.php
 
       - name: Build installable ZIP
+        if: steps.latest.outputs.should_deploy == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -59,6 +92,7 @@ jobs:
           unzip -t chavevertical-lite.zip
 
       - name: Upload theme ZIP
+        if: steps.latest.outputs.should_deploy == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: chavevertical-lite
@@ -68,55 +102,97 @@ jobs:
 
   deploy:
     needs: package
-    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main' && needs.package.outputs.should_deploy == 'true'
+    concurrency:
+      group: chavevertical-lite-deploy
+      cancel-in-progress: false
     runs-on: [self-hosted, Linux, X64, loja-chavevertical]
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           persist-credentials: false
 
+      - name: Recheck latest relevant theme commit before deployment
+        id: latest
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --prune --no-tags
+
+          LATEST_RELEVANT_SHA=$(git log -1 --format=%H origin/main -- \
+            wp-content/themes/chavevertical-lite \
+            .github/workflows/chavevertical-lite.yml \
+            ops/deploy-theme.sh \
+            ops/assets \
+            ops/ensure-brands-page.php \
+            ops/ensure-contactos-page.php \
+            ops/ensure-quem-somos-page.php \
+            ops/ensure-entregas-ao-domicilio-page.php \
+            ops/ensure-termos-e-condicoes-page.php \
+            ops/ensure-politica-de-privacidade-page.php \
+            ops/ensure-pretty-permalinks.php)
+
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" || "$GITHUB_SHA" == "$LATEST_RELEVANT_SHA" ]]; then
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            echo "Deploying latest relevant theme revision: $GITHUB_SHA"
+          else
+            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping stale deployment $GITHUB_SHA; latest relevant revision is $LATEST_RELEVANT_SHA"
+          fi
+
       - name: Download validated theme ZIP
+        if: steps.latest.outputs.should_deploy == 'true'
         uses: actions/download-artifact@v4
         with:
           name: chavevertical-lite
           path: ${{ runner.temp }}/chavevertical-lite-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Deploy and verify theme
+        if: steps.latest.outputs.should_deploy == 'true'
         shell: bash
         env:
           THEME_ZIP: ${{ runner.temp }}/chavevertical-lite-${{ github.run_id }}-${{ github.run_attempt }}/chavevertical-lite.zip
         run: bash ops/deploy-theme.sh "$THEME_ZIP"
 
       - name: Ensure brands page
+        if: steps.latest.outputs.should_deploy == 'true'
         shell: bash
         run: php ops/ensure-brands-page.php
 
       - name: Ensure contacts page
+        if: steps.latest.outputs.should_deploy == 'true'
         shell: bash
         run: php ops/ensure-contactos-page.php
 
       - name: Ensure Quem Somos page
+        if: steps.latest.outputs.should_deploy == 'true'
         shell: bash
         run: php ops/ensure-quem-somos-page.php
 
       - name: Ensure delivery page
+        if: steps.latest.outputs.should_deploy == 'true'
         shell: bash
         run: php ops/ensure-entregas-ao-domicilio-page.php
 
       - name: Ensure terms page
+        if: steps.latest.outputs.should_deploy == 'true'
         shell: bash
         run: php ops/ensure-termos-e-condicoes-page.php
 
       - name: Ensure privacy page
+        if: steps.latest.outputs.should_deploy == 'true'
         shell: bash
         run: php ops/ensure-politica-de-privacidade-page.php
 
       - name: Ensure pretty permalinks
+        if: steps.latest.outputs.should_deploy == 'true'
         shell: bash
         run: php ops/ensure-pretty-permalinks.php
 
       - name: Verify Quem Somos page
+        if: steps.latest.outputs.should_deploy == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -129,6 +205,7 @@ jobs:
           grep -q 'href="https://loja.chavevertical.com/quem-somos/"' /tmp/cvl-quem-somos.html
 
       - name: Verify delivery page
+        if: steps.latest.outputs.should_deploy == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -142,6 +219,7 @@ jobs:
           grep -q 'href="https://loja.chavevertical.com/entregas-ao-domicilio/"' /tmp/cvl-entregas.html
 
       - name: Verify terms page
+        if: steps.latest.outputs.should_deploy == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -156,6 +234,7 @@ jobs:
           grep -q 'href="https://loja.chavevertical.com/termos-e-condicoes/"' /tmp/cvl-termos.html
 
       - name: Verify privacy page
+        if: steps.latest.outputs.should_deploy == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -170,6 +249,7 @@ jobs:
           grep -q 'href="https://loja.chavevertical.com/politica-de-privacidade/"' /tmp/cvl-privacidade.html
 
       - name: Verify shop catalog layout
+        if: steps.latest.outputs.should_deploy == 'true'
         shell: bash
         run: |
           set -euo pipefail
