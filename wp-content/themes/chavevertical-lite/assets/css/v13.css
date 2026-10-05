@@ -1811,3 +1811,105 @@ body.woocommerce-shop .cvl-featured-catalog-page .cvl-search-products li.product
     grid-template-columns:repeat(2,minmax(0,1fr))!important;
   }
 }
+
+
+/* Floating contact actions */
+.cvl-floating-contact{
+  position:fixed;
+  right:22px;
+  bottom:24px;
+  z-index:9998;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:10px;
+  pointer-events:none;
+}
+
+.cvl-floating-contact-button{
+  min-width:148px;
+  height:54px;
+  padding:0 18px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:9px;
+  border:1px solid rgba(0,0,0,.08);
+  border-radius:999px;
+  box-shadow:0 10px 28px rgba(7,28,24,.2);
+  color:#fff!important;
+  font-size:13px;
+  font-weight:800;
+  letter-spacing:.01em;
+  line-height:1;
+  text-decoration:none!important;
+  pointer-events:auto;
+  transition:transform .18s ease,box-shadow .18s ease,filter .18s ease;
+}
+
+.cvl-floating-contact-button:hover{
+  transform:translateY(-2px);
+  box-shadow:0 14px 34px rgba(7,28,24,.26);
+  filter:brightness(.97);
+}
+
+.cvl-floating-contact-button:focus-visible{
+  outline:3px solid rgba(11,78,70,.28);
+  outline-offset:3px;
+}
+
+.cvl-floating-contact-button svg{
+  width:22px;
+  height:22px;
+  flex:0 0 22px;
+  fill:currentColor;
+}
+
+.cvl-floating-contact-button.is-whatsapp{
+  background:#25d366;
+}
+
+.cvl-floating-contact-button.is-call{
+  display:none;
+  background:#0b4e46;
+}
+
+@media(max-width:767.98px){
+  .cvl-floating-contact{
+    right:12px;
+    bottom:calc(12px + env(safe-area-inset-bottom,0px));
+    flex-direction:row;
+    gap:8px;
+  }
+
+  .cvl-floating-contact-button{
+    min-width:46px;
+    width:46px;
+    height:46px;
+    padding:0;
+    border-radius:50%;
+    box-shadow:0 8px 22px rgba(7,28,24,.22);
+  }
+
+  .cvl-floating-contact-button.is-call{
+    display:flex;
+  }
+
+  .cvl-floating-contact-button span{
+    position:absolute;
+    width:1px;
+    height:1px;
+    padding:0;
+    margin:-1px;
+    overflow:hidden;
+    clip:rect(0,0,0,0);
+    white-space:nowrap;
+    border:0;
+  }
+
+  .cvl-floating-contact-button svg{
+    width:20px;
+    height:20px;
+    flex-basis:20px;
+  }
+}
