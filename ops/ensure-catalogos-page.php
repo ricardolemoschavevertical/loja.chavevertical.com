@@ -71,3 +71,5 @@ clean_post_cache( (int) $pageId );
 
 echo "Catalogos page created: {$pageId}\n";
 echo get_permalink( (int) $pageId ) . "\n";
+
+// Managed by GitHub deployment.
