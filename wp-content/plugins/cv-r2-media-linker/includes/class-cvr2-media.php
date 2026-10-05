@@ -315,6 +315,7 @@ final class CVR2_Media {
         string $alt
     ) {
         require_once ABSPATH . 'wp-admin/includes/file.php';
+        require_once ABSPATH . 'wp-admin/includes/media.php';
         require_once ABSPATH . 'wp-admin/includes/image.php';
 
         $tmp = download_url( $source_url, 30 );
@@ -323,77 +324,57 @@ final class CVR2_Media {
             return $tmp;
         }
 
-        $path = (string) wp_parse_url( $source_url, PHP_URL_PATH );
-        $path = rawurldecode( $path );
-        $path = preg_replace( '#^.*?/wp-content/uploads/#i', '', $path );
-        $path = ltrim( (string) $path, '/' );
+        $path     = (string) wp_parse_url( $source_url, PHP_URL_PATH );
+        $basename = sanitize_file_name( wp_basename( rawurldecode( $path ) ) );
 
-        $info      = pathinfo( $path );
-        $directory = ! empty( $info['dirname'] ) && '.' !== $info['dirname'] ? trailingslashit( $info['dirname'] ) : '';
-        $filename  = sanitize_file_name( (string) ( $info['filename'] ?? 'cvr2-image' ) );
-        $extension = strtolower( (string) ( $info['extension'] ?? '' ) );
+        if ( '' === $basename || '.' === $basename ) {
+            $basename = 'cvr2-image';
+        }
+
+        $extension = strtolower( (string) pathinfo( $basename, PATHINFO_EXTENSION ) );
 
         if ( ! $extension ) {
             $detected_mime = function_exists( 'wp_get_image_mime' ) ? (string) wp_get_image_mime( $tmp ) : '';
-            $extension = match ( $detected_mime ) {
-                'image/jpeg' => 'jpg',
-                'image/png'  => 'png',
-                'image/gif'  => 'gif',
-                'image/webp' => 'webp',
-                'image/avif' => 'avif',
-                default      => '',
-            };
-        }
+            $detected_ext  = self::extension_for_mime( $detected_mime );
 
-        $key  = $directory . $filename . ( $extension ? '.' . $extension : '' );
-        $mime = self::mime_for_key( $key );
-
-        if ( ! $mime ) {
-            @unlink( $tmp );
-            return new WP_Error( 'cvr2_image_type', 'A imagem de origem não tem um formato suportado pela Media Library.' );
-        }
-
-        $uploads = wp_upload_dir();
-
-        if ( ! empty( $uploads['error'] ) ) {
-            @unlink( $tmp );
-            return new WP_Error( 'cvr2_upload_dir', (string) $uploads['error'] );
-        }
-
-        $destination = trailingslashit( $uploads['basedir'] ) . ltrim( $key, '/' );
-
-        if ( ! wp_mkdir_p( dirname( $destination ) ) ) {
-            @unlink( $tmp );
-            return new WP_Error( 'cvr2_mkdir', 'Não foi possível criar a pasta de destino da imagem.' );
-        }
-
-        if ( ! @rename( $tmp, $destination ) ) {
-            if ( ! @copy( $tmp, $destination ) ) {
-                @unlink( $tmp );
-                return new WP_Error( 'cvr2_image_copy', 'Não foi possível guardar a imagem original.' );
+            if ( $detected_ext ) {
+                $basename .= '.' . $detected_ext;
             }
-            @unlink( $tmp );
         }
 
-        $attachment_id = wp_insert_attachment(
-            array(
-                'post_mime_type' => $mime,
-                'post_title'     => $title ?: $filename,
-                'post_status'    => 'inherit',
-            ),
-            $destination,
+        $file_array = array(
+            'name'     => $basename,
+            'tmp_name' => $tmp,
+        );
+
+        /*
+         * IMPORTANTE:
+         * Usar media_handle_sideload() faz a imagem passar pelo pipeline normal
+         * da Media Library: wp_handle_sideload(), criação do attachment,
+         * geração de metadata e todos os hooks do WordPress/plugins de offload.
+         *
+         * Assim, se a origem estiver no disco local do site antigo, S3, CDN ou
+         * outro URL, o sistema R2 instalado no WordPress pode enviá-la para R2
+         * exatamente pelo mesmo método usado num upload normal do administrador.
+         */
+        $attachment_id = media_handle_sideload(
+            $file_array,
             0,
-            true
+            $title ?: pathinfo( $basename, PATHINFO_FILENAME ),
+            array(
+                'post_status' => 'inherit',
+            )
         );
 
         if ( is_wp_error( $attachment_id ) ) {
+            @unlink( $tmp );
             return $attachment_id;
         }
 
-        update_post_meta( $attachment_id, '_wp_attached_file', $key );
+        $attachment_id = absint( $attachment_id );
+
         update_post_meta( $attachment_id, '_cvr2_source_url', $source_url );
-        update_post_meta( $attachment_id, '_cvr2_r2_key', $key );
-        update_post_meta( $attachment_id, '_cvr2_needs_r2_check', 1 );
+        update_post_meta( $attachment_id, '_cvr2_native_sideload', 1 );
 
         if ( $source_id ) {
             update_post_meta( $attachment_id, '_cvr2_source_attachment_id', $source_id );
@@ -403,13 +384,55 @@ final class CVR2_Media {
             update_post_meta( $attachment_id, '_wp_attachment_image_alt', $alt );
         }
 
-        $metadata = wp_generate_attachment_metadata( $attachment_id, $destination );
+        self::capture_native_r2_location( $attachment_id );
 
-        if ( is_array( $metadata ) ) {
-            wp_update_attachment_metadata( $attachment_id, $metadata );
+        return $attachment_id;
+    }
+
+    private static function extension_for_mime( string $mime ): string {
+        return match ( strtolower( $mime ) ) {
+            'image/jpeg' => 'jpg',
+            'image/png'  => 'png',
+            'image/gif'  => 'gif',
+            'image/webp' => 'webp',
+            'image/avif' => 'avif',
+            default      => '',
+        };
+    }
+
+    private static function capture_native_r2_location( int $attachment_id ): void {
+        $url = wp_get_attachment_url( $attachment_id );
+
+        if ( ! $url ) {
+            update_post_meta( $attachment_id, '_cvr2_needs_r2_check', 1 );
+            return;
         }
 
-        return (int) $attachment_id;
+        $r2_base = CVR2_REST_Client::r2_base_url();
+        $r2_host = strtolower( (string) wp_parse_url( $r2_base, PHP_URL_HOST ) );
+        $url_host = strtolower( (string) wp_parse_url( $url, PHP_URL_HOST ) );
+
+        if ( $r2_host && $url_host && $r2_host === $url_host ) {
+            $base_path = trim( (string) wp_parse_url( $r2_base, PHP_URL_PATH ), '/' );
+            $url_path  = ltrim( rawurldecode( (string) wp_parse_url( $url, PHP_URL_PATH ) ), '/' );
+
+            if ( $base_path && str_starts_with( $url_path, $base_path . '/' ) ) {
+                $url_path = substr( $url_path, strlen( $base_path ) + 1 );
+            }
+
+            update_post_meta( $attachment_id, '_cvr2_r2_url', esc_url_raw( $url ) );
+            update_post_meta( $attachment_id, '_cvr2_r2_key', $url_path );
+            delete_post_meta( $attachment_id, '_cvr2_needs_r2_check' );
+            return;
+        }
+
+        /*
+         * Alguns plugins de offload executam de forma assíncrona ou apenas
+         * alteram a URL depois de gerar os metadados. Neste caso mantemos o
+         * attachment normal e marcamo-lo para verificação, sem copiar o ficheiro
+         * diretamente para R2 por fora do WordPress.
+         */
+        update_post_meta( $attachment_id, '_cvr2_needs_r2_check', 1 );
     }
 
     private static function convert_to_webp( string $source, string $destination ) {
