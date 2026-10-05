@@ -328,7 +328,13 @@ final class CVLOA_Customer_Identities {
             return $written;
         }
 
-        $guest_sync = CVLOA_Customer_Archive::replace_guest_profiles( $final_profiles );
+        $GLOBALS['cvloa_rebuilding_identities'] = true;
+        try {
+            $guest_sync = CVLOA_Customer_Archive::replace_guest_profiles( $final_profiles );
+        } finally {
+            unset( $GLOBALS['cvloa_rebuilding_identities'] );
+        }
+
         if ( is_wp_error( $guest_sync ) ) {
             return $guest_sync;
         }
