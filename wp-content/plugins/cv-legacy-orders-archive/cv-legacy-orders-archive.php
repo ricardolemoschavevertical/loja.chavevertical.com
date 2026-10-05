@@ -68,7 +68,7 @@ add_filter(
         );
         $modules[] = array(
             'title'       => 'Clientes antigos',
-            'description' => 'Arquivo privado dos dados históricos de clientes, sem criar utilizadores nem copiar palavras-passe.',
+            'description' => 'Arquivo privado de clientes históricos, convidados deduplicados e ativação local segura por email quando necessário.',
             'url'         => admin_url( 'admin.php?page=cv-legacy-customers' ),
             'active'      => true,
         );
