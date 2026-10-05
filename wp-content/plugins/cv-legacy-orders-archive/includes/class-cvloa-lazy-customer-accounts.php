@@ -2,8 +2,11 @@
 defined( 'ABSPATH' ) || exit;
 
 final class CVLOA_Lazy_Customer_Accounts {
+    private static int $created_user_id = 0;
+
     public static function init(): void {
         add_filter( 'authenticate', array( __CLASS__, 'maybe_create_historical_customer' ), 15, 3 );
+        add_filter( 'authenticate', array( __CLASS__, 'replace_first_login_error' ), 99, 3 );
     }
 
     public static function maybe_create_historical_customer( $user, string $username, string $password ) {
@@ -51,6 +54,30 @@ final class CVLOA_Lazy_Customer_Accounts {
                 'cvloa_historical_account_create_failed',
                 'Encontrámos o seu histórico de cliente, mas não foi possível preparar a conta local. Utilize “Perdeu a palavra-passe?” ou contacte-nos.'
             );
+        }
+
+        self::$created_user_id = (int) $user_id;
+
+        // Deixar o WordPress concluir o ciclo normal de autenticação.
+        // A password histórica não é conhecida, por isso a validação irá falhar
+        // e o filtro final substitui o erro genérico pela instrução correta.
+        return $user;
+    }
+
+    public static function replace_first_login_error( $user, string $username, string $password ) {
+        if ( self::$created_user_id <= 0 || ! is_wp_error( $user ) ) {
+            return $user;
+        }
+
+        $created = get_user_by( 'id', self::$created_user_id );
+        $email   = strtolower( sanitize_email( $username ) );
+
+        if (
+            ! $created instanceof WP_User
+            || '' === $email
+            || strtolower( (string) $created->user_email ) !== $email
+        ) {
+            return $user;
         }
 
         $lost_password_url = wc_lostpassword_url();
