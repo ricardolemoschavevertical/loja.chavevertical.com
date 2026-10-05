@@ -238,9 +238,21 @@ final class CVLOA_Lazy_Customer_Accounts {
         update_user_meta( $user_id, '_cvloa_lazy_created', 1 );
         update_user_meta( $user_id, '_cvloa_lazy_created_at', gmdate( 'c' ) );
         update_user_meta( $user_id, '_cvloa_identity_key', sanitize_key( (string) ( $profile['identity_key'] ?? '' ) ) );
+        $historical_order_keys = array_values(
+            array_unique(
+                array_filter(
+                    array_map(
+                        'sanitize_key',
+                        (array) ( $profile['order_keys'] ?? array() )
+                    )
+                )
+            )
+        );
+
         update_user_meta( $user_id, '_cvloa_historical_emails', $historical_emails );
         update_user_meta( $user_id, '_cvloa_historical_nifs', array_values( (array) ( $profile['nifs'] ?? array() ) ) );
         update_user_meta( $user_id, '_cvloa_historical_phones', array_values( (array) ( $profile['phones'] ?? array() ) ) );
+        update_user_meta( $user_id, '_cvloa_historical_order_keys', $historical_order_keys );
 
         return $user_id;
     }
