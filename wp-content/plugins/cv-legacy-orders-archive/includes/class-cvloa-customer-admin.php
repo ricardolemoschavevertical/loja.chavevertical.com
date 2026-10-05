@@ -4,6 +4,8 @@ defined( 'ABSPATH' ) || exit;
 final class CVLOA_Customer_Admin {
     public static function init(): void {
         add_action( 'admin_menu', array( __CLASS__, 'menu' ), 100 );
+        add_action( 'admin_post_cvloa_export_local_customers', array( __CLASS__, 'export_local_customers' ) );
+        add_action( 'admin_post_cvloa_import_local_customers', array( __CLASS__, 'import_local_customers' ) );
 
         add_action( 'wp_ajax_cvloa_customer_test_source', array( __CLASS__, 'ajax_test_source' ) );
         add_action( 'wp_ajax_cvloa_customer_start_import', array( __CLASS__, 'ajax_start_import' ) );
@@ -22,6 +24,259 @@ final class CVLOA_Customer_Admin {
             'cv-legacy-customers',
             array( __CLASS__, 'render' )
         );
+    }
+
+
+
+    public static function export_local_customers(): void {
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_die( esc_html__( 'Sem permissões.', 'cv-legacy-orders-archive' ) );
+        }
+
+        check_admin_referer( 'cvloa_export_local_customers' );
+
+        $ready = CVLOA_Customer_Archive::ensure_storage();
+        if ( is_wp_error( $ready ) ) {
+            wp_die( esc_html( $ready->get_error_message() ) );
+        }
+
+        $path = CVLOA_Customer_Archive::data_path();
+        if ( ! is_readable( $path ) ) {
+            wp_die( esc_html__( 'O ficheiro local dos clientes não está disponível para leitura.', 'cv-legacy-orders-archive' ) );
+        }
+
+        $handle = @fopen( $path, 'rb' );
+        if ( false === $handle ) {
+            wp_die( esc_html__( 'Não foi possível abrir o ficheiro local dos clientes.', 'cv-legacy-orders-archive' ) );
+        }
+
+        $meta = wp_json_encode(
+            array(
+                '_cvloa_export' => array(
+                    'format'         => 'cvloa-ndjson',
+                    'version'        => 1,
+                    'type'           => 'customers',
+                    'exported_at'    => gmdate( 'c' ),
+                    'plugin_version' => defined( 'CVLOA_VERSION' ) ? CVLOA_VERSION : '',
+                ),
+            ),
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE
+        );
+
+        if ( false === $meta ) {
+            fclose( $handle );
+            wp_die( esc_html__( 'Não foi possível preparar a exportação dos clientes.', 'cv-legacy-orders-archive' ) );
+        }
+
+        while ( ob_get_level() > 0 ) {
+            @ob_end_clean();
+        }
+
+        nocache_headers();
+        header( 'Content-Type: application/x-ndjson; charset=utf-8' );
+        header( 'Content-Disposition: attachment; filename="cv-clientes-antigos-' . gmdate( 'Ymd-His' ) . '.ndjson"' );
+        header( 'X-Content-Type-Options: nosniff' );
+
+        echo $meta . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+
+        $first_line = true;
+        while ( ! feof( $handle ) ) {
+            $line = fgets( $handle );
+            if ( false === $line ) {
+                break;
+            }
+
+            if ( $first_line ) {
+                $first_line = false;
+                if ( str_starts_with( ltrim( $line ), '<?php' ) ) {
+                    continue;
+                }
+            }
+
+            if ( '' === trim( $line ) ) {
+                continue;
+            }
+
+            echo $line; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+        }
+
+        fclose( $handle );
+        exit;
+    }
+
+    public static function import_local_customers(): void {
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_die( esc_html__( 'Sem permissões.', 'cv-legacy-orders-archive' ) );
+        }
+
+        check_admin_referer( 'cvloa_import_local_customers' );
+
+        $file = isset( $_FILES['cvloa_customers_file'] ) && is_array( $_FILES['cvloa_customers_file'] )
+            ? $_FILES['cvloa_customers_file']
+            : array();
+
+        $upload_error = absint( $file['error'] ?? UPLOAD_ERR_NO_FILE );
+        if ( UPLOAD_ERR_OK !== $upload_error ) {
+            self::redirect_file_notice( 'error', 'Selecione um ficheiro de clientes válido para importar.' );
+        }
+
+        $tmp_path = (string) ( $file['tmp_name'] ?? '' );
+        if ( '' === $tmp_path || ! is_readable( $tmp_path ) ) {
+            self::redirect_file_notice( 'error', 'Não foi possível ler o ficheiro carregado.' );
+        }
+
+        $max_size = (int) wp_max_upload_size();
+        $file_size = (int) ( $file['size'] ?? 0 );
+        if ( $max_size > 0 && $file_size > $max_size ) {
+            self::redirect_file_notice( 'error', 'O ficheiro excede o limite de upload permitido pelo WordPress.' );
+        }
+
+        $result = self::import_customers_file( $tmp_path );
+        if ( is_wp_error( $result ) ) {
+            self::redirect_file_notice( 'error', $result->get_error_message() );
+        }
+
+        $message = sprintf(
+            'Ficheiro importado: %1$d registo(s) lido(s), %2$d novo(s), %3$d atualizado(s).',
+            absint( $result['records'] ?? 0 ),
+            absint( $result['archived'] ?? 0 ),
+            absint( $result['updated'] ?? 0 )
+        );
+
+        $errors = absint( $result['errors_count'] ?? 0 );
+        if ( $errors ) {
+            $message .= sprintf( ' %d linha(s) foram ignoradas por erro.', $errors );
+        }
+
+        self::redirect_file_notice( $errors ? 'warning' : 'success', $message );
+    }
+
+    private static function import_customers_file( string $path ) {
+        $handle = @fopen( $path, 'rb' );
+        if ( false === $handle ) {
+            return new WP_Error( 'cvloa_customers_import_open_failed', 'Não foi possível abrir o ficheiro carregado.' );
+        }
+
+        $summary = array(
+            'records'      => 0,
+            'archived'     => 0,
+            'updated'      => 0,
+            'ignored'      => 0,
+            'errors_count' => 0,
+            'errors'       => array(),
+        );
+        $batch   = array();
+        $line_no = 0;
+
+        try {
+            while ( ! feof( $handle ) ) {
+                $line = fgets( $handle );
+                if ( false === $line ) {
+                    break;
+                }
+
+                $line_no++;
+                $line = trim( $line );
+
+                if ( '' === $line || str_starts_with( $line, '<?php' ) ) {
+                    continue;
+                }
+
+                $decoded = json_decode( $line, true );
+                if ( ! is_array( $decoded ) ) {
+                    $summary['errors_count']++;
+                    if ( count( $summary['errors'] ) < 20 ) {
+                        $summary['errors'][] = 'Linha ' . $line_no . ': JSON inválido.';
+                    }
+                    continue;
+                }
+
+                if ( isset( $decoded['_cvloa_export'] ) && is_array( $decoded['_cvloa_export'] ) ) {
+                    $type = sanitize_key( (string) ( $decoded['_cvloa_export']['type'] ?? '' ) );
+                    if ( '' !== $type && 'customers' !== $type ) {
+                        return new WP_Error( 'cvloa_customers_import_wrong_type', 'O ficheiro selecionado não é uma exportação de clientes.' );
+                    }
+                    continue;
+                }
+
+                if (
+                    array_key_exists( 'line_items', $decoded )
+                    || (
+                        ! array_key_exists( 'email', $decoded )
+                        && ! array_key_exists( 'orders_count', $decoded )
+                        && ! array_key_exists( 'billing', $decoded )
+                    )
+                ) {
+                    $summary['errors_count']++;
+                    if ( count( $summary['errors'] ) < 20 ) {
+                        $summary['errors'][] = 'Linha ' . $line_no . ': o registo não parece ser um cliente válido.';
+                    }
+                    continue;
+                }
+
+                $batch[] = $decoded;
+                $summary['records']++;
+
+                if ( count( $batch ) >= 100 ) {
+                    $saved = CVLOA_Customer_Archive::archive_batch( $batch, true );
+                    if ( is_wp_error( $saved ) ) {
+                        return $saved;
+                    }
+
+                    foreach ( array( 'archived', 'updated', 'ignored' ) as $key ) {
+                        $summary[ $key ] += absint( $saved[ $key ] ?? 0 );
+                    }
+                    foreach ( (array) ( $saved['errors'] ?? array() ) as $error ) {
+                        $summary['errors_count']++;
+                        if ( count( $summary['errors'] ) < 20 ) {
+                            $summary['errors'][] = sanitize_text_field( (string) $error );
+                        }
+                    }
+                    $batch = array();
+                }
+            }
+
+            if ( $batch ) {
+                $saved = CVLOA_Customer_Archive::archive_batch( $batch, true );
+                if ( is_wp_error( $saved ) ) {
+                    return $saved;
+                }
+
+                foreach ( array( 'archived', 'updated', 'ignored' ) as $key ) {
+                    $summary[ $key ] += absint( $saved[ $key ] ?? 0 );
+                }
+                foreach ( (array) ( $saved['errors'] ?? array() ) as $error ) {
+                    $summary['errors_count']++;
+                    if ( count( $summary['errors'] ) < 20 ) {
+                        $summary['errors'][] = sanitize_text_field( (string) $error );
+                    }
+                }
+            }
+        } finally {
+            fclose( $handle );
+        }
+
+        if ( 0 === $summary['records'] ) {
+            return new WP_Error( 'cvloa_customers_import_empty', 'O ficheiro não contém clientes válidos para importar.' );
+        }
+
+        return $summary;
+    }
+
+    private static function redirect_file_notice( string $type, string $message ): void {
+        $type = in_array( $type, array( 'success', 'warning', 'error' ), true ) ? $type : 'warning';
+
+        wp_safe_redirect(
+            add_query_arg(
+                array(
+                    'page'                        => 'cv-legacy-customers',
+                    'cvloa_customer_file_notice'  => $type,
+                    'cvloa_customer_file_message' => $message,
+                ),
+                admin_url( 'admin.php' )
+            )
+        );
+        exit;
     }
 
     private static function guard_ajax(): void {
@@ -381,10 +636,16 @@ final class CVLOA_Customer_Admin {
         $identity_stats = CVLOA_Customer_Identities::stats();
         $state          = (array) get_option( CVLOA_CUSTOMER_STATE_OPTION, array() );
         $nonce = wp_create_nonce( 'cvloa_customer_import' );
+        $file_notice = sanitize_key( (string) wp_unslash( $_GET['cvloa_customer_file_notice'] ?? '' ) );
+        $file_message = sanitize_text_field( (string) wp_unslash( $_GET['cvloa_customer_file_message'] ?? '' ) );
         ?>
         <div class="wrap cvloa-customer-admin">
             <h1>Clientes antigos</h1>
             <p>Arquivo privado dos clientes da loja de origem. Não copia palavras-passe. Um cliente histórico sem conta local pode ter a conta WordPress preparada na primeira tentativa de login por email e depois definir uma nova palavra-passe pelo fluxo normal de recuperação.</p>
+
+            <?php if ( $file_message && in_array( $file_notice, array( 'success', 'warning', 'error' ), true ) ) : ?>
+                <div class="notice notice-<?php echo esc_attr( $file_notice ); ?> is-dismissible"><p><?php echo esc_html( $file_message ); ?></p></div>
+            <?php endif; ?>
 
             <style>
                 .cvloa-customer-admin{max-width:1600px}.cvloa-card{background:#fff;border:1px solid #dcdcde;border-radius:10px;padding:18px;margin:16px 0}
@@ -402,6 +663,30 @@ final class CVLOA_Customer_Admin {
                 <div class="cvloa-stat"><span>Clientes arquivados</span><strong><?php echo esc_html( number_format_i18n( $stats['count'] ) ); ?></strong></div>
                 <div class="cvloa-stat"><span>Ficheiro de dados</span><strong><?php echo esc_html( size_format( $stats['data_bytes'], 1 ) ); ?></strong></div>
                 <div class="cvloa-stat"><span>Índice local</span><strong><?php echo esc_html( size_format( $stats['index_bytes'], 1 ) ); ?></strong></div>
+            </div>
+
+            <div class="cvloa-card">
+                <h2>Ficheiro local de clientes</h2>
+                <p>Exporte uma cópia portátil do arquivo local ou importe uma cópia anterior. O índice é reconstruído automaticamente a partir dos registos importados.</p>
+
+                <div class="cvloa-actions">
+                    <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+                        <input type="hidden" name="action" value="cvloa_export_local_customers">
+                        <?php wp_nonce_field( 'cvloa_export_local_customers' ); ?>
+                        <button class="button" type="submit">Exportar clientes</button>
+                    </form>
+
+                    <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                        <input type="hidden" name="action" value="cvloa_import_local_customers">
+                        <?php wp_nonce_field( 'cvloa_import_local_customers' ); ?>
+                        <input type="file" name="cvloa_customers_file" accept=".ndjson,.json,.php,application/json,application/x-ndjson,text/plain" required>
+                        <button class="button button-primary" type="submit">Importar ficheiro</button>
+                    </form>
+                </div>
+
+                <p class="description">A importação mescla o ficheiro com o arquivo atual: clientes com a mesma chave são atualizados e os restantes são mantidos.</p>
+                <p class="description">Dados: <span class="cvloa-path"><?php echo esc_html( CVLOA_Customer_Archive::data_path() ); ?></span> — <?php echo esc_html( size_format( $stats['data_bytes'], 1 ) ); ?></p>
+                <p class="description">Índice: <span class="cvloa-path"><?php echo esc_html( CVLOA_Customer_Archive::index_path() ); ?></span> — <?php echo esc_html( size_format( $stats['index_bytes'], 1 ) ); ?></p>
             </div>
 
             <div class="cvloa-card">

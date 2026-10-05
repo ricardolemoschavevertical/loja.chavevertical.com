@@ -6,6 +6,8 @@ final class CVLOA_Admin {
         add_action( 'admin_menu', array( __CLASS__, 'menu' ), 99 );
         add_action( 'admin_post_cvloa_save_settings', array( __CLASS__, 'save_settings' ) );
         add_action( 'admin_post_cvloa_bulk_update_status', array( __CLASS__, 'bulk_update_status' ) );
+        add_action( 'admin_post_cvloa_export_local_orders', array( __CLASS__, 'export_local_orders' ) );
+        add_action( 'admin_post_cvloa_import_local_orders', array( __CLASS__, 'import_local_orders' ) );
 
         add_action( 'wp_ajax_cvloa_test_source', array( __CLASS__, 'ajax_test_source' ) );
         add_action( 'wp_ajax_cvloa_pull_statuses', array( __CLASS__, 'ajax_pull_statuses' ) );
@@ -24,6 +26,259 @@ final class CVLOA_Admin {
             'cv-legacy-orders',
             array( __CLASS__, 'render' )
         );
+    }
+
+
+
+    public static function export_local_orders(): void {
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_die( esc_html__( 'Sem permissões.', 'cv-legacy-orders-archive' ) );
+        }
+
+        check_admin_referer( 'cvloa_export_local_orders' );
+
+        $ready = CVLOA_Archive::ensure_storage();
+        if ( is_wp_error( $ready ) ) {
+            wp_die( esc_html( $ready->get_error_message() ) );
+        }
+
+        $path = CVLOA_Archive::data_path();
+        if ( ! is_readable( $path ) ) {
+            wp_die( esc_html__( 'O ficheiro local das encomendas não está disponível para leitura.', 'cv-legacy-orders-archive' ) );
+        }
+
+        $handle = @fopen( $path, 'rb' );
+        if ( false === $handle ) {
+            wp_die( esc_html__( 'Não foi possível abrir o ficheiro local das encomendas.', 'cv-legacy-orders-archive' ) );
+        }
+
+        $meta = wp_json_encode(
+            array(
+                '_cvloa_export' => array(
+                    'format'         => 'cvloa-ndjson',
+                    'version'        => 1,
+                    'type'           => 'orders',
+                    'exported_at'    => gmdate( 'c' ),
+                    'plugin_version' => defined( 'CVLOA_VERSION' ) ? CVLOA_VERSION : '',
+                ),
+            ),
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE
+        );
+
+        if ( false === $meta ) {
+            fclose( $handle );
+            wp_die( esc_html__( 'Não foi possível preparar a exportação das encomendas.', 'cv-legacy-orders-archive' ) );
+        }
+
+        while ( ob_get_level() > 0 ) {
+            @ob_end_clean();
+        }
+
+        nocache_headers();
+        header( 'Content-Type: application/x-ndjson; charset=utf-8' );
+        header( 'Content-Disposition: attachment; filename="cv-encomendas-antigas-' . gmdate( 'Ymd-His' ) . '.ndjson"' );
+        header( 'X-Content-Type-Options: nosniff' );
+
+        echo $meta . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+
+        $first_line = true;
+        while ( ! feof( $handle ) ) {
+            $line = fgets( $handle );
+            if ( false === $line ) {
+                break;
+            }
+
+            if ( $first_line ) {
+                $first_line = false;
+                if ( str_starts_with( ltrim( $line ), '<?php' ) ) {
+                    continue;
+                }
+            }
+
+            if ( '' === trim( $line ) ) {
+                continue;
+            }
+
+            echo $line; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+        }
+
+        fclose( $handle );
+        exit;
+    }
+
+    public static function import_local_orders(): void {
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_die( esc_html__( 'Sem permissões.', 'cv-legacy-orders-archive' ) );
+        }
+
+        check_admin_referer( 'cvloa_import_local_orders' );
+
+        $file = isset( $_FILES['cvloa_orders_file'] ) && is_array( $_FILES['cvloa_orders_file'] )
+            ? $_FILES['cvloa_orders_file']
+            : array();
+
+        $upload_error = absint( $file['error'] ?? UPLOAD_ERR_NO_FILE );
+        if ( UPLOAD_ERR_OK !== $upload_error ) {
+            self::redirect_import_notice( 'error', 'Selecione um ficheiro de encomendas válido para importar.' );
+        }
+
+        $tmp_path = (string) ( $file['tmp_name'] ?? '' );
+        if ( '' === $tmp_path || ! is_readable( $tmp_path ) ) {
+            self::redirect_import_notice( 'error', 'Não foi possível ler o ficheiro carregado.' );
+        }
+
+        $max_size = (int) wp_max_upload_size();
+        $file_size = (int) ( $file['size'] ?? 0 );
+        if ( $max_size > 0 && $file_size > $max_size ) {
+            self::redirect_import_notice( 'error', 'O ficheiro excede o limite de upload permitido pelo WordPress.' );
+        }
+
+        $result = self::import_orders_file( $tmp_path );
+        if ( is_wp_error( $result ) ) {
+            self::redirect_import_notice( 'error', $result->get_error_message() );
+        }
+
+        $message = sprintf(
+            'Ficheiro importado: %1$d registo(s) lido(s), %2$d novo(s), %3$d atualizado(s).',
+            absint( $result['records'] ?? 0 ),
+            absint( $result['archived'] ?? 0 ),
+            absint( $result['updated'] ?? 0 )
+        );
+
+        $errors = absint( $result['errors_count'] ?? 0 );
+        if ( $errors ) {
+            $message .= sprintf( ' %d linha(s) foram ignoradas por erro.', $errors );
+        }
+
+        self::redirect_import_notice( $errors ? 'warning' : 'success', $message );
+    }
+
+    private static function import_orders_file( string $path ) {
+        $handle = @fopen( $path, 'rb' );
+        if ( false === $handle ) {
+            return new WP_Error( 'cvloa_orders_import_open_failed', 'Não foi possível abrir o ficheiro carregado.' );
+        }
+
+        $summary = array(
+            'records'      => 0,
+            'archived'     => 0,
+            'updated'      => 0,
+            'ignored'      => 0,
+            'errors_count' => 0,
+            'errors'       => array(),
+        );
+        $batch   = array();
+        $line_no = 0;
+
+        try {
+            while ( ! feof( $handle ) ) {
+                $line = fgets( $handle );
+                if ( false === $line ) {
+                    break;
+                }
+
+                $line_no++;
+                $line = trim( $line );
+
+                if ( '' === $line || str_starts_with( $line, '<?php' ) ) {
+                    continue;
+                }
+
+                $decoded = json_decode( $line, true );
+                if ( ! is_array( $decoded ) ) {
+                    $summary['errors_count']++;
+                    if ( count( $summary['errors'] ) < 20 ) {
+                        $summary['errors'][] = 'Linha ' . $line_no . ': JSON inválido.';
+                    }
+                    continue;
+                }
+
+                if ( isset( $decoded['_cvloa_export'] ) && is_array( $decoded['_cvloa_export'] ) ) {
+                    $type = sanitize_key( (string) ( $decoded['_cvloa_export']['type'] ?? '' ) );
+                    if ( '' !== $type && 'orders' !== $type ) {
+                        return new WP_Error( 'cvloa_orders_import_wrong_type', 'O ficheiro selecionado não é uma exportação de encomendas.' );
+                    }
+                    continue;
+                }
+
+                if (
+                    ! absint( $decoded['id'] ?? 0 )
+                    || (
+                        ! array_key_exists( 'line_items', $decoded )
+                        && ! array_key_exists( 'total', $decoded )
+                    )
+                ) {
+                    $summary['errors_count']++;
+                    if ( count( $summary['errors'] ) < 20 ) {
+                        $summary['errors'][] = 'Linha ' . $line_no . ': o registo não parece ser uma encomenda válida.';
+                    }
+                    continue;
+                }
+
+                $batch[] = $decoded;
+                $summary['records']++;
+
+                if ( count( $batch ) >= 100 ) {
+                    $saved = CVLOA_Archive::archive_batch( $batch, true );
+                    if ( is_wp_error( $saved ) ) {
+                        return $saved;
+                    }
+
+                    foreach ( array( 'archived', 'updated', 'ignored' ) as $key ) {
+                        $summary[ $key ] += absint( $saved[ $key ] ?? 0 );
+                    }
+                    foreach ( (array) ( $saved['errors'] ?? array() ) as $error ) {
+                        $summary['errors_count']++;
+                        if ( count( $summary['errors'] ) < 20 ) {
+                            $summary['errors'][] = sanitize_text_field( (string) $error );
+                        }
+                    }
+                    $batch = array();
+                }
+            }
+
+            if ( $batch ) {
+                $saved = CVLOA_Archive::archive_batch( $batch, true );
+                if ( is_wp_error( $saved ) ) {
+                    return $saved;
+                }
+
+                foreach ( array( 'archived', 'updated', 'ignored' ) as $key ) {
+                    $summary[ $key ] += absint( $saved[ $key ] ?? 0 );
+                }
+                foreach ( (array) ( $saved['errors'] ?? array() ) as $error ) {
+                    $summary['errors_count']++;
+                    if ( count( $summary['errors'] ) < 20 ) {
+                        $summary['errors'][] = sanitize_text_field( (string) $error );
+                    }
+                }
+            }
+        } finally {
+            fclose( $handle );
+        }
+
+        if ( 0 === $summary['records'] ) {
+            return new WP_Error( 'cvloa_orders_import_empty', 'O ficheiro não contém encomendas válidas para importar.' );
+        }
+
+        return $summary;
+    }
+
+    private static function redirect_import_notice( string $type, string $message ): void {
+        $type = in_array( $type, array( 'success', 'warning', 'error' ), true ) ? $type : 'warning';
+
+        wp_safe_redirect(
+            add_query_arg(
+                array(
+                    'page'               => 'cv-legacy-orders',
+                    'tab'                => 'import',
+                    'cvloa_file_notice'  => $type,
+                    'cvloa_file_message' => $message,
+                ),
+                admin_url( 'admin.php' )
+            )
+        );
+        exit;
     }
 
     public static function bulk_update_status(): void {
@@ -674,6 +929,11 @@ final class CVLOA_Admin {
             ? $status_cache['statuses']
             : array();
         $nonce        = wp_create_nonce( 'cvloa_import' );
+        $file_notice = sanitize_key( (string) wp_unslash( $_GET['cvloa_file_notice'] ?? '' ) );
+        $file_message = sanitize_text_field( (string) wp_unslash( $_GET['cvloa_file_message'] ?? '' ) );
+        if ( $file_message && in_array( $file_notice, array( 'success', 'warning', 'error' ), true ) ) {
+            echo '<div class="notice notice-' . esc_attr( $file_notice ) . ' is-dismissible"><p>' . esc_html( $file_message ) . '</p></div>';
+        }
         ?>
         <div class="cvloa-grid">
             <div class="cvloa-stat"><span>Encomendas no arquivo</span><strong><?php echo esc_html( number_format_i18n( $stats['count'] ) ); ?></strong></div>
@@ -704,6 +964,22 @@ final class CVLOA_Admin {
                     </tr>
                 </tbody>
             </table>
+
+            <div class="cvloa-actions">
+                <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+                    <input type="hidden" name="action" value="cvloa_export_local_orders">
+                    <?php wp_nonce_field( 'cvloa_export_local_orders' ); ?>
+                    <button class="button" type="submit">Exportar encomendas</button>
+                </form>
+
+                <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                    <input type="hidden" name="action" value="cvloa_import_local_orders">
+                    <?php wp_nonce_field( 'cvloa_import_local_orders' ); ?>
+                    <input type="file" name="cvloa_orders_file" accept=".ndjson,.json,.php,application/json,application/x-ndjson,text/plain" required>
+                    <button class="button button-primary" type="submit">Importar ficheiro</button>
+                </form>
+            </div>
+            <p class="description">A exportação contém o arquivo NDJSON local. Ao importar, registos com a mesma chave são atualizados, os restantes são mantidos e o índice é reconstruído automaticamente.</p>
         </div>
 
         <div class="cvloa-card">
