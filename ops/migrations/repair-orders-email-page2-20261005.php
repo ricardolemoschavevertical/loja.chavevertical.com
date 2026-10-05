@@ -143,130 +143,158 @@ $errors   = array();
 $repaired = 0;
 $skipped  = 0;
 
-foreach ( $orders as $order_id => $data ) {
-    $order = wc_get_order( $order_id );
+$index = CVLOA_Archive::load_index();
 
-    if ( ! $order instanceof WC_Order ) {
-        $errors[] = "#{$order_id}: encomenda não encontrada.";
+if ( ! empty( $index['_error'] ) ) {
+    fwrite( STDERR, 'Não foi possível ler o arquivo local: ' . $index['_error'] . "\n" );
+    exit( 1 );
+}
+
+$find_archive_key = static function ( int $order_id ) use ( $index ): string {
+    $fallback = '';
+
+    foreach ( (array) ( $index['orders'] ?? array() ) as $key => $summary ) {
+        $summary = (array) $summary;
+
+        if ( absint( $summary['id'] ?? 0 ) !== $order_id ) {
+            continue;
+        }
+
+        if ( 'remote' === sanitize_key( (string) ( $summary['origin'] ?? '' ) ) ) {
+            return (string) $key;
+        }
+
+        if ( '' === $fallback ) {
+            $fallback = (string) $key;
+        }
+    }
+
+    return $fallback;
+};
+
+foreach ( $orders as $order_id => $data ) {
+    $archive_key = $find_archive_key( (int) $order_id );
+
+    if ( '' === $archive_key ) {
+        $errors[] = "#{$order_id}: encomenda não encontrada no arquivo local.";
         continue;
     }
 
-    if ( $order->get_meta( '_cv_email_recovered_page2_v1', true ) ) {
+    $order = CVLOA_Archive::read_order( $archive_key );
+
+    if ( ! is_array( $order ) ) {
+        $errors[] = "#{$order_id}: não foi possível ler a encomenda do arquivo.";
+        continue;
+    }
+
+    if ( ! empty( $order['_cvloa_email_recovered_page2_v1'] ) ) {
         $skipped++;
         continue;
     }
 
-    $had_line_items = count( $order->get_items( 'line_item' ) ) > 0;
-
-    if ( ! $had_line_items ) {
-        $product = wc_get_product( (int) $data['product_id'] );
-
-        if ( ! $product instanceof WC_Product ) {
-            $errors[] = "#{$order_id}: produto {$data['sku']} não encontrado.";
-            continue;
-        }
-
-        if ( 0 !== strcasecmp( (string) $product->get_sku(), (string) $data['sku'] ) ) {
-            $errors[] = "#{$order_id}: SKU do produto atual não corresponde a {$data['sku']}.";
-            continue;
-        }
-
-        $item = new WC_Order_Item_Product();
-        $item->set_product( $product );
-        $item->set_name( (string) $data['name'] );
-        $item->set_quantity( (int) $data['quantity'] );
-        $item->set_subtotal( (string) $data['line_total'] );
-        $item->set_total( (string) $data['line_total'] );
-        $item->set_subtotal_tax( (string) $data['line_tax'] );
-        $item->set_total_tax( (string) $data['line_tax'] );
-        $item->add_meta_data( '_cv_recovered_sku', (string) $data['sku'], true );
-        $item->add_meta_data( '_cv_recovered_from_email', (string) $data['email_id'], true );
-        $order->add_item( $item );
+    if ( empty( $order['line_items'] ) ) {
+        $order['line_items'] = array(
+            array(
+                'id'           => 0,
+                'name'         => (string) $data['name'],
+                'product_id'   => absint( $data['product_id'] ),
+                'variation_id' => 0,
+                'quantity'     => absint( $data['quantity'] ),
+                'tax_class'    => '',
+                'subtotal'     => (string) $data['line_total'],
+                'subtotal_tax' => (string) $data['line_tax'],
+                'total'        => (string) $data['line_total'],
+                'total_tax'    => (string) $data['line_tax'],
+                'taxes'        => array(),
+                'sku'          => (string) $data['sku'],
+                'price'        => (string) $data['line_total'],
+                'meta_data'    => array(
+                    array(
+                        'key'   => '_cv_recovered_sku',
+                        'value' => (string) $data['sku'],
+                    ),
+                    array(
+                        'key'   => '_cv_recovered_from_email',
+                        'value' => (string) $data['email_id'],
+                    ),
+                ),
+            ),
+        );
     }
 
-    $shipping_items = $order->get_items( 'shipping' );
-
-    if ( empty( $shipping_items ) ) {
-        $shipping = new WC_Order_Item_Shipping();
-        $shipping->set_method_title( (string) $data['shipping_title'] );
-        $shipping->set_method_id( 'cv-email-recovered' );
-        $shipping->set_total( (string) $data['shipping_total'] );
-        $shipping->add_meta_data( '_cv_recovered_from_email', (string) $data['email_id'], true );
-        $order->add_item( $shipping );
-    } elseif ( 1 === count( $shipping_items ) ) {
-        $shipping = reset( $shipping_items );
-        if ( $shipping instanceof WC_Order_Item_Shipping ) {
-            $shipping->set_method_title( (string) $data['shipping_title'] );
-            $shipping->set_total( (string) $data['shipping_total'] );
-            $shipping->save();
-        }
-    }
+    $order['shipping_lines'] = array(
+        array(
+            'id'           => 0,
+            'method_title' => (string) $data['shipping_title'],
+            'method_id'    => 'cv-email-recovered',
+            'instance_id'  => '',
+            'total'        => (string) $data['shipping_total'],
+            'total_tax'    => '0.00',
+            'taxes'        => array(),
+            'meta_data'    => array(
+                array(
+                    'key'   => '_cv_recovered_from_email',
+                    'value' => (string) $data['email_id'],
+                ),
+            ),
+        ),
+    );
 
     if ( ! empty( $data['fee_name'] ) ) {
-        $fee_exists = false;
-
-        foreach ( $order->get_items( 'fee' ) as $fee_item ) {
-            if ( 0 === strcasecmp( (string) $fee_item->get_name(), (string) $data['fee_name'] ) ) {
-                $fee_exists = true;
-                break;
-            }
-        }
-
-        if ( ! $fee_exists ) {
-            $fee = new WC_Order_Item_Fee();
-            $fee->set_name( (string) $data['fee_name'] );
-            $fee->set_tax_status( 'taxable' );
-            $fee->set_total( (string) $data['fee_total'] );
-            $fee->set_total_tax( (string) $data['fee_tax'] );
-            $fee->add_meta_data( '_cv_recovered_from_email', (string) $data['email_id'], true );
-            $order->add_item( $fee );
-        }
+        $order['fee_lines'] = array(
+            array(
+                'id'         => 0,
+                'name'       => (string) $data['fee_name'],
+                'tax_class'  => '',
+                'tax_status' => 'taxable',
+                'total'      => (string) $data['fee_total'],
+                'total_tax'  => (string) $data['fee_tax'],
+                'taxes'      => array(),
+                'meta_data'  => array(
+                    array(
+                        'key'   => '_cv_recovered_from_email',
+                        'value' => (string) $data['email_id'],
+                    ),
+                ),
+            ),
+        );
     }
 
-    // Restore the values shown in the original WooCommerce email. We do not
-    // call calculate_totals(), because that would re-price an historical order
-    // using the current catalogue/tax configuration.
-    $order->set_shipping_total( (string) $data['shipping_total'] );
-    $order->set_shipping_tax( '0' );
-    $order->set_cart_tax( (string) $data['cart_tax'] );
-    $order->set_total( (string) $data['order_total'] );
-    $order->update_meta_data( '_cv_email_recovery_source', 'woocommerce-new-order-email' );
-    $order->update_meta_data( '_cv_email_recovery_message_id', (string) $data['email_id'] );
-    $order->save();
+    $order['shipping_total'] = (string) $data['shipping_total'];
+    $order['shipping_tax']   = '0.00';
+    $order['total_tax']      = (string) $data['cart_tax'];
+    $order['total']          = (string) $data['order_total'];
+    $order['_cvloa_archive_key'] = $archive_key;
+    $order['_cvloa_email_recovered_page2_v1'] = array(
+        'email_id'     => (string) $data['email_id'],
+        'recovered_at' => gmdate( 'c' ),
+    );
 
-    clean_post_cache( $order_id );
-    $check = wc_get_order( $order_id );
+    $result = CVLOA_Archive::archive_batch( array( $order ), true );
 
-    if ( ! $check instanceof WC_Order ) {
-        $errors[] = "#{$order_id}: falha ao reler depois da recuperação.";
+    if ( is_wp_error( $result ) ) {
+        $errors[] = "#{$order_id}: " . $result->get_error_message();
         continue;
     }
 
-    $line_items = $check->get_items( 'line_item' );
-    $ship_items = $check->get_items( 'shipping' );
+    $check = CVLOA_Archive::read_order( $archive_key );
 
-    if ( empty( $line_items ) ) {
-        $errors[] = "#{$order_id}: linha de produto continua em falta.";
+    if ( ! is_array( $check ) || empty( $check['line_items'] ) || empty( $check['shipping_lines'] ) ) {
+        $errors[] = "#{$order_id}: a recuperação não passou a verificação final.";
         continue;
     }
 
-    if ( empty( $ship_items ) ) {
-        $errors[] = "#{$order_id}: linha de envio continua em falta.";
-        continue;
-    }
-
-    if ( abs( (float) $check->get_total() - (float) $data['order_total'] ) > 0.01 ) {
+    if ( abs( (float) ( $check['total'] ?? 0 ) - (float) $data['order_total'] ) > 0.01 ) {
         $errors[] = "#{$order_id}: total final não corresponde ao email.";
         continue;
     }
 
-    $check->update_meta_data( '_cv_email_recovered_page2_v1', gmdate( 'c' ) );
-    $check->save();
     $repaired++;
 
     echo sprintf(
-        "recovered-order=%d;sku=%s;shipping=%s;total=%s\n",
+        "recovered-archive-order=%d;key=%s;sku=%s;shipping=%s;total=%s\n",
         $order_id,
+        $archive_key,
         $data['sku'],
         $data['shipping_title'],
         $data['order_total']
