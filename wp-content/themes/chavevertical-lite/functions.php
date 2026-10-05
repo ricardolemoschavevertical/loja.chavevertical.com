@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.85' );
+define( 'CVL_VERSION', '0.16.86' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -669,8 +669,8 @@ add_filter( 'woocommerce_loop_add_to_cart_link', function ( $html, $product ) {
         && $product->is_purchasable()
         && $product->is_in_stock();
 
-    $cart_icon = '<svg class="cvl-product-action-icon cvl-cart-button-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 8H7"></path><circle cx="10" cy="20" r="1.2"></circle><circle cx="18" cy="20" r="1.2"></circle></svg>';
-    $view_icon = '<svg class="cvl-product-action-icon cvl-view-product-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2.5 12s3.4-6 9.5-6 9.5 6 9.5 6-3.4 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.8"></circle></svg>';
+    $cart_icon = '<svg class="cvl-product-action-icon cvl-cart-button-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 3.5h2.1c.48 0 .9.33 1.02.8l.55 2.2h12.76c.75 0 1.27.74 1.02 1.45l-1.95 5.47a2.4 2.4 0 0 1-2.26 1.58H9.4a2.4 2.4 0 0 1-2.32-1.8L5.1 5.5H3a1 1 0 1 1 0-2Z"></path><circle cx="9.5" cy="19.2" r="1.55"></circle><circle cx="17.2" cy="19.2" r="1.55"></circle></svg>';
+    $view_icon = '<svg class="cvl-product-action-icon cvl-view-product-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.32 11.45C2.81 6.98 7.03 3.75 12 3.75s9.19 3.23 10.68 7.7c.12.36.12.75 0 1.1-1.49 4.48-5.71 7.7-10.68 7.7s-9.19-3.22-10.68-7.7a1.75 1.75 0 0 1 0-1.1ZM17.25 12a5.25 5.25 0 1 1-10.5 0 5.25 5.25 0 0 1 10.5 0Z"></path><circle cx="12" cy="12" r="2.45"></circle></svg>';
 
     if ( ! $can_add_directly ) {
         return sprintf(
