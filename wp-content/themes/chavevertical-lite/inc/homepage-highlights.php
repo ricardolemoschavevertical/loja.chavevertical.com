@@ -131,10 +131,20 @@ function cvl_normalize_homepage_hero_panel( $panel, $fallback = array() ) {
             'fallback_category_slug' => '',
             'specs'                  => array(),
             'image_only'             => false,
+            'full_image'             => false,
+            'show_text'              => true,
         )
     );
 
-    $panel = wp_parse_args( is_array( $panel ) ? $panel : array(), $base );
+    $raw_panel = is_array( $panel ) ? $panel : array();
+    $panel     = wp_parse_args( $raw_panel, $base );
+
+    $full_image = array_key_exists( 'full_image', $raw_panel )
+        ? ! empty( $raw_panel['full_image'] )
+        : ! empty( $panel['image_only'] );
+    $show_text = array_key_exists( 'show_text', $raw_panel )
+        ? ! empty( $raw_panel['show_text'] )
+        : empty( $panel['image_only'] );
 
     $image_url = isset( $panel['image_url'] ) ? trim( (string) $panel['image_url'] ) : '';
     if ( 0 === strpos( $image_url, 'theme://' ) ) {
@@ -178,6 +188,8 @@ function cvl_normalize_homepage_hero_panel( $panel, $fallback = array() ) {
         'fallback_category_slug' => sanitize_title( $panel['fallback_category_slug'] ),
         'specs'                  => $specs,
         'image_only'             => ! empty( $panel['image_only'] ),
+        'full_image'             => $full_image,
+        'show_text'              => $show_text,
     );
 }
 
@@ -195,6 +207,8 @@ function cvl_normalize_homepage_highlight( $card, $fallback = array() ) {
             'image_id'               => 0,
             'image_url'              => '',
             'fallback_category_slug' => '',
+            'full_image'             => false,
+            'show_text'              => true,
         )
     );
 
@@ -255,6 +269,8 @@ function cvl_normalize_homepage_highlight( $card, $fallback = array() ) {
         'rotation_image_urls'    => $rotation_image_urls,
         'rotation_seconds'       => $rotation_seconds,
         'fallback_category_slug' => sanitize_title( $card['fallback_category_slug'] ),
+        'full_image'             => ! empty( $card['full_image'] ),
+        'show_text'              => ! empty( $card['show_text'] ),
     );
 }
 
@@ -620,7 +636,7 @@ function cvl_render_homepage_highlights_admin() {
             <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Destaques guardados.', 'chavevertical-lite' ); ?></p></div>
         <?php endif; ?>
 
-        <p><?php esc_html_e( 'Personalize o Hero principal, incluindo imagem, textos, botões, links, selo e cores, além da caixa lateral e dos quatro destaques da homepage. Selecione "Usar valores do Admin" para aplicar estas alterações no site.', 'chavevertical-lite' ); ?></p>
+        <p><?php esc_html_e( 'Personalize o Hero principal, a caixa lateral e os quatro destaques da homepage. Cada bloco pode usar a imagem em toda a área e, opcionalmente, mostrar texto sobre a imagem. Selecione "Usar valores do Admin" para aplicar estas alterações no site.', 'chavevertical-lite' ); ?></p>
         <p><strong><?php esc_html_e( 'Formatos recomendados:', 'chavevertical-lite' ); ?></strong> Hero principal 1400×720 px · Destaque lateral 600×840 px · Destaques 800×800 px. Preferir WEBP.</p>
 
         <div class="cvl-highlights-source-help">
@@ -669,6 +685,19 @@ function cvl_render_homepage_highlights_admin() {
                             <button type="button" class="button cvl-highlight-select-image"><?php esc_html_e( 'Escolher imagem', 'chavevertical-lite' ); ?></button>
                             <button type="button" class="button-link-delete cvl-highlight-remove-image"><?php esc_html_e( 'Remover imagem personalizada', 'chavevertical-lite' ); ?></button>
                         </p>
+
+                        <div class="cvl-highlight-layout-options">
+                            <label class="cvl-highlight-check">
+                                <input type="hidden" name="hero[<?php echo esc_attr( $hero_key ); ?>][full_image]" value="0">
+                                <input type="checkbox" name="hero[<?php echo esc_attr( $hero_key ); ?>][full_image]" value="1" <?php checked( ! empty( $hero_panel['full_image'] ) ); ?>>
+                                <span><?php esc_html_e( 'Imagem a ocupar todo o espaço', 'chavevertical-lite' ); ?></span>
+                            </label>
+                            <label class="cvl-highlight-check">
+                                <input type="hidden" name="hero[<?php echo esc_attr( $hero_key ); ?>][show_text]" value="0">
+                                <input type="checkbox" name="hero[<?php echo esc_attr( $hero_key ); ?>][show_text]" value="1" <?php checked( ! empty( $hero_panel['show_text'] ) ); ?>>
+                                <span><?php esc_html_e( 'Mostrar texto sobre a imagem', 'chavevertical-lite' ); ?></span>
+                            </label>
+                        </div>
 
                         <label>
                             <span><?php esc_html_e( 'Texto superior', 'chavevertical-lite' ); ?></span>
@@ -754,6 +783,19 @@ function cvl_render_homepage_highlights_admin() {
                             <button type="button" class="button cvl-highlight-select-image"><?php esc_html_e( 'Escolher imagem', 'chavevertical-lite' ); ?></button>
                             <button type="button" class="button-link-delete cvl-highlight-remove-image"><?php esc_html_e( 'Remover imagem personalizada', 'chavevertical-lite' ); ?></button>
                         </p>
+
+                        <div class="cvl-highlight-layout-options">
+                            <label class="cvl-highlight-check">
+                                <input type="hidden" name="cards[<?php echo esc_attr( $index ); ?>][full_image]" value="0">
+                                <input type="checkbox" name="cards[<?php echo esc_attr( $index ); ?>][full_image]" value="1" <?php checked( ! empty( $card['full_image'] ) ); ?>>
+                                <span><?php esc_html_e( 'Imagem a ocupar todo o espaço', 'chavevertical-lite' ); ?></span>
+                            </label>
+                            <label class="cvl-highlight-check">
+                                <input type="hidden" name="cards[<?php echo esc_attr( $index ); ?>][show_text]" value="0">
+                                <input type="checkbox" name="cards[<?php echo esc_attr( $index ); ?>][show_text]" value="1" <?php checked( ! empty( $card['show_text'] ) ); ?>>
+                                <span><?php esc_html_e( 'Mostrar texto sobre a imagem', 'chavevertical-lite' ); ?></span>
+                            </label>
+                        </div>
 
                         <?php
                         $rotation_ids = isset( $card['rotation_image_ids'] ) && is_array( $card['rotation_image_ids'] )
@@ -853,6 +895,9 @@ function cvl_render_homepage_highlights_admin() {
         .cvl-highlight-admin-card label>span{display:block;margin-bottom:5px;font-weight:600}
         .cvl-highlight-admin-card input[type="text"],.cvl-highlight-admin-card textarea{width:100%}
         .cvl-highlight-media-actions{display:flex;align-items:center;gap:12px}
+        .cvl-highlight-layout-options{margin:12px 0 4px;padding:10px 12px;display:grid;gap:8px;border:1px solid #dcdcde;border-radius:6px;background:#f8faf9}
+        .cvl-highlight-admin-card .cvl-highlight-check{margin:0;display:flex;align-items:center;gap:8px}
+        .cvl-highlight-admin-card .cvl-highlight-check>span{margin:0;font-weight:600}
         .cvl-highlight-rotation-box{margin:16px 0 4px;padding:14px;border:1px solid #dcdcde;border-radius:8px;background:#f8faf9}
         .cvl-highlight-rotation-box h3{margin:0 0 4px}
         .cvl-highlight-rotation-preview{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin:10px 0}
