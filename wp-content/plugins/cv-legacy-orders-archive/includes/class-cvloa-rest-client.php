@@ -166,6 +166,61 @@ final class CVLOA_REST_Client {
         );
     }
 
+    public static function order_statuses() {
+        $result = self::request(
+            'reports/orders/totals',
+            array(),
+            45
+        );
+
+        if ( is_wp_error( $result ) ) {
+            return $result;
+        }
+
+        $statuses = array();
+
+        foreach ( (array) $result['data'] as $row ) {
+            $row = (array) $row;
+
+            $source_slug = sanitize_key( (string) ( $row['slug'] ?? '' ) );
+            $status      = preg_replace( '/^wc-/', '', $source_slug );
+            $status      = sanitize_key( (string) $status );
+
+            if ( '' === $status ) {
+                continue;
+            }
+
+            $name = sanitize_text_field( (string) ( $row['name'] ?? '' ) );
+            if ( '' === $name ) {
+                $name = ucfirst( str_replace( '-', ' ', $status ) );
+            }
+
+            $statuses[ $status ] = array(
+                'slug'        => $status,
+                'source_slug' => $source_slug,
+                'name'        => $name,
+                'total'       => absint( $row['total'] ?? 0 ),
+            );
+        }
+
+        if ( ! $statuses ) {
+            return new WP_Error(
+                'cvloa_no_order_statuses',
+                'A origem não devolveu estados de encomenda.'
+            );
+        }
+
+        uasort(
+            $statuses,
+            static fn( array $a, array $b ): int => strnatcasecmp(
+                (string) ( $a['name'] ?? '' ),
+                (string) ( $b['name'] ?? '' )
+            )
+        );
+
+        return $statuses;
+    }
+
     public static function test_connection() {
         $result = self::request(
             'orders',
