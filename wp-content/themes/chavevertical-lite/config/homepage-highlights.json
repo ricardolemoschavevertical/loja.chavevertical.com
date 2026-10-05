@@ -2,20 +2,50 @@
   "hero": {
     "main": {
       "eyebrow": "ELEVAÇÃO PROFISSIONAL",
-      "title": "Elevação segura.",
-      "title_accent": "Oficina preparada.",
-      "description": "Elevador 2 Colunas KROFTOOLS 4T, 220V, robusto e preparado para utilização profissional em oficina.",
-      "cta": "VER ELEVADOR",
-      "url": "/produto/elevador-2-colunas-4t-tipo-h-220v-kroftools/",
+      "title": "Elevador 2 Colunas 4T",
+      "title_accent": "Basic-Line KROFTOOLS",
+      "description": "Robusto, fiável e preparado para utilização profissional em oficina.",
+      "cta": "VER PRODUTO",
+      "url": "https://loja.chavevertical.com/produto/elevador-2-colunas-4t-basic-line-220v-kroftools/",
       "secondary_cta": "Ver elevadores",
       "secondary_url": "/categoria-produto/elevadores-elevadores/",
-      "badge": "ESCOLHA PROFISSIONAL",
+      "badge": "ELEVAÇÃO PROFISSIONAL",
       "background": "#f4f5f5",
       "text_color": "#101820",
       "accent_color": "#d62828",
       "image_id": 0,
-      "image_url": "https://imagens.chavevertical.com/2025/09/elevador-2-colunas-4t-tipo-h-220v-kroftools1.webp",
-      "fallback_category_slug": "elevadores-elevadores"
+      "image_url": "https://imagens.chavevertical.com/2024/01/elevador-2-colunas-4t-basic-line-kroftools-4000kg-monofasico-1549282-1.webp",
+      "fallback_category_slug": "elevadores-elevadores",
+      "specs": [
+        {
+          "value": "4000 kg",
+          "label": "Capacidade de carga"
+        },
+        {
+          "value": "220V",
+          "label": "Monofásico"
+        },
+        {
+          "value": "40–60 s",
+          "label": "Tempo de elevação"
+        },
+        {
+          "value": "2824 mm",
+          "label": "Altura total"
+        },
+        {
+          "value": "3185 mm",
+          "label": "Largura total"
+        },
+        {
+          "value": "2820 mm",
+          "label": "Distância entre colunas"
+        },
+        {
+          "value": "2500 mm",
+          "label": "Largura de passagem"
+        }
+      ]
     },
     "side": {
       "eyebrow": "CATÁLOGO PROFISSIONAL",
