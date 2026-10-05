@@ -637,7 +637,7 @@ function cvl_render_homepage_highlights_admin() {
         <?php endif; ?>
 
         <p><?php esc_html_e( 'Personalize o Hero principal, a caixa lateral e os quatro destaques da homepage. Cada bloco pode usar a imagem em toda a área e, opcionalmente, mostrar texto sobre a imagem. Selecione "Usar valores do Admin" para aplicar estas alterações no site.', 'chavevertical-lite' ); ?></p>
-        <p><strong><?php esc_html_e( 'Formatos recomendados:', 'chavevertical-lite' ); ?></strong> Hero principal 1400×720 px · Destaque lateral 600×840 px · Destaques 800×800 px. Preferir WEBP.</p>
+        <p><strong><?php esc_html_e( 'Formatos recomendados sem corte:', 'chavevertical-lite' ); ?></strong> Hero principal 1400×720 px · Destaque lateral 600×840 px · Destaques 800×800 px. Preferir WEBP. As molduras abaixo reproduzem a proporção recomendada do espaço final.</p>
 
         <div class="cvl-highlights-source-help">
             <strong><?php esc_html_e( 'Edição pelo GitHub:', 'chavevertical-lite' ); ?></strong>
@@ -670,10 +670,22 @@ function cvl_render_homepage_highlights_admin() {
                     <section class="cvl-highlight-admin-card cvl-hero-admin-card">
                         <h2><?php echo esc_html( $hero_admin_labels[ $hero_key ] ); ?></h2>
 
-                        <div class="cvl-highlight-admin-preview">
+                        <button
+                            type="button"
+                            class="cvl-highlight-admin-preview cvl-highlight-select-image cvl-highlight-admin-preview-<?php echo esc_attr( $hero_key ); ?>"
+                            aria-label="<?php echo esc_attr( sprintf( __( 'Carregar imagem para %s', 'chavevertical-lite' ), $hero_admin_labels[ $hero_key ] ) ); ?>"
+                        >
                             <img class="cvl-highlight-preview" src="<?php echo esc_url( $hero_preview ); ?>" alt="" <?php echo $hero_preview ? '' : 'style="display:none"'; ?>>
-                            <div class="cvl-highlight-preview-empty" <?php echo $hero_preview ? 'style="display:none"' : ''; ?>><?php esc_html_e( 'Sem imagem personalizada', 'chavevertical-lite' ); ?></div>
-                        </div>
+                            <span class="cvl-highlight-preview-empty" <?php echo $hero_preview ? 'style="display:none"' : ''; ?>>
+                                <strong><?php esc_html_e( 'Carregar imagem', 'chavevertical-lite' ); ?></strong>
+                                <small><?php echo 'main' === $hero_key ? esc_html__( '1400×720 px', 'chavevertical-lite' ) : esc_html__( '600×840 px', 'chavevertical-lite' ); ?></small>
+                            </span>
+                        </button>
+                        <p class="description cvl-highlight-ratio-note">
+                            <?php echo 'main' === $hero_key
+                                ? esc_html__( 'Moldura proporcional ao Hero principal. Use 1400×720 px para preencher o espaço sem cortes no formato desktop.', 'chavevertical-lite' )
+                                : esc_html__( 'Moldura proporcional à caixa lateral. Use 600×840 px para preencher o espaço sem cortes no formato desktop.', 'chavevertical-lite' ); ?>
+                        </p>
 
                         <input class="cvl-highlight-image-id" type="hidden" name="hero[<?php echo esc_attr( $hero_key ); ?>][image_id]" value="<?php echo esc_attr( $hero_panel['image_id'] ); ?>">
                         <label>
@@ -767,10 +779,18 @@ function cvl_render_homepage_highlights_admin() {
                     <section class="cvl-highlight-admin-card">
                         <h2><?php echo esc_html( sprintf( 'Destaque %d', $index + 1 ) ); ?></h2>
 
-                        <div class="cvl-highlight-admin-preview">
+                        <button
+                            type="button"
+                            class="cvl-highlight-admin-preview cvl-highlight-select-image cvl-highlight-admin-preview-highlight"
+                            aria-label="<?php echo esc_attr( sprintf( __( 'Carregar imagem para Destaque %d', 'chavevertical-lite' ), $index + 1 ) ); ?>"
+                        >
                             <img class="cvl-highlight-preview" src="<?php echo esc_url( $preview ); ?>" alt="" <?php echo $preview ? '' : 'style="display:none"'; ?>>
-                            <div class="cvl-highlight-preview-empty" <?php echo $preview ? 'style="display:none"' : ''; ?>><?php esc_html_e( 'Sem imagem personalizada', 'chavevertical-lite' ); ?></div>
-                        </div>
+                            <span class="cvl-highlight-preview-empty" <?php echo $preview ? 'style="display:none"' : ''; ?>>
+                                <strong><?php esc_html_e( 'Carregar imagem', 'chavevertical-lite' ); ?></strong>
+                                <small><?php esc_html_e( '800×800 px', 'chavevertical-lite' ); ?></small>
+                            </span>
+                        </button>
+                        <p class="description cvl-highlight-ratio-note"><?php esc_html_e( 'Moldura quadrada igual ao Destaque. Use 800×800 px para preencher todo o espaço sem cortes.', 'chavevertical-lite' ); ?></p>
 
                         <input class="cvl-highlight-image-id" type="hidden" name="cards[<?php echo esc_attr( $index ); ?>][image_id]" value="<?php echo esc_attr( $card['image_id'] ); ?>">
                         <label>
@@ -886,11 +906,19 @@ function cvl_render_homepage_highlights_admin() {
         .cvl-highlights-source{margin:18px 0;padding:14px;background:#fff;border:1px solid #dcdcde}
         .cvl-highlights-source label{margin-right:24px}
         .cvl-homepage-admin-section-title{margin:28px 0 12px}.cvl-highlight-admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;max-width:1200px}
+        .cvl-hero-admin-grid{grid-template-columns:minmax(0,1.95fr) minmax(260px,.72fr)}
         .cvl-highlight-admin-card{padding:18px;background:#fff;border:1px solid #dcdcde;border-radius:8px}
         .cvl-highlight-admin-card h2{margin-top:0}
-        .cvl-highlight-admin-preview{height:180px;margin-bottom:12px;display:grid;place-items:center;overflow:hidden;background:#f3f5f5;border:1px solid #e3e6e6}
-        .cvl-highlight-admin-preview img{width:100%;height:100%;object-fit:cover}
-        .cvl-highlight-preview-empty{color:#6b7377}
+        .cvl-highlight-admin-preview{width:100%;height:auto;margin:0 0 8px;padding:0;display:grid;place-items:center;overflow:hidden;background:#f3f5f5;border:1px dashed #aeb8bc;border-radius:8px;cursor:pointer;appearance:none}
+        .cvl-highlight-admin-preview-main{aspect-ratio:35/18}
+        .cvl-highlight-admin-preview-side{aspect-ratio:5/7}
+        .cvl-highlight-admin-preview-highlight{aspect-ratio:1/1}
+        .cvl-highlight-admin-preview:hover,.cvl-highlight-admin-preview:focus{border-color:#2271b1;box-shadow:0 0 0 1px #2271b1;outline:none}
+        .cvl-highlight-admin-preview img{width:100%;height:100%;display:block;object-fit:cover}
+        .cvl-highlight-preview-empty{padding:18px;display:grid;gap:5px;color:#6b7377;text-align:center}
+        .cvl-highlight-preview-empty strong{color:#1d2327;font-size:14px}
+        .cvl-highlight-preview-empty small{font-size:12px;font-weight:600}
+        .cvl-highlight-ratio-note{margin:0 0 12px!important}
         .cvl-highlight-admin-card label{display:block;margin-top:12px}
         .cvl-highlight-admin-card label>span{display:block;margin-bottom:5px;font-weight:600}
         .cvl-highlight-admin-card input[type="text"],.cvl-highlight-admin-card textarea{width:100%}
@@ -906,7 +934,7 @@ function cvl_render_homepage_highlights_admin() {
         .cvl-highlight-rotation-box input[type="number"]{width:110px}
         .cvl-highlight-color-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cvl-hero-color-row{grid-template-columns:repeat(3,1fr)}
         .cvl-highlight-color-row input[type="color"]{width:100%;height:38px;padding:2px}
-        @media(max-width:800px){.cvl-highlight-admin-grid{grid-template-columns:1fr}}
+        @media(max-width:800px){.cvl-highlight-admin-grid,.cvl-hero-admin-grid{grid-template-columns:1fr}.cvl-highlight-admin-preview-side{max-width:420px}}
     </style>
     <?php
 }
