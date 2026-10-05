@@ -129,7 +129,7 @@ final class CVR2_Admin {
 
         $state = array(
             'status'      => 'running',
-            'phase'       => 'products',
+            'phase'       => 'images_only' === $import_mode ? 'products' : 'structure',
             'page'        => 1,
             'total_pages' => 0,
             'total'       => 0,
@@ -200,6 +200,40 @@ final class CVR2_Admin {
             @set_time_limit( 180 );
         }
 
+        if ( 'structure' === ( $state['phase'] ?? 'products' ) ) {
+            @set_time_limit( 180 );
+
+            $structure = CVR2_Product_Importer::sync_structure();
+            $state['structure']    = $structure;
+            $state['phase']        = 'products';
+            $state['page']         = 1;
+            $state['batch_index']  = 0;
+            $state['updated_at']   = time();
+
+            if ( ! empty( $structure['warnings'] ) ) {
+                foreach ( (array) $structure['warnings'] as $warning ) {
+                    $state['errors'][] = 'Estrutura: ' . sanitize_text_field( (string) $warning );
+                }
+                $state['errors'] = array_slice( $state['errors'], -20 );
+            }
+
+            update_option( CVR2_STATE_OPTION, $state, false );
+
+            wp_send_json_success(
+                array(
+                    'done'    => false,
+                    'state'   => $state,
+                    'message' => sprintf(
+                        'Estrutura sincronizada antes da importação: %1$d categorias, %2$d etiquetas, %3$d marcas e %4$d atributos.',
+                        absint( $structure['categories'] ?? 0 ),
+                        absint( $structure['tags'] ?? 0 ),
+                        absint( $structure['brands'] ?? 0 ),
+                        absint( $structure['attributes'] ?? 0 )
+                    ),
+                )
+            );
+        }
+
         if ( 'relations' === ( $state['phase'] ?? 'products' ) ) {
             $relations_run_id = 'create_only' === $import_mode
                 ? sanitize_text_field( (string) ( $state['run_id'] ?? '' ) )
@@ -257,11 +291,6 @@ final class CVR2_Admin {
         }
 
         $result = CVR2_REST_Client::request( 'products', $request_args, 60 );
-
-        if ( is_wp_error( $result ) ) {
-            unset( $request_args['status'] );
-            $result = CVR2_REST_Client::request( 'products', $request_args, 60 );
-        }
 
         if ( is_wp_error( $result ) ) {
             $state['status']     = 'error';
@@ -479,8 +508,9 @@ final class CVR2_Admin {
             'source_id' => absint( $source['id'] ?? 0 ),
             'sku'       => wc_clean( (string) ( $source['sku'] ?? '' ) ),
             'name'      => sanitize_text_field( (string) ( $source['name'] ?? '' ) ),
-            'status'    => sanitize_key( $status ),
-            'message'   => sanitize_text_field( $message ),
+            'status'         => sanitize_key( $status ),
+            'product_status' => sanitize_key( (string) ( $source['status'] ?? '' ) ),
+            'message'        => sanitize_text_field( $message ),
             'time'      => wp_date( 'H:i:s' ),
         );
 
@@ -609,11 +639,11 @@ final class CVR2_Admin {
                 <section class="cvr2-card">
                     <h2>Importação</h2>
                     <div class="cvr2-mode">
-                        <strong>Produtos já existentes</strong>
+                        <strong>Produtos e estado WooCommerce</strong>
                         <label><input type="radio" name="cvr2_import_mode" value="update_existing" checked> Atualizar produtos existentes e criar produtos novos</label>
                         <label><input type="radio" name="cvr2_import_mode" value="create_only"> Ignorar produtos existentes e criar apenas produtos novos</label>
                         <label><input type="radio" name="cvr2_import_mode" value="images_only"> Apenas atualizar imagens dos produtos existentes</label>
-                        <small>No modo de imagens, só são atualizadas a imagem principal, galeria e imagens das variações existentes. Não altera título, SKU, preço, stock, categorias, atributos, metadados ou relações. Produtos inexistentes são ignorados.</small>
+                        <small>Na importação completa são preservados os estados Publicado, Rascunho, Pendente e Privado e a estrutura é sincronizada automaticamente antes dos produtos, incluindo atributos globais e respetivos termos. No modo de imagens só são atualizadas imagem principal, galeria e imagens das variações existentes.</small>
 
                         <div class="cvr2-batch-size">
                             <label for="cvr2-batch-size"><strong>Quantidade por lote</strong></label>
@@ -657,12 +687,13 @@ final class CVR2_Admin {
                                     <th>Hora</th>
                                     <th>Produto</th>
                                     <th>SKU</th>
-                                    <th>Estado</th>
+                                    <th>Estado Woo</th>
                                     <th>Resultado</th>
+                                    <th>Detalhe</th>
                                 </tr>
                             </thead>
                             <tbody data-cvr2-results>
-                                <tr><td colspan="5">Ainda sem resultados.</td></tr>
+                                <tr><td colspan="6">Ainda sem resultados.</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -735,7 +766,7 @@ final class CVR2_Admin {
                     if (!rows.length) {
                         const tr = document.createElement('tr');
                         const td = document.createElement('td');
-                        td.colSpan = 5;
+                        td.colSpan = 6;
                         td.textContent = 'Ainda sem resultados.';
                         tr.appendChild(td);
                         results.appendChild(tr);
@@ -753,6 +784,17 @@ final class CVR2_Admin {
                                 td.textContent = String(value || '');
                                 tr.appendChild(td);
                             });
+
+                            const wooStatusTd = document.createElement('td');
+                            const wooStatusLabels = {
+                                publish: 'Publicado',
+                                draft: 'Rascunho',
+                                pending: 'Pendente',
+                                private: 'Privado'
+                            };
+                            const wooStatus = String(row.product_status || '');
+                            wooStatusTd.textContent = wooStatusLabels[wooStatus] || wooStatus || '—';
+                            tr.appendChild(wooStatusTd);
 
                             const statusTd = document.createElement('td');
                             const badge = document.createElement('span');
