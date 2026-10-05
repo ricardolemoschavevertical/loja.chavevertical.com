@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CV Astro Bridge
  * Description: Ponte entre WooCommerce, Astro e Cloudflare Worker da Chave Vertical.
- * Version: 0.3.1
+ * Version: 0.3.2
  * Author: Chave Vertical
  * Requires at least: 6.5
  * Requires PHP: 8.0
@@ -12,8 +12,8 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVAB_VERSION', '0.3.1' );
-define( 'CVAB_EXPECTED_WORKER_RELEASE', '2026.10.05.04' );
+define( 'CVAB_VERSION', '0.3.2' );
+define( 'CVAB_EXPECTED_WORKER_RELEASE', '2026.10.05.05' );
 define( 'CVAB_STATUS_OPTION', 'cvab_worker_status' );
 define( 'CVAB_FILE', __FILE__ );
 define( 'CVAB_OPTION', 'cvab_settings' );
@@ -765,7 +765,9 @@ final class CV_Astro_Bridge {
             'slug'     => $term->slug,
             'parent'   => (int) $term->parent,
             'count'    => (int) $term->count,
-            'image'    => $thumbnail_id ? ( wp_get_attachment_image_url( $thumbnail_id, 'woocommerce_thumbnail' ) ?: '' ) : '',
+            'image'    => $thumbnail_id
+                ? ( wp_get_attachment_image_url( $thumbnail_id, 'woocommerce_thumbnail' ) ?: '' )
+                : ( function_exists( 'wc_placeholder_img_src' ) ? wc_placeholder_img_src( 'woocommerce_thumbnail' ) : '' ),
             'children' => $children,
         );
     }
@@ -1010,6 +1012,31 @@ final class CV_Astro_Bridge {
             );
         }
 
+        if ( function_exists( 'wc_get_product_visibility_term_ids' ) ) {
+            $visibility_ids      = wc_get_product_visibility_term_ids();
+            $excluded_visibility = array();
+
+            if ( ! empty( $visibility_ids['exclude-from-catalog'] ) ) {
+                $excluded_visibility[] = (int) $visibility_ids['exclude-from-catalog'];
+            }
+
+            if (
+                'yes' === get_option( 'woocommerce_hide_out_of_stock_items' )
+                && ! empty( $visibility_ids['outofstock'] )
+            ) {
+                $excluded_visibility[] = (int) $visibility_ids['outofstock'];
+            }
+
+            if ( $excluded_visibility ) {
+                $tax_query[] = array(
+                    'taxonomy' => 'product_visibility',
+                    'field'    => 'term_id',
+                    'terms'    => $excluded_visibility,
+                    'operator' => 'NOT IN',
+                );
+            }
+        }
+
         $meta_query = array();
 
         if ( $is_final && ( $min_price > 0 || $max_price > 0 ) ) {
@@ -1032,10 +1059,7 @@ final class CV_Astro_Bridge {
             $meta_query[] = $price_rule;
         }
 
-        $page  = max( 1, absint( $request->get_param( 'page' ) ) );
-        $sort  = sanitize_key( (string) $request->get_param( 'sort' ) );
-        $query = sanitize_text_field( (string) $request->get_param( 's' ) );
-
+        $page  = max( 1, absint( $request->get_param( 'cvl_page' ) ?: $request->get_param( 'page' ) ) );
         $catalog_args = array(
             'post_type'           => 'product',
             'post_status'         => 'publish',
@@ -1050,19 +1074,6 @@ final class CV_Astro_Bridge {
                 'date'       => 'DESC',
             ),
         );
-
-        if ( $query ) {
-            $catalog_args['s'] = $query;
-        }
-
-        if ( 'price-asc' === $sort || 'price-desc' === $sort ) {
-            $catalog_args['meta_key'] = '_price';
-            $catalog_args['orderby']  = 'meta_value_num';
-            $catalog_args['order']    = 'price-asc' === $sort ? 'ASC' : 'DESC';
-        } elseif ( 'name' === $sort ) {
-            $catalog_args['orderby'] = 'title';
-            $catalog_args['order']   = 'ASC';
-        }
 
         $catalog_query = new WP_Query( $catalog_args );
         $products      = array();
