@@ -386,14 +386,34 @@ final class CVR2_Admin {
                 continue;
             }
 
-            $was_existing = self::target_exists_for_source( $source_product );
+            $existing_match = CVR2_Product_Importer::locate_existing_product( $source_product );
+            $was_existing    = ! empty( $existing_match['id'] );
 
             if ( $was_existing && 'create_only' === $import_mode ) {
                 $state['ignored']     = absint( $state['ignored'] ?? 0 ) + 1;
                 $state['processed']   = absint( $state['processed'] ?? 0 ) + 1;
                 $state['batch_index'] = $index + 1;
                 $state['updated_at']  = time();
-                self::push_recent_result( $state, $source_product, 'ignored', 'Produto existente; modo criar apenas novos.' );
+                $match_labels = array(
+                    'source_id'   => 'ID de origem',
+                    'source_slug' => 'slug de origem guardado',
+                    'sku'         => 'SKU',
+                    'slug'        => 'slug',
+                    'title'       => 'título exato único',
+                );
+                $matched_by = (string) ( $existing_match['matched_by'] ?? '' );
+                $reason = $match_labels[ $matched_by ] ?? 'correspondência existente';
+
+                self::push_recent_result(
+                    $state,
+                    $source_product,
+                    'ignored',
+                    sprintf(
+                        'Ignorado: já existe como produto #%1$d (%2$s).',
+                        absint( $existing_match['id'] ?? 0 ),
+                        $reason
+                    )
+                );
                 update_option( CVR2_STATE_OPTION, $state, false );
 
                 if ( microtime( true ) - $batch_started_at >= $time_budget && $state['batch_index'] < count( $items ) ) {
@@ -518,35 +538,6 @@ final class CVR2_Admin {
         array_unshift( $recent, $row );
         $state['recent_results'] = array_slice( $recent, 0, 30 );
         $state['last_result']    = $row;
-    }
-
-    private static function target_exists_for_source( array $source ): bool {
-        $source_id = absint( $source['id'] ?? 0 );
-        $sku       = wc_clean( (string) ( $source['sku'] ?? '' ) );
-        $slug      = sanitize_title( (string) ( $source['slug'] ?? '' ) );
-
-        if ( $source_id ) {
-            $ids = get_posts(
-                array(
-                    'post_type'      => 'product',
-                    'post_status'    => 'any',
-                    'posts_per_page' => 1,
-                    'fields'         => 'ids',
-                    'meta_key'       => '_cvr2_source_product_id',
-                    'meta_value'     => $source_id,
-                    'no_found_rows'  => true,
-                )
-            );
-            if ( $ids ) {
-                return true;
-            }
-        }
-
-        if ( $sku && wc_get_product_id_by_sku( $sku ) ) {
-            return true;
-        }
-
-        return $slug && get_page_by_path( $slug, OBJECT, 'product' ) instanceof WP_Post;
     }
 
     public static function render(): void {
