@@ -6,12 +6,25 @@ final class CVLOA_Customer_Account_History {
 
     public static function init(): void {
         add_action( 'init', array( __CLASS__, 'register_endpoint' ) );
+        add_action( 'admin_init', array( __CLASS__, 'maybe_flush_rewrite_rules' ) );
         add_filter( 'woocommerce_account_menu_items', array( __CLASS__, 'account_menu_items' ), 35 );
         add_action( 'woocommerce_account_' . self::ENDPOINT . '_endpoint', array( __CLASS__, 'render_endpoint' ) );
     }
 
     public static function register_endpoint(): void {
         add_rewrite_endpoint( self::ENDPOINT, EP_ROOT | EP_PAGES );
+    }
+
+    public static function maybe_flush_rewrite_rules(): void {
+        $stored_version = (string) get_option( 'cvloa_account_endpoint_version', '' );
+
+        if ( CVLOA_VERSION === $stored_version ) {
+            return;
+        }
+
+        self::register_endpoint();
+        flush_rewrite_rules( false );
+        update_option( 'cvloa_account_endpoint_version', CVLOA_VERSION, false );
     }
 
     public static function account_menu_items( array $items ): array {
