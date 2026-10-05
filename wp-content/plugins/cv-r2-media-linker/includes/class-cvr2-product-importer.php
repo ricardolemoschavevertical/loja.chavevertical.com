@@ -744,7 +744,21 @@ final class CVR2_Product_Importer {
         return $ids ? absint( $ids[0] ) : 0;
     }
 
-    public static function resolve_relations_page( int $page = 1, int $per_page = 100 ): array {
+    public static function resolve_relations_page( int $page = 1, int $per_page = 100, string $run_id = '' ): array {
+        $meta_query = array(
+            array(
+                'key'     => self::SOURCE_META,
+                'compare' => 'EXISTS',
+            ),
+        );
+
+        if ( '' !== $run_id ) {
+            $meta_query[] = array(
+                'key'   => '_cvr2_import_run',
+                'value' => $run_id,
+            );
+        }
+
         $query = new WP_Query(
             array(
                 'post_type'      => 'product',
@@ -752,12 +766,7 @@ final class CVR2_Product_Importer {
                 'posts_per_page' => max( 1, min( 500, $per_page ) ),
                 'paged'          => max( 1, $page ),
                 'fields'         => 'ids',
-                'meta_query'     => array(
-                    array(
-                        'key'     => self::SOURCE_META,
-                        'compare' => 'EXISTS',
-                    ),
-                ),
+                'meta_query'     => $meta_query,
                 'no_found_rows'  => false,
             )
         );
