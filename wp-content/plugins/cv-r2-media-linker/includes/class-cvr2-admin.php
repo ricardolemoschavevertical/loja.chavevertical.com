@@ -125,7 +125,7 @@ final class CVR2_Admin {
 
         $requested_batch_size = absint( wp_unslash( $_POST['batch_size'] ?? 10 ) );
         $requested_batch_size = max( 1, min( 50, $requested_batch_size ) );
-        $batch_size = 'images_only' === $import_mode ? $requested_batch_size : 1;
+        $batch_size = $requested_batch_size;
 
         $state = array(
             'status'      => 'running',
@@ -156,8 +156,8 @@ final class CVR2_Admin {
             array(
                 'state'   => $state,
                 'message' => 'images_only' === $import_mode
-                    ? sprintf( 'Importação de imagens iniciada — lote de %d produto(s).', $batch_size )
-                    : 'Importação iniciada.',
+                    ? sprintf( 'Importação de imagens iniciada — lote máximo de %d produto(s).', $batch_size )
+                    : sprintf( 'Importação iniciada — lote máximo de %d produto(s).', $batch_size ),
             )
         );
     }
@@ -196,7 +196,7 @@ final class CVR2_Admin {
 
         $import_mode = (string) ( $state['import_mode'] ?? 'update_existing' );
 
-        if ( 'images_only' === $import_mode ) {
+        if ( absint( $state['batch_size'] ?? 1 ) > 1 ) {
             @set_time_limit( 180 );
         }
 
@@ -227,17 +227,20 @@ final class CVR2_Admin {
         }
 
         /*
-         * Modo normal: 1 produto por pedido.
-         * Modo apenas imagens: quantidade escolhida pelo utilizador (1 a 50)
-         * para reduzir o overhead REST/AJAX. O batch_index é gravado depois de CADA produto;
-         * se houver timeout, pausa ou falha, o pedido seguinte retoma exatamente
-         * no item que faltava sem duplicar contadores nem perder progresso.
+         * Todos os modos aceitam lotes de 1 a 50 produtos.
+         * O batch_index é persistido depois de CADA produto realmente concluído.
+         * Se o pedido for interrompido, a retoma volta à mesma página REST e salta
+         * apenas os itens que já têm checkpoint concluído.
+         *
+         * Além do max_execution_time, usamos um orçamento interno de tempo para
+         * devolver controlo ao browser antes de um timeout duro. Isto permite
+         * lotes grandes sem fingir que o lote inteiro terminou.
          */
-        $per_page    = 'images_only' === $import_mode
-            ? max( 1, min( 50, absint( $state['batch_size'] ?? 10 ) ) )
-            : 1;
-        $page        = max( 1, absint( $state['page'] ?? 1 ) );
-        $batch_index = 'images_only' === $import_mode ? max( 0, absint( $state['batch_index'] ?? 0 ) ) : 0;
+        $per_page         = max( 1, min( 50, absint( $state['batch_size'] ?? 10 ) ) );
+        $page             = max( 1, absint( $state['page'] ?? 1 ) );
+        $batch_index      = max( 0, absint( $state['batch_index'] ?? 0 ) );
+        $batch_started_at = microtime( true );
+        $time_budget      = 105.0;
 
         $request_args = array(
             'per_page' => $per_page,
@@ -282,7 +285,7 @@ final class CVR2_Admin {
         $items = array_values( (array) $result['data'] );
 
         foreach ( $items as $index => $source_product ) {
-            if ( 'images_only' === $import_mode && $index < $batch_index ) {
+            if ( $index < $batch_index ) {
                 continue;
             }
 
@@ -336,16 +339,48 @@ final class CVR2_Admin {
 
                 // Checkpoint por produto — não esperar pelo fim do lote.
                 update_option( CVR2_STATE_OPTION, $state, false );
+
+                if ( microtime( true ) - $batch_started_at >= $time_budget && $state['batch_index'] < count( $items ) ) {
+                    wp_send_json_success(
+                        array(
+                            'done'    => false,
+                            'state'   => $state,
+                            'message' => sprintf(
+                                'Lote parcialmente concluído: %1$d/%2$d itens desta página. A continuar automaticamente.',
+                                (int) $state['batch_index'],
+                                count( $items )
+                            ),
+                        )
+                    );
+                }
+
                 continue;
             }
 
             $was_existing = self::target_exists_for_source( $source_product );
 
             if ( $was_existing && 'create_only' === $import_mode ) {
-                $state['ignored'] = absint( $state['ignored'] ?? 0 ) + 1;
-                $state['processed']++;
+                $state['ignored']     = absint( $state['ignored'] ?? 0 ) + 1;
+                $state['processed']   = absint( $state['processed'] ?? 0 ) + 1;
+                $state['batch_index'] = $index + 1;
+                $state['updated_at']  = time();
                 self::push_recent_result( $state, $source_product, 'ignored', 'Produto existente; modo criar apenas novos.' );
                 update_option( CVR2_STATE_OPTION, $state, false );
+
+                if ( microtime( true ) - $batch_started_at >= $time_budget && $state['batch_index'] < count( $items ) ) {
+                    wp_send_json_success(
+                        array(
+                            'done'    => false,
+                            'state'   => $state,
+                            'message' => sprintf(
+                                'Lote parcialmente concluído: %1$d/%2$d itens desta página. A continuar automaticamente.',
+                                (int) $state['batch_index'],
+                                count( $items )
+                            ),
+                        )
+                    );
+                }
+
                 continue;
             }
 
@@ -370,17 +405,31 @@ final class CVR2_Admin {
                 self::push_recent_result( $state, $source_product, 'created', 'Produto criado.' );
             }
 
-            $state['processed']++;
-            $state['updated_at'] = time();
+            $state['processed']   = absint( $state['processed'] ?? 0 ) + 1;
+            $state['batch_index'] = $index + 1;
+            $state['updated_at']  = time();
             update_option( CVR2_STATE_OPTION, $state, false );
+
+            if ( microtime( true ) - $batch_started_at >= $time_budget && $state['batch_index'] < count( $items ) ) {
+                wp_send_json_success(
+                    array(
+                        'done'    => false,
+                        'state'   => $state,
+                        'message' => sprintf(
+                            'Lote parcialmente concluído: %1$d/%2$d itens desta página. A continuar automaticamente.',
+                            (int) $state['batch_index'],
+                            count( $items )
+                        ),
+                    )
+                );
+            }
         }
 
         $state['updated_at'] = time();
+        $state['batch_index'] = 0;
+        $state['current']     = array();
 
         if ( 'images_only' === $import_mode ) {
-            $state['batch_index'] = 0;
-            $state['current']     = array();
-
             if ( $page >= (int) $state['total_pages'] || empty( $items ) ) {
                 $state['status']      = 'done';
                 $state['phase']       = 'done';
@@ -407,9 +456,13 @@ final class CVR2_Admin {
                 number_format_i18n( (int) ( $state['batch_size'] ?? $per_page ) )
             )
             : sprintf(
-                'Produtos processados: %1$s / %2$s.',
+                'Produtos processados: %1$s / %2$s — lote: %3$s; criados: %4$s; atualizados: %5$s; ignorados: %6$s.',
                 number_format_i18n( (int) $state['processed'] ),
-                number_format_i18n( (int) $state['total'] )
+                number_format_i18n( (int) $state['total'] ),
+                number_format_i18n( (int) ( $state['batch_size'] ?? $per_page ) ),
+                number_format_i18n( (int) ( $state['created'] ?? 0 ) ),
+                number_format_i18n( (int) ( $state['updated'] ?? 0 ) ),
+                number_format_i18n( (int) ( $state['ignored'] ?? 0 ) )
             );
 
         wp_send_json_success(
@@ -540,7 +593,7 @@ final class CVR2_Admin {
                             <strong>Modo de execução</strong>
                             <div>
                                 <strong>Seguro com checkpoint automático</strong><br>
-                                <small>Modo normal: 1 produto por pedido. No modo “apenas imagens” podes escolher entre 1 e 50 produtos por lote. O estado continua a ser gravado depois de cada produto, por isso um timeout não perde o progresso já concluído.</small>
+                                <small>Todos os modos aceitam lotes de 1 a 50 produtos. O estado é gravado depois de cada produto realmente concluído; se houver timeout, pausa ou limite de tempo do pedido, a retoma continua dentro do mesmo lote sem perder o progresso.</small>
                                 <input type="hidden" name="batch_size" value="1">
                             </div>
                         </div>
@@ -565,7 +618,7 @@ final class CVR2_Admin {
                         <div class="cvr2-batch-size">
                             <label for="cvr2-batch-size"><strong>Quantidade por lote</strong></label>
                             <input id="cvr2-batch-size" type="number" min="1" max="50" step="1" value="<?php echo esc_attr( (string) max( 1, min( 50, absint( $state['batch_size'] ?? 10 ) ) ) ); ?>" inputmode="numeric">
-                            <small>Usado no modo “apenas imagens”. Recomendado: 10 a 20. Máximo: 50.</small>
+                            <small>Aplica-se a criar, atualizar e atualizar apenas imagens. Recomendado: 5–10 para criação/atualização completa e 10–20 para apenas imagens. Máximo: 50.</small>
                         </div>
                     </div>
                     <div class="cvr2-actions">
