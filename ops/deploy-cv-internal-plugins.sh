@@ -79,13 +79,26 @@ wp --path="$WP_ROOT" plugin is-active cv-pdf-reader
 wp --path="$WP_ROOT" plugin is-active cv-r2-media-linker
 wp --path="$WP_ROOT" plugin is-active cv-legacy-orders-archive
 
-ARCHIVE_ROOT="$WP_ROOT/wp-content/cv-private-data"
-if [[ -d "$ARCHIVE_ROOT" ]]; then
-  chgrp -R --reference="$WP_ROOT/wp-content" "$ARCHIVE_ROOT"
-  find "$ARCHIVE_ROOT" -type d -exec chmod 0770 {} +
-  find "$ARCHIVE_ROOT" -type f -exec chmod 0660 {} +
-  stat -c 'legacy-orders-perms=%A %U:%G %n' "$ARCHIVE_ROOT" "$ARCHIVE_ROOT/legacy-orders" || true
+ACCOUNT_ROOT="$(dirname "$(dirname "$WP_ROOT")")"
+ARCHIVE_ROOT="$ACCOUNT_ROOT/private-data/chavevertical/legacy-orders"
+OLD_ARCHIVE_ROOT="$WP_ROOT/wp-content/cv-private-data/legacy-orders"
+
+mkdir -p "$ARCHIVE_ROOT"
+chgrp -R --reference="$WP_ROOT/wp-content" "$ACCOUNT_ROOT/private-data"
+find "$ACCOUNT_ROOT/private-data" -type d -exec chmod 0770 {} +
+find "$ACCOUNT_ROOT/private-data" -type f -exec chmod 0660 {} +
+
+if [[ -d "$OLD_ARCHIVE_ROOT" ]]; then
+  for file in orders.ndjson.php orders-index.json.php; do
+    if [[ -f "$OLD_ARCHIVE_ROOT/$file" && ! -f "$ARCHIVE_ROOT/$file" ]]; then
+      cp "$OLD_ARCHIVE_ROOT/$file" "$ARCHIVE_ROOT/$file"
+      chgrp --reference="$WP_ROOT/wp-content" "$ARCHIVE_ROOT/$file"
+      chmod 0660 "$ARCHIVE_ROOT/$file"
+    fi
+  done
 fi
+
+stat -c 'legacy-orders-private-perms=%A %U:%G %n' "$ARCHIVE_ROOT" || true
 
 wp --path="$WP_ROOT" eval 'echo defined("CV_CORE_VERSION") ? CV_CORE_VERSION : "missing";'
 echo
@@ -97,4 +110,9 @@ wp --path="$WP_ROOT" eval 'echo defined("CVLOA_VERSION") ? CVLOA_VERSION : "miss
 echo
 wp --path="$WP_ROOT" eval '$r=CVLOA_Archive::ensure_storage(); if (is_wp_error($r)) { fwrite(STDERR, $r->get_error_message()); exit(1); } $s=CVLOA_Archive::stats(); echo "legacy-orders-storage=" . $s["storage_path"] . ";count=" . $s["count"];'
 echo
+
+if [[ -d "$OLD_ARCHIVE_ROOT" && -f "$ARCHIVE_ROOT/orders.ndjson.php" && -f "$ARCHIVE_ROOT/orders-index.json.php" ]]; then
+  rm -rf "$WP_ROOT/wp-content/cv-private-data"
+  echo "legacy-orders-public-copy=removed"
+fi
 echo "Chave Vertical internal plugins deployed and active."
