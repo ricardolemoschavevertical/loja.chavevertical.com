@@ -659,10 +659,18 @@ final class CVR2_Product_Importer {
         };
     }
 
+    private static function source_product_status( array $source, string $default = 'draft' ): string {
+        $status = sanitize_key( (string) ( $source['status'] ?? $default ) );
+
+        return in_array( $status, array( 'publish', 'draft', 'pending', 'private' ), true )
+            ? $status
+            : $default;
+    }
+
     private static function apply_common_fields( WC_Product $product, array $source ): void {
         $product->set_name( wp_strip_all_tags( (string) ( $source['name'] ?? '' ) ) );
         $product->set_slug( sanitize_title( (string) ( $source['slug'] ?? '' ) ) );
-        $product->set_status( sanitize_key( (string) ( $source['status'] ?? 'draft' ) ) );
+        $product->set_status( self::source_product_status( $source, 'draft' ) );
         $product->set_featured( ! empty( $source['featured'] ) );
         $product->set_catalog_visibility( sanitize_key( (string) ( $source['catalog_visibility'] ?? 'visible' ) ) );
         $product->set_description( wp_kses_post( (string) ( $source['description'] ?? '' ) ) );
@@ -1010,7 +1018,7 @@ final class CVR2_Product_Importer {
 
         $variation = new WC_Product_Variation( $target_id );
         $variation->set_parent_id( $parent_id );
-        $variation->set_status( sanitize_key( (string) ( $source['status'] ?? 'publish' ) ) );
+        $variation->set_status( self::source_product_status( $source, 'publish' ) );
 
         if ( $sku ) {
             try {
