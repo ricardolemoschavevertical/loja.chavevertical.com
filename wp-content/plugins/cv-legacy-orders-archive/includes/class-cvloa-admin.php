@@ -1133,6 +1133,7 @@ final class CVLOA_Admin {
         $pages    = max( 1, (int) ceil( $total / $per_page ) );
         $paged    = min( $paged, $pages );
         $slice    = array_slice( $orders, ( $paged - 1 ) * $per_page, $per_page );
+        $customer_email_map = CVLOA_Customer_Archive::email_map();
 
         $stats = CVLOA_Archive::stats();
         ?>
@@ -1201,13 +1202,31 @@ final class CVLOA_Admin {
                             ),
                             admin_url( 'admin.php' )
                         );
+                        $row_email = strtolower( sanitize_email( (string) ( $row['billing_email'] ?? '' ) ) );
+                        $customer_key = sanitize_key( (string) ( $customer_email_map[ $row_email ] ?? '' ) );
+                        $customer_url = $customer_key
+                            ? add_query_arg(
+                                array(
+                                    'page'          => 'cv-legacy-customers',
+                                    'view_customer' => $customer_key,
+                                ),
+                                admin_url( 'admin.php' )
+                            )
+                            : '';
                         ?>
                         <?php $status_color_class = self::status_color_class( (string) ( $row['status'] ?? '' ) ); ?>
                         <tr class="<?php echo esc_attr( 'cvloa-order-' . $status_color_class ); ?>">
                             <td class="cvloa-check"><input type="checkbox" name="order_keys[]" value="<?php echo esc_attr( sanitize_key( (string) ( $row['archive_key'] ?? $row['id'] ?? '' ) ) ); ?>" class="cvloa-order-select" aria-label="Selecionar encomenda <?php echo esc_attr( (string) ( $row['number'] ?: $row['id'] ) ); ?>"></td>
                             <td><a href="<?php echo esc_url( $detail_url ); ?>"><strong>#<?php echo esc_html( (string) ( $row['number'] ?: $row['id'] ) ); ?></strong></a><br><span class="cvloa-muted">ID origem <?php echo esc_html( (string) $row['id'] ); ?></span></td>
                             <td><?php echo esc_html( self::format_date( (string) ( $row['date_created'] ?? '' ) ) ); ?></td>
-                            <td><strong><?php echo esc_html( (string) ( $row['billing_name'] ?? '' ) ); ?></strong><?php if ( ! empty( $row['billing_company'] ) ) : ?><br><?php echo esc_html( (string) $row['billing_company'] ); ?><?php endif; ?><?php if ( ! empty( $row['billing_email'] ) ) : ?><br><span class="cvloa-muted"><?php echo esc_html( (string) $row['billing_email'] ); ?></span><?php endif; ?></td>
+                            <td>
+                                <?php if ( $customer_url ) : ?><a href="<?php echo esc_url( $customer_url ); ?>"><?php endif; ?>
+                                <strong><?php echo esc_html( (string) ( $row['billing_name'] ?? '' ) ); ?></strong>
+                                <?php if ( $customer_url ) : ?></a><?php endif; ?>
+                                <?php if ( ! empty( $row['billing_company'] ) ) : ?><br><?php echo esc_html( (string) $row['billing_company'] ); ?><?php endif; ?>
+                                <?php if ( ! empty( $row['billing_email'] ) ) : ?><br><span class="cvloa-muted"><?php echo esc_html( (string) $row['billing_email'] ); ?></span><?php endif; ?>
+                                <?php if ( $customer_url ) : ?><br><a class="cvloa-muted" href="<?php echo esc_url( $customer_url ); ?>">Ver cliente associado</a><?php endif; ?>
+                            </td>
                             <td><span class="<?php echo esc_attr( 'cvloa-status cvloa-status-' . $status_color_class ); ?>"><?php echo esc_html( self::status_label( (string) ( $row['status'] ?? '' ) ) ); ?></span></td>
                             <td><?php echo wp_kses_post( wc_price( (float) ( $row['total'] ?? 0 ), array( 'currency' => (string) ( $row['currency'] ?? get_woocommerce_currency() ) ) ) ); ?></td>
                             <td><?php echo esc_html( number_format_i18n( absint( $row['item_count'] ?? 0 ) ) ); ?></td>
@@ -1289,10 +1308,24 @@ final class CVLOA_Admin {
             return;
         }
 
-        $order_id = absint( $order['id'] ?? 0 );
-        $billing  = (array) ( $order['billing'] ?? array() );
-        $shipping = (array) ( $order['shipping'] ?? array() );
-        $currency = (string) ( $order['currency'] ?? get_woocommerce_currency() );
+        $order_id          = absint( $order['id'] ?? 0 );
+        $billing           = (array) ( $order['billing'] ?? array() );
+        $shipping          = (array) ( $order['shipping'] ?? array() );
+        $currency          = (string) ( $order['currency'] ?? get_woocommerce_currency() );
+        $billing_email     = sanitize_email( (string) ( $billing['email'] ?? '' ) );
+        $linked_customer   = '' !== $billing_email ? CVLOA_Customer_Archive::find_by_email( $billing_email ) : null;
+        $linked_customer_key = is_array( $linked_customer )
+            ? sanitize_key( (string) ( $linked_customer['_cvloa_archive_key'] ?? '' ) )
+            : '';
+        $linked_customer_url = $linked_customer_key
+            ? add_query_arg(
+                array(
+                    'page'          => 'cv-legacy-customers',
+                    'view_customer' => $linked_customer_key,
+                ),
+                admin_url( 'admin.php' )
+            )
+            : '';
         $back_url = add_query_arg( array( 'page' => 'cv-legacy-orders', 'tab' => 'archive' ), admin_url( 'admin.php' ) );
         ?>
         <p><a class="button" href="<?php echo esc_url( $back_url ); ?>">← Voltar às encomendas antigas</a></p>
@@ -1312,6 +1345,11 @@ final class CVLOA_Admin {
                 <h3>Faturação</h3>
                 <?php self::render_address( $billing ); ?>
                 <?php if ( ! empty( $billing['email'] ) ) : ?><p><strong>Email:</strong> <?php echo esc_html( (string) $billing['email'] ); ?></p><?php endif; ?>
+                <?php if ( $linked_customer_url ) : ?>
+                    <p><strong>Cliente associado:</strong> <a href="<?php echo esc_url( $linked_customer_url ); ?>"><?php echo esc_html( trim( (string) ( $linked_customer['first_name'] ?? '' ) . ' ' . (string) ( $linked_customer['last_name'] ?? '' ) ) ?: $billing_email ); ?></a><br><span class="cvloa-muted">Associação pelo email de faturação.</span></p>
+                <?php elseif ( $billing_email ) : ?>
+                    <p class="cvloa-muted">Sem cliente registado no arquivo com este email; pode tratar-se de uma compra como convidado.</p>
+                <?php endif; ?>
                 <?php if ( ! empty( $billing['phone'] ) ) : ?><p><strong>Telefone:</strong> <?php echo esc_html( (string) $billing['phone'] ); ?></p><?php endif; ?>
             </div>
             <div class="cvloa-detail-card">
