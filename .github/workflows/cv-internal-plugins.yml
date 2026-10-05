@@ -11,6 +11,7 @@ on:
       - "wp-content/plugins/cv-legacy-orders-archive/**"
       - ".github/workflows/cv-internal-plugins.yml"
       - "ops/deploy-cv-internal-plugins.sh"
+      - "ops/migrations/**"
       - "ops/diagnose-trash-actions.php"
   workflow_dispatch:
 
