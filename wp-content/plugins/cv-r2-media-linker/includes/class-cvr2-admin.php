@@ -43,7 +43,7 @@ final class CVR2_Admin {
         $new = array(
             'source_url'  => untrailingslashit( esc_url_raw( wp_unslash( $_POST['source_url'] ?? '' ) ) ),
             'r2_base_url' => untrailingslashit( esc_url_raw( wp_unslash( $_POST['r2_base_url'] ?? '' ) ) ),
-            'batch_size'  => max( 1, min( 25, absint( $_POST['batch_size'] ?? 10 ) ) ),
+            'batch_size'  => 1,
             'source_ck'   => (string) ( $old['source_ck'] ?? '' ),
             'source_cs'   => (string) ( $old['source_cs'] ?? '' ),
         );
@@ -126,6 +126,7 @@ final class CVR2_Admin {
             'processed'   => 0,
             'created'     => 0,
             'updated'     => 0,
+            'slug_errors' => 0,
             'errors'      => array(),
             'started_at'  => time(),
             'updated_at'  => time(),
@@ -143,7 +144,9 @@ final class CVR2_Admin {
 
     public static function ajax_import_batch(): void {
         self::guard_ajax();
-        @set_time_limit( 120 );
+
+        // O JavaScript orquestra a importação. Cada pedido PHP trata apenas um produto,
+        // para que o limite total de execução do PHP não limite a migração completa.
 
         $state = (array) get_option( CVR2_STATE_OPTION, array() );
         if ( empty( $state ) || 'done' === ( $state['status'] ?? '' ) ) {
@@ -156,7 +159,7 @@ final class CVR2_Admin {
         }
 
         if ( 'relations' === ( $state['phase'] ?? 'products' ) ) {
-            $result = CVR2_Product_Importer::resolve_relations_page( max( 1, absint( $state['page'] ?? 1 ) ), 150 );
+            $result = CVR2_Product_Importer::resolve_relations_page( max( 1, absint( $state['page'] ?? 1 ) ), 25 );
             $state['page']        = (int) $result['page'] + 1;
             $state['total_pages'] = (int) $result['total_pages'];
             $state['updated_at']  = time();
@@ -178,8 +181,8 @@ final class CVR2_Admin {
             );
         }
 
-        $settings = CVR2_REST_Client::settings();
-        $per_page = max( 1, min( 25, absint( $settings['batch_size'] ?? 10 ) ) );
+        // Modo JavaScript: exatamente 1 produto por pedido AJAX/PHP.
+        $per_page = 1;
         $page     = max( 1, absint( $state['page'] ?? 1 ) );
 
         $result = CVR2_REST_Client::request(
@@ -231,6 +234,9 @@ final class CVR2_Admin {
 
             if ( is_wp_error( $imported ) ) {
                 $source_id = absint( $source_product['id'] ?? 0 );
+                if ( str_starts_with( (string) $imported->get_error_code(), 'cvr2_slug_' ) ) {
+                    $state['slug_errors'] = absint( $state['slug_errors'] ?? 0 ) + 1;
+                }
                 $state['errors'][] = '#' . $source_id . ': ' . $imported->get_error_message();
                 $state['errors']   = array_slice( $state['errors'], -20 );
             } else {
@@ -318,7 +324,7 @@ final class CVR2_Admin {
                 .cvr2-log{min-height:72px;padding:12px;border:1px solid #dcdcde;background:#f6f7f7;white-space:pre-wrap}
                 .cvr2-progress{height:14px;margin:12px 0;overflow:hidden;border-radius:999px;background:#e5e5e5}
                 .cvr2-progress>span{height:100%;display:block;width:0;background:#00a32a;transition:width .2s}
-                .cvr2-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.cvr2-stat{padding:10px;background:#f6f7f7;border-radius:7px}
+                .cvr2-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.cvr2-stat{padding:10px;background:#f6f7f7;border-radius:7px}
                 .cvr2-stat strong{display:block;font-size:18px}
                 @media(max-width:900px){.cvr2-grid{grid-template-columns:1fr}.cvr2-row{grid-template-columns:1fr}.cvr2-stats{grid-template-columns:1fr 1fr}}
             </style>
@@ -347,15 +353,20 @@ final class CVR2_Admin {
                             <input id="cvr2-cs" name="source_cs" type="password" value="" autocomplete="new-password" placeholder="<?php echo CVR2_REST_Client::consumer_secret() ? 'Configurada — deixar vazio para manter' : 'cs_…'; ?>">
                         </div>
                         <div class="cvr2-row">
-                            <label for="cvr2-batch"><strong>Produtos por lote</strong></label>
-                            <input id="cvr2-batch" name="batch_size" type="number" min="1" max="25" value="<?php echo esc_attr( (string) $settings['batch_size'] ); ?>">
+                            <strong>Modo de execução</strong>
+                            <div>
+                                <strong>JavaScript — 1 produto por pedido</strong><br>
+                                <small>Cada produto corre num pedido PHP independente. O processo completo pode continuar por milhares de produtos sem depender do max_execution_time de uma única execução PHP.</small>
+                                <input type="hidden" name="batch_size" value="1">
+                            </div>
                         </div>
 
                         <p><button class="button button-primary" type="submit">Guardar configuração</button></p>
                     </form>
 
                     <p><strong>Prioridade de imagem:</strong> R2 WEBP existente → registar na Media Library e associar → se não existir, descarregar a origem e gerar WEBP 750×750, qualidade 90, fundo branco.</p>
-                    <p><strong>Identidade do produto:</strong> ID original → SKU → slug. O slug do site original é reposto no produto de destino.</p>
+                    <p><strong>Slug obrigatório:</strong> o slug recebido da origem tem de ficar exatamente igual. Se o WordPress tentar criar <code>-2</code>, <code>-3</code> ou qualquer outra alteração, esse produto é marcado com erro e não é considerado importado.</p>
+                    <p><strong>Identidade do produto:</strong> ID original → SKU → slug. Depois da importação o slug fica bloqueado contra alterações acidentais.</p>
                 </section>
 
                 <section class="cvr2-card">
@@ -365,6 +376,7 @@ final class CVR2_Admin {
                         <button class="button" type="button" data-cvr2-action="structure">2. Sincronizar estrutura</button>
                         <button class="button button-primary" type="button" data-cvr2-action="start">3. Iniciar / recomeçar importação</button>
                         <button class="button" type="button" data-cvr2-action="resume">Retomar</button>
+                        <button class="button" type="button" data-cvr2-action="pause">Pausar</button>
                         <button class="button" type="button" data-cvr2-action="reset">Limpar estado</button>
                     </div>
 
@@ -374,6 +386,7 @@ final class CVR2_Admin {
                         <div class="cvr2-stat"><span>Total</span><strong data-stat="total">0</strong></div>
                         <div class="cvr2-stat"><span>Criados</span><strong data-stat="created">0</strong></div>
                         <div class="cvr2-stat"><span>Atualizados</span><strong data-stat="updated">0</strong></div>
+                        <div class="cvr2-stat"><span>Erros de slug</span><strong data-stat="slug_errors">0</strong></div>
                     </div>
                     <h3>Estado</h3>
                     <div class="cvr2-log" data-cvr2-log>Pronto.</div>
@@ -394,11 +407,18 @@ final class CVR2_Admin {
             let running = false;
 
             const write = (message) => { if (log) log.textContent = String(message || ''); };
-            const setBusy = (busy) => buttons.forEach((button) => button.disabled = busy);
+            const setBusy = (busy) => buttons.forEach((button) => {
+                if (button.dataset.cvr2Action === 'pause') {
+                    button.disabled = !running;
+                    return;
+                }
+                button.disabled = busy;
+            });
+            const yieldBrowser = () => new Promise((resolve) => window.setTimeout(resolve, 75));
 
             function renderState(state) {
                 state = state || {};
-                ['processed','total','created','updated'].forEach((key) => {
+                ['processed','total','created','updated','slug_errors'].forEach((key) => {
                     const el = document.querySelector('[data-stat="' + key + '"]');
                     if (el) el.textContent = Number(state[key] || 0).toLocaleString('pt-PT');
                 });
@@ -434,9 +454,12 @@ final class CVR2_Admin {
 
                         if (data.done) {
                             running = false;
-                            write('Importação concluída. Slugs, relações e dados foram processados.');
+                            write('Importação concluída. Slugs verificados, relações e dados processados.');
                             break;
                         }
+
+                        // Entrega o controlo ao browser antes do próximo produto.
+                        await yieldBrowser();
                     }
                 } catch (error) {
                     running = false;
@@ -476,6 +499,12 @@ final class CVR2_Admin {
             });
 
             document.querySelector('[data-cvr2-action="resume"]')?.addEventListener('click', () => loop());
+
+            document.querySelector('[data-cvr2-action="pause"]')?.addEventListener('click', () => {
+                running = false;
+                setBusy(false);
+                write('Importação pausada no browser. O progresso ficou guardado e pode ser retomado.');
+            });
 
             document.querySelector('[data-cvr2-action="reset"]')?.addEventListener('click', async () => {
                 setBusy(true);
