@@ -111,6 +111,12 @@ final class CVLOA_Admin {
 
         update_option( CVLOA_STATUSES_OPTION, $cache, false );
 
+        // Persistir as definições no Chave Vertical Core. Este option/runtime
+        // não depende deste plugin temporário e continua ativo depois de o removermos.
+        if ( class_exists( 'CV_Core_Order_History' ) ) {
+            CV_Core_Order_History::merge_permanent_statuses( $statuses );
+        }
+
         // Depois de guardar as definições da origem, disponibilizá-las já
         // no WooCommerce atual para encomendas novas e futuras.
         $cache['woo_sync'] = CVLOA_Order_Statuses::sync_now();
@@ -328,7 +334,23 @@ final class CVLOA_Admin {
             );
         }
 
-        $orders = array_values( (array) $result['data'] );
+        $orders      = array_values( (array) $result['data'] );
+        $source_url  = CVLOA_REST_Client::source_url();
+        $source_hash = substr( sha1( strtolower( untrailingslashit( $source_url ) ) ), 0, 10 );
+
+        foreach ( $orders as &$order ) {
+            $order = (array) $order;
+            $id    = absint( $order['id'] ?? 0 );
+
+            if ( ! $id ) {
+                continue;
+            }
+
+            $order['_cvloa_origin']      = 'remote';
+            $order['_cvloa_source_url']  = $source_url;
+            $order['_cvloa_archive_key'] = 'remote-' . $source_hash . '-' . $id;
+        }
+        unset( $order );
 
         if ( ! empty( $state['include_notes'] ) ) {
             foreach ( $orders as &$order ) {
