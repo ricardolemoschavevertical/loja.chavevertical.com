@@ -355,6 +355,16 @@ final class CV_Astro_Bridge {
 
         register_rest_route(
             'cv-astro/v1',
+            '/verify-worker-command',
+            array(
+                'methods'             => WP_REST_Server::CREATABLE,
+                'permission_callback' => '__return_true',
+                'callback'            => array( $this, 'verify_worker_command' ),
+            )
+        );
+
+        register_rest_route(
+            'cv-astro/v1',
             '/product/by-slug/(?P<slug>[a-zA-Z0-9\-_]+)',
             array(
                 'methods'             => WP_REST_Server::READABLE,
@@ -367,6 +377,33 @@ final class CV_Astro_Bridge {
                         : new WP_Error( 'cvab_not_found', 'Produto não encontrado.', array( 'status' => 404 ) );
                 },
             )
+        );
+    }
+
+    public function verify_worker_command( WP_REST_Request $request ) {
+        $timestamp = trim( (string) $request->get_header( 'x-cv-timestamp' ) );
+        $signature = trim( (string) $request->get_header( 'x-cv-signature' ) );
+        $body      = (string) $request->get_body();
+        $settings  = $this->settings();
+        $secret    = (string) $settings['secret'];
+
+        if ( '' === $timestamp || '' === $signature || '' === $secret || ! ctype_digit( $timestamp ) ) {
+            return new WP_REST_Response( array( 'ok' => false, 'verified' => false ), 401 );
+        }
+
+        if ( abs( time() - (int) $timestamp ) > 120 ) {
+            return new WP_REST_Response( array( 'ok' => false, 'verified' => false, 'reason' => 'expired' ), 401 );
+        }
+
+        $expected = hash_hmac( 'sha256', $timestamp . "\n" . $body, $secret );
+        $verified = hash_equals( $expected, $signature );
+
+        return new WP_REST_Response(
+            array(
+                'ok'       => $verified,
+                'verified' => $verified,
+            ),
+            $verified ? 200 : 401
         );
     }
 
