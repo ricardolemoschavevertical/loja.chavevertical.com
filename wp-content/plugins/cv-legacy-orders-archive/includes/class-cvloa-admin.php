@@ -1065,18 +1065,26 @@ final class CVLOA_Admin {
 
         <?php
         if ( $pages > 1 ) {
+            /*
+             * add_query_arg() codifica o marcador %#% como %25%23%25.
+             * paginate_links() precisa do marcador literal para substituir
+             * corretamente cada número de página.
+             */
+            $pagination_base = add_query_arg(
+                array(
+                    'page'   => 'cv-legacy-orders',
+                    'tab'    => 'archive',
+                    's'      => $search,
+                    'status' => $status,
+                    'paged'  => '%#%',
+                ),
+                admin_url( 'admin.php' )
+            );
+            $pagination_base = str_replace( rawurlencode( '%#%' ), '%#%', $pagination_base );
+
             $pagination = paginate_links(
                 array(
-                    'base'      => add_query_arg(
-                        array(
-                            'page'   => 'cv-legacy-orders',
-                            'tab'    => 'archive',
-                            's'      => $search,
-                            'status' => $status,
-                            'paged'  => '%#%',
-                        ),
-                        admin_url( 'admin.php' )
-                    ),
+                    'base'      => $pagination_base,
                     'format'    => '',
                     'current'   => $paged,
                     'total'     => $pages,
