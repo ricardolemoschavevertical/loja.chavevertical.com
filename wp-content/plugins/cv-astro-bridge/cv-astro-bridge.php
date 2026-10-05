@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CV Astro Bridge
  * Description: Ponte entre WooCommerce, Astro e Cloudflare Worker da Chave Vertical.
- * Version: 0.3.3
+ * Version: 0.3.4
  * Author: Chave Vertical
  * Requires at least: 6.5
  * Requires PHP: 8.0
@@ -12,8 +12,8 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVAB_VERSION', '0.3.3' );
-define( 'CVAB_EXPECTED_WORKER_RELEASE', '2026.10.05.06' );
+define( 'CVAB_VERSION', '0.3.4' );
+define( 'CVAB_EXPECTED_WORKER_RELEASE', '2026.10.05.07' );
 define( 'CVAB_STATUS_OPTION', 'cvab_worker_status' );
 define( 'CVAB_FILE', __FILE__ );
 define( 'CVAB_OPTION', 'cvab_settings' );
@@ -487,6 +487,16 @@ final class CV_Astro_Bridge {
 
         register_rest_route(
             'cv-astro/v1',
+            '/brand-catalog/(?P<slug>[a-zA-Z0-9\-_]+)',
+            array(
+                'methods'             => WP_REST_Server::READABLE,
+                'permission_callback' => '__return_true',
+                'callback'            => array( $this, 'rest_brand_catalog' ),
+            )
+        );
+
+        register_rest_route(
+            'cv-astro/v1',
             '/brands-directory',
             array(
                 'methods'             => WP_REST_Server::READABLE,
@@ -670,6 +680,168 @@ final class CV_Astro_Bridge {
                     array( 'icon' => 'headset', 'title' => 'Apoio especializado', 'subtitle' => 'Comercial, técnico e pós-venda' ),
                     array( 'icon' => 'cart', 'title' => 'Mais de 30.000 referências', 'subtitle' => 'Máquinas, ferramentas e consumíveis' ),
                 ),
+            )
+        );
+    }
+
+    public function rest_brand_catalog( WP_REST_Request $request ) {
+        $brand_slug = sanitize_title( (string) $request['slug'] );
+        $brand      = get_term_by( 'slug', $brand_slug, 'product_brand' );
+
+        if ( ! $brand instanceof WP_Term ) {
+            return new WP_Error( 'cvab_brand_not_found', 'Marca não encontrada.', array( 'status' => 404 ) );
+        }
+
+        $selected_category = null;
+        $selected_slug     = sanitize_title( (string) $request->get_param( 'categoria' ) );
+
+        if ( $selected_slug ) {
+            $candidate = get_term_by( 'slug', $selected_slug, 'product_cat' );
+            if ( $candidate instanceof WP_Term ) {
+                $selected_category = $candidate;
+            }
+        }
+
+        $min_price = max( 0, (float) wc_format_decimal( (string) $request->get_param( 'min_price' ) ) );
+        $max_price = max( 0, (float) wc_format_decimal( (string) $request->get_param( 'max_price' ) ) );
+
+        $category_facets = function_exists( 'cvl_brand_archive_category_facets' )
+            ? cvl_brand_archive_category_facets( (int) $brand->term_id, $min_price, $max_price )
+            : array();
+
+        $category_tree = function_exists( 'cvl_brand_archive_category_tree' )
+            ? cvl_brand_archive_category_tree( $category_facets )
+            : array();
+
+        $price_bounds = function_exists( 'cvl_brand_archive_price_bounds' )
+            ? cvl_brand_archive_price_bounds( (int) $brand->term_id, $selected_category )
+            : array( 0.0, 0.0 );
+
+        $tax_query = array(
+            array(
+                'taxonomy' => 'product_brand',
+                'field'    => 'term_id',
+                'terms'    => array( (int) $brand->term_id ),
+                'operator' => 'IN',
+            ),
+        );
+
+        if ( $selected_category instanceof WP_Term ) {
+            $tax_query[] = array(
+                'taxonomy'         => 'product_cat',
+                'field'            => 'term_id',
+                'terms'            => array( (int) $selected_category->term_id ),
+                'include_children' => true,
+                'operator'         => 'IN',
+            );
+        }
+
+        if ( function_exists( 'wc_get_product_visibility_term_ids' ) ) {
+            $visibility_ids = wc_get_product_visibility_term_ids();
+            $excluded       = array();
+
+            if ( ! empty( $visibility_ids['exclude-from-catalog'] ) ) {
+                $excluded[] = (int) $visibility_ids['exclude-from-catalog'];
+            }
+
+            if (
+                'yes' === get_option( 'woocommerce_hide_out_of_stock_items' )
+                && ! empty( $visibility_ids['outofstock'] )
+            ) {
+                $excluded[] = (int) $visibility_ids['outofstock'];
+            }
+
+            if ( $excluded ) {
+                $tax_query[] = array(
+                    'taxonomy' => 'product_visibility',
+                    'field'    => 'term_id',
+                    'terms'    => $excluded,
+                    'operator' => 'NOT IN',
+                );
+            }
+        }
+
+        $meta_query = array();
+
+        if ( $min_price > 0 || $max_price > 0 ) {
+            $price_rule = array(
+                'key'  => '_price',
+                'type' => 'NUMERIC',
+            );
+
+            if ( $min_price > 0 && $max_price > 0 ) {
+                $price_rule['value']   = array( $min_price, $max_price );
+                $price_rule['compare'] = 'BETWEEN';
+            } elseif ( $min_price > 0 ) {
+                $price_rule['value']   = $min_price;
+                $price_rule['compare'] = '>=';
+            } else {
+                $price_rule['value']   = $max_price;
+                $price_rule['compare'] = '<=';
+            }
+
+            $meta_query[] = $price_rule;
+        }
+
+        $page = max( 1, absint( $request->get_param( 'cvl_page' ) ?: $request->get_param( 'page' ) ) );
+
+        $catalog_query = new WP_Query(
+            array(
+                'post_type'           => 'product',
+                'post_status'         => 'publish',
+                'posts_per_page'      => 24,
+                'paged'               => $page,
+                'ignore_sticky_posts' => true,
+                'no_found_rows'       => false,
+                'tax_query'           => $tax_query,
+                'meta_query'          => $meta_query,
+                'orderby'             => array(
+                    'menu_order' => 'ASC',
+                    'date'       => 'DESC',
+                ),
+            )
+        );
+
+        $products = array();
+
+        foreach ( $catalog_query->posts as $post ) {
+            $product = wc_get_product( $post->ID );
+            if ( $product instanceof WC_Product ) {
+                $products[] = $this->category_product_payload( $product );
+            }
+        }
+
+        $thumbnail_id = absint( get_term_meta( $brand->term_id, 'thumbnail_id', true ) );
+        $ancestor_ids = $selected_category instanceof WP_Term
+            ? array_map( 'absint', get_ancestors( (int) $selected_category->term_id, 'product_cat', 'taxonomy' ) )
+            : array();
+
+        return rest_ensure_response(
+            array(
+                'ok'                  => true,
+                'source'              => 'woocommerce-brand-catalog',
+                'brand'               => array(
+                    'id'    => (int) $brand->term_id,
+                    'name'  => $brand->name,
+                    'slug'  => $brand->slug,
+                    'count' => (int) $brand->count,
+                    'logo'  => $thumbnail_id ? ( wp_get_attachment_image_url( $thumbnail_id, 'medium' ) ?: '' ) : '',
+                ),
+                'selected_category'   => $selected_category instanceof WP_Term ? $selected_category->slug : '',
+                'selected_category_id'=> $selected_category instanceof WP_Term ? (int) $selected_category->term_id : 0,
+                'selected_ancestors'  => $ancestor_ids,
+                'categories'          => array_values( $category_tree ),
+                'price'               => array(
+                    'min'   => $min_price,
+                    'max'   => $max_price,
+                    'floor' => (float) ( $price_bounds[0] ?? 0 ),
+                    'ceil'  => (float) ( $price_bounds[1] ?? 0 ),
+                ),
+                'products'            => $products,
+                'total'               => (int) $catalog_query->found_posts,
+                'page'                => $page,
+                'total_pages'         => max( 1, (int) $catalog_query->max_num_pages ),
+                'per_page'            => 24,
             )
         );
     }
