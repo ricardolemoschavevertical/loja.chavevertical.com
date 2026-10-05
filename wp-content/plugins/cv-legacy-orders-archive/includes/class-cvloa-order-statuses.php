@@ -3,6 +3,10 @@ defined( 'ABSPATH' ) || exit;
 
 final class CVLOA_Order_Statuses {
     public static function init(): void {
+        if ( class_exists( 'CV_Core_Order_History' ) ) {
+            CV_Core_Order_History::merge_permanent_statuses( self::cached_statuses() );
+        }
+
         add_action( 'init', array( __CLASS__, 'register_cached_statuses' ), 40 );
         add_filter( 'wc_order_statuses', array( __CLASS__, 'add_cached_statuses_to_woocommerce' ), 40 );
     }
