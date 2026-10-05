@@ -1,0 +1,43 @@
+name: Ensure Favoritos Page
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ops/ensure-favoritos-page.php"
+      - "wp-content/themes/chavevertical-lite/page-favoritos.php"
+      - "wp-content/themes/chavevertical-lite/functions.php"
+      - ".github/workflows/ensure-favoritos-page.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ensure-favoritos-page
+  cancel-in-progress: false
+
+jobs:
+  ensure:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Validate PHP
+        shell: bash
+        run: |
+          php -l ops/ensure-favoritos-page.php
+          php -l wp-content/themes/chavevertical-lite/page-favoritos.php
+          php -l wp-content/themes/chavevertical-lite/functions.php
+
+      - name: Deploy theme
+        shell: bash
+        run: bash ops/deploy-theme.sh
+
+      - name: Create or update Favoritos page
+        shell: bash
+        run: php ops/ensure-favoritos-page.php
