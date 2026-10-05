@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CV Astro Bridge
  * Description: Ponte entre WooCommerce, Astro e Cloudflare Worker da Chave Vertical.
- * Version: 0.1.0
+ * Version: 0.2.0
  * Author: Chave Vertical
  * Requires at least: 6.5
  * Requires PHP: 8.0
@@ -12,7 +12,9 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVAB_VERSION', '0.1.0' );
+define( 'CVAB_VERSION', '0.2.0' );
+define( 'CVAB_EXPECTED_WORKER_RELEASE', '2026.10.05.02' );
+define( 'CVAB_STATUS_OPTION', 'cvab_worker_status' );
 define( 'CVAB_FILE', __FILE__ );
 define( 'CVAB_OPTION', 'cvab_settings' );
 
@@ -99,9 +101,17 @@ final class CV_Astro_Bridge {
             wp_die( esc_html__( 'Sem permissões.', 'cv-astro-bridge' ) );
         }
 
-        $settings = $this->settings();
-        $status   = isset( $_GET['cvab_status'] ) ? sanitize_key( wp_unslash( $_GET['cvab_status'] ) ) : '';
-        $message  = isset( $_GET['cvab_message'] ) ? sanitize_text_field( rawurldecode( wp_unslash( $_GET['cvab_message'] ) ) ) : '';
+        $settings      = $this->settings();
+        $worker_status = $this->get_worker_status();
+        $status        = isset( $_GET['cvab_status'] ) ? sanitize_key( wp_unslash( $_GET['cvab_status'] ) ) : '';
+        $message       = isset( $_GET['cvab_message'] ) ? sanitize_text_field( rawurldecode( wp_unslash( $_GET['cvab_message'] ) ) ) : '';
+
+        $release_expected  = CVAB_EXPECTED_WORKER_RELEASE;
+        $release_published = (string) ( $worker_status['release'] ?? '' );
+        $worker_online     = ! empty( $worker_status['online'] );
+        $is_published      = $worker_online && '' !== $release_published && hash_equals( $release_expected, $release_published );
+        $deploy_label      = ! $worker_online ? 'INDISPONÍVEL' : ( $is_published ? 'PUBLICADO' : 'NÃO PUBLICADO' );
+        $deploy_class      = ! $worker_online ? 'is-error' : ( $is_published ? 'is-ok' : 'is-warning' );
         ?>
         <div class="wrap">
             <h1>CHAVE VERTICAL — Astro / Worker <small style="font-size:13px;color:#646970">v<?php echo esc_html( CVAB_VERSION ); ?></small></h1>
@@ -117,6 +127,12 @@ final class CV_Astro_Bridge {
                 .cvab-card h2{margin-top:0}.cvab-actions{display:flex;gap:8px;flex-wrap:wrap}
                 .cvab-status-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
                 .cvab-stat{padding:12px;background:#f6f7f7;border-radius:8px}.cvab-stat strong{display:block;margin-bottom:3px}
+                .cvab-deploy-status{display:flex;align-items:center;gap:8px;margin:0 0 16px;font-size:15px;font-weight:800}
+                .cvab-deploy-dot{width:11px;height:11px;border-radius:50%;background:#8c8f94}
+                .cvab-deploy-status.is-ok{color:#008a20}.cvab-deploy-status.is-ok .cvab-deploy-dot{background:#00a32a}
+                .cvab-deploy-status.is-warning{color:#996800}.cvab-deploy-status.is-warning .cvab-deploy-dot{background:#dba617}
+                .cvab-deploy-status.is-error{color:#b32d2e}.cvab-deploy-status.is-error .cvab-deploy-dot{background:#d63638}
+                .cvab-release-code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px}
                 @media(max-width:900px){.cvab-grid{grid-template-columns:1fr}}
             </style>
 
@@ -173,13 +189,26 @@ final class CV_Astro_Bridge {
 
                 <div>
                     <div class="cvab-card">
-                        <h2>Estado esperado</h2>
+                        <h2>Publicação Cloudflare</h2>
+                        <p class="cvab-deploy-status <?php echo esc_attr( $deploy_class ); ?>">
+                            <span class="cvab-deploy-dot" aria-hidden="true"></span>
+                            <?php echo esc_html( $deploy_label ); ?>
+                        </p>
+
                         <div class="cvab-status-grid">
-                            <div class="cvab-stat"><strong>Backend</strong><span>loja.chavevertical.com</span></div>
-                            <div class="cvab-stat"><strong>Frontend</strong><span>astro.chavevertical.com</span></div>
-                            <div class="cvab-stat"><strong>D1</strong><span>Desativado</span></div>
-                            <div class="cvab-stat"><strong>Fonte</strong><span>WooCommerce</span></div>
+                            <div class="cvab-stat"><strong>Worker</strong><span><?php echo esc_html( $worker_online ? 'ONLINE' : 'OFFLINE' ); ?></span></div>
+                            <div class="cvab-stat"><strong>Latência</strong><span><?php echo isset( $worker_status['latency_ms'] ) ? esc_html( (string) $worker_status['latency_ms'] . ' ms' ) : '—'; ?></span></div>
+                            <div class="cvab-stat"><strong>Versão esperada</strong><span class="cvab-release-code"><?php echo esc_html( $release_expected ); ?></span></div>
+                            <div class="cvab-stat"><strong>Versão publicada</strong><span class="cvab-release-code"><?php echo esc_html( $release_published ?: '—' ); ?></span></div>
+                            <div class="cvab-stat"><strong>Backend</strong><span><?php echo esc_html( (string) ( $worker_status['origin'] ?? 'loja.chavevertical.com' ) ); ?></span></div>
+                            <div class="cvab-stat"><strong>Fonte</strong><span><?php echo esc_html( (string) ( $worker_status['source'] ?? 'WooCommerce' ) ); ?></span></div>
+                            <div class="cvab-stat"><strong>D1</strong><span><?php echo ! empty( $worker_status['d1'] ) ? 'Ativo' : 'Desativado'; ?></span></div>
+                            <div class="cvab-stat"><strong>Última verificação</strong><span><?php echo ! empty( $worker_status['checked_at'] ) ? esc_html( wp_date( 'd/m/Y H:i:s', (int) $worker_status['checked_at'] ) ) : 'Nunca'; ?></span></div>
                         </div>
+
+                        <?php if ( $worker_online && ! $is_published ) : ?>
+                            <p style="margin-top:14px"><strong>Atenção:</strong> o Worker responde, mas ainda não está a servir a versão esperada. O deploy Cloudflare pode ter falhado ou ainda não ter sido aplicado.</p>
+                        <?php endif; ?>
                     </div>
 
                     <div class="cvab-card">
@@ -221,30 +250,98 @@ final class CV_Astro_Bridge {
     public function test_worker(): void {
         $this->guard_admin( 'cvab_test_worker' );
 
-        $started  = microtime( true );
+        $status = $this->get_worker_status( true );
+
+        if ( empty( $status['online'] ) ) {
+            $message = ! empty( $status['error'] )
+                ? 'Worker indisponível: ' . (string) $status['error']
+                : 'Worker indisponível.';
+            $this->redirect_admin( 'error', $message );
+        }
+
+        $published = (string) ( $status['release'] ?? '' );
+        $ms        = (int) ( $status['latency_ms'] ?? 0 );
+
+        if ( '' === $published || ! hash_equals( CVAB_EXPECTED_WORKER_RELEASE, $published ) ) {
+            $this->redirect_admin(
+                'error',
+                sprintf(
+                    'Worker online em %d ms, mas a versão publicada é %s e a esperada é %s.',
+                    $ms,
+                    $published ?: 'desconhecida',
+                    CVAB_EXPECTED_WORKER_RELEASE
+                )
+            );
+        }
+
+        $this->redirect_admin(
+            'ok',
+            sprintf(
+                'PUBLICADO. Worker %s online em %d ms e ligado ao WooCommerce.',
+                $published,
+                $ms
+            )
+        );
+    }
+
+    private function get_worker_status( bool $force = false ): array {
+        $cached = (array) get_option( CVAB_STATUS_OPTION, array() );
+
+        if (
+            ! $force
+            && ! empty( $cached['checked_at'] )
+            && ( time() - (int) $cached['checked_at'] ) < 60
+        ) {
+            return $cached;
+        }
+
+        $started = microtime( true );
+        $url     = untrailingslashit( (string) $this->settings()['worker_url'] ) . '/api/cv-admin/health';
+
         $response = wp_remote_get(
-            $this->settings()['worker_url'] . '/api/cv-admin/health',
+            $url,
             array(
-                'timeout'     => 15,
+                'timeout'     => 8,
                 'redirection' => 2,
-                'headers'     => array( 'Accept' => 'application/json' ),
+                'headers'     => array(
+                    'Accept'     => 'application/json',
+                    'Cache-Control' => 'no-cache',
+                ),
             )
         );
 
+        $result = array(
+            'online'     => false,
+            'checked_at' => time(),
+            'latency_ms' => (int) round( ( microtime( true ) - $started ) * 1000 ),
+        );
+
         if ( is_wp_error( $response ) ) {
-            $this->redirect_admin( 'error', 'Worker indisponível: ' . $response->get_error_message() );
+            $result['error'] = $response->get_error_message();
+            update_option( CVAB_STATUS_OPTION, $result, false );
+            return $result;
         }
 
-        $code = wp_remote_retrieve_response_code( $response );
+        $code = (int) wp_remote_retrieve_response_code( $response );
         $body = json_decode( wp_remote_retrieve_body( $response ), true );
-        $ms   = (int) round( ( microtime( true ) - $started ) * 1000 );
 
-        if ( 200 !== $code || empty( $body['ok'] ) ) {
-            $this->redirect_admin( 'error', 'O Worker respondeu HTTP ' . $code . '.' );
+        $result['http_status'] = $code;
+
+        if ( 200 === $code && is_array( $body ) && ! empty( $body['ok'] ) ) {
+            $result['online']        = true;
+            $result['release']       = sanitize_text_field( (string) ( $body['release'] ?? '' ) );
+            $result['source']        = sanitize_text_field( (string) ( $body['source'] ?? '' ) );
+            $result['origin']        = esc_url_raw( (string) ( $body['origin'] ?? '' ) );
+            $result['origin_status'] = absint( $body['origin_status'] ?? 0 );
+            $result['d1']            = ! empty( $body['d1'] );
+            $result['features']      = is_array( $body['features'] ?? null ) ? $body['features'] : array();
+        } else {
+            $result['error'] = 'HTTP ' . $code;
         }
 
-        $source = isset( $body['source'] ) ? (string) $body['source'] : 'desconhecida';
-        $this->redirect_admin( 'ok', sprintf( 'Worker OK em %d ms. Fonte: %s.', $ms, $source ) );
+        update_option( CVAB_STATUS_OPTION, $result, false );
+
+        return $result;
     }
 
     public function purge_product_action(): void {
