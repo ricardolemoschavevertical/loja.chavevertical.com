@@ -19,6 +19,21 @@ if ( post_password_required() ) {
     return;
 }
 ?>
+<?php if ( function_exists( 'woocommerce_breadcrumb' ) ) : ?>
+    <?php
+    woocommerce_breadcrumb(
+        array(
+            'delimiter'   => '<span class="cvl-product-breadcrumb-sep" aria-hidden="true">›</span>',
+            'wrap_before' => '<nav class="cvl-product-breadcrumb" aria-label="' . esc_attr__( 'Navegação estrutural', 'chavevertical-lite' ) . '">',
+            'wrap_after'  => '</nav>',
+            'before'      => '<span class="cvl-product-breadcrumb-current">',
+            'after'       => '</span>',
+            'home'        => __( 'Início', 'chavevertical-lite' ),
+        )
+    );
+    ?>
+<?php endif; ?>
+
 <div id="product-<?php the_ID(); ?>" <?php wc_product_class( 'cvl-product-detail', $product ); ?>>
     <div class="cvl-product-detail-grid">
         <aside class="cvl-product-gallery-wrap">
