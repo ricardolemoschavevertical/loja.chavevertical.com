@@ -486,7 +486,7 @@ final class CV_Astro_Bridge {
                 'on_sale'           => $product->is_on_sale(),
                 'stock_status'      => $product->get_stock_status(),
                 'manage_stock'      => $product->managing_stock(),
-                'stock_quantity'    => $product->get_stock_quantity(),
+                'stock_quantity'    => in_array( (int) $product->get_stock_quantity(), array( 1, 2 ), true ) ? (int) $product->get_stock_quantity() : null,
                 'backorders'        => $product->get_backorders(),
                 'description'       => $product->get_description(),
                 'short_description' => $product->get_short_description(),
