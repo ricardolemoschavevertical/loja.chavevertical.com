@@ -46,6 +46,16 @@ final class CVLOA_Current_Order_Archive {
                 content:"\f480"!important;
             }
         </style>
+        <script>
+        document.addEventListener('click', function(event) {
+            const button = event.target.closest('.wc-action-button-cvloa-archive');
+            if (!button) return;
+
+            if (!window.confirm('Arquivar esta encomenda? A cópia será verificada e, se estiver correta, a encomenda será removida da lista atual e passará para Encomendas antigas.')) {
+                event.preventDefault();
+            }
+        });
+        </script>
         <?php
     }
 
