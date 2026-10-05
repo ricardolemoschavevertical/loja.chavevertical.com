@@ -31,6 +31,7 @@ final class CVLOA_Customer_Archive {
                     'version'    => 1,
                     'updated_at' => gmdate( 'c' ),
                     'customers'  => array(),
+                    'email_map'  => array(),
                 )
             );
 
@@ -59,6 +60,7 @@ final class CVLOA_Customer_Archive {
                 'version'    => 1,
                 'updated_at' => '',
                 'customers'  => array(),
+                'email_map'  => array(),
                 '_error'     => $ready->get_error_message(),
             );
         }
@@ -69,6 +71,7 @@ final class CVLOA_Customer_Archive {
                 'version'    => 1,
                 'updated_at' => '',
                 'customers'  => array(),
+                'email_map'  => array(),
                 '_error'     => 'Não foi possível ler o índice local dos clientes.',
             );
         }
@@ -83,6 +86,7 @@ final class CVLOA_Customer_Archive {
                 'version'    => 1,
                 'updated_at' => '',
                 'customers'  => array(),
+                'email_map'  => array(),
                 '_error'     => 'O índice local dos clientes está inválido.',
             );
         }
@@ -90,6 +94,21 @@ final class CVLOA_Customer_Archive {
         $decoded['customers'] = isset( $decoded['customers'] ) && is_array( $decoded['customers'] )
             ? $decoded['customers']
             : array();
+
+        $decoded['email_map'] = isset( $decoded['email_map'] ) && is_array( $decoded['email_map'] )
+            ? $decoded['email_map']
+            : array();
+
+        if ( ! $decoded['email_map'] && $decoded['customers'] ) {
+            foreach ( $decoded['customers'] as $archive_key => $summary ) {
+                $summary = (array) $summary;
+                $email   = strtolower( sanitize_email( (string) ( $summary['email'] ?? '' ) ) );
+
+                if ( '' !== $email ) {
+                    $decoded['email_map'][ $email ] = sanitize_key( (string) $archive_key );
+                }
+            }
+        }
 
         return $decoded;
     }
@@ -201,7 +220,31 @@ final class CVLOA_Customer_Archive {
                     continue;
                 }
 
-                $index['customers'][ $key ] = self::summarize_customer( $customer, $key, (int) $offset, (int) $bytes );
+                $previous_email = '';
+                if ( $existing ) {
+                    $previous_email = strtolower(
+                        sanitize_email(
+                            (string) ( $index['customers'][ $key ]['email'] ?? '' )
+                        )
+                    );
+                }
+
+                $summary = self::summarize_customer( $customer, $key, (int) $offset, (int) $bytes );
+                $index['customers'][ $key ] = $summary;
+
+                if ( ! isset( $index['email_map'] ) || ! is_array( $index['email_map'] ) ) {
+                    $index['email_map'] = array();
+                }
+
+                $new_email = strtolower( sanitize_email( (string) ( $summary['email'] ?? '' ) ) );
+
+                if ( '' !== $previous_email && $previous_email !== $new_email && ( $index['email_map'][ $previous_email ] ?? '' ) === $key ) {
+                    unset( $index['email_map'][ $previous_email ] );
+                }
+
+                if ( '' !== $new_email ) {
+                    $index['email_map'][ $new_email ] = $key;
+                }
 
                 if ( $existing ) {
                     $result['updated']++;
@@ -276,6 +319,29 @@ final class CVLOA_Customer_Archive {
             'archived_at'       => gmdate( 'c' ),
             'search'            => strtolower( remove_accents( wp_strip_all_tags( $search ) ) ),
         );
+    }
+
+    public static function email_map(): array {
+        $index = self::load_index();
+
+        return ! empty( $index['email_map'] ) && is_array( $index['email_map'] )
+            ? $index['email_map']
+            : array();
+    }
+
+    public static function archive_key_by_email( string $email ): string {
+        $email = strtolower( sanitize_email( $email ) );
+        if ( '' === $email ) {
+            return '';
+        }
+
+        $map = self::email_map();
+        return sanitize_key( (string) ( $map[ $email ] ?? '' ) );
+    }
+
+    public static function find_by_email( string $email ): ?array {
+        $key = self::archive_key_by_email( $email );
+        return '' === $key ? null : self::read_customer( $key );
     }
 
     public static function read_customer( $customer_key ): ?array {
