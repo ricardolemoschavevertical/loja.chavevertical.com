@@ -1,0 +1,80 @@
+name: Package and Deploy GitHub Deploy Monitor
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "wp-content/plugins/cv-github-deploy-monitor/**"
+      - ".github/workflows/cv-github-deploy-monitor.yml"
+      - "ops/deploy-cv-github-deploy-monitor.sh"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cv-github-deploy-monitor
+  cancel-in-progress: true
+
+jobs:
+  package:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate plugin
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLUGIN="wp-content/plugins/cv-github-deploy-monitor"
+          test -f "$PLUGIN/cv-github-deploy-monitor.php"
+          find "$PLUGIN" -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          bash -n ops/deploy-cv-github-deploy-monitor.sh
+
+      - name: Build installable ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd wp-content/plugins
+          zip -qr cv-github-deploy-monitor.zip cv-github-deploy-monitor
+          unzip -t cv-github-deploy-monitor.zip
+
+      - name: Upload plugin ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: cv-github-deploy-monitor
+          path: wp-content/plugins/cv-github-deploy-monitor.zip
+          if-no-files-found: error
+          retention-days: 30
+
+  deploy:
+    needs: package
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Download validated plugin ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: cv-github-deploy-monitor
+          path: ${{ runner.temp }}/cv-github-deploy-monitor-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Deploy and activate plugin
+        shell: bash
+        env:
+          PLUGIN_ZIP: ${{ runner.temp }}/cv-github-deploy-monitor-${{ github.run_id }}-${{ github.run_attempt }}/cv-github-deploy-monitor.zip
+        run: bash ops/deploy-cv-github-deploy-monitor.sh "$PLUGIN_ZIP"
+
+      - name: Verify plugin activation
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_ROOT=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          wp --path="$WP_ROOT" plugin is-active cv-github-deploy-monitor
+          wp --path="$WP_ROOT" eval 'echo class_exists("CV_GitHub_Deploy_Monitor") ? "ready" : "missing";'
