@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CV Astro Bridge
  * Description: Ponte entre WooCommerce, Astro e Cloudflare Worker da Chave Vertical.
- * Version: 0.3.2
+ * Version: 0.3.3
  * Author: Chave Vertical
  * Requires at least: 6.5
  * Requires PHP: 8.0
@@ -12,8 +12,8 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVAB_VERSION', '0.3.2' );
-define( 'CVAB_EXPECTED_WORKER_RELEASE', '2026.10.05.05' );
+define( 'CVAB_VERSION', '0.3.3' );
+define( 'CVAB_EXPECTED_WORKER_RELEASE', '2026.10.05.06' );
 define( 'CVAB_STATUS_OPTION', 'cvab_worker_status' );
 define( 'CVAB_FILE', __FILE__ );
 define( 'CVAB_OPTION', 'cvab_settings' );
@@ -487,6 +487,16 @@ final class CV_Astro_Bridge {
 
         register_rest_route(
             'cv-astro/v1',
+            '/brands-directory',
+            array(
+                'methods'             => WP_REST_Server::READABLE,
+                'permission_callback' => '__return_true',
+                'callback'            => array( $this, 'rest_brands_directory' ),
+            )
+        );
+
+        register_rest_route(
+            'cv-astro/v1',
             '/shop-catalog',
             array(
                 'methods'             => WP_REST_Server::READABLE,
@@ -660,6 +670,84 @@ final class CV_Astro_Bridge {
                     array( 'icon' => 'headset', 'title' => 'Apoio especializado', 'subtitle' => 'Comercial, técnico e pós-venda' ),
                     array( 'icon' => 'cart', 'title' => 'Mais de 30.000 referências', 'subtitle' => 'Máquinas, ferramentas e consumíveis' ),
                 ),
+            )
+        );
+    }
+
+    public function rest_brands_directory() {
+        if ( ! taxonomy_exists( 'product_brand' ) ) {
+            return new WP_Error( 'cvab_brands_unavailable', 'Marcas indisponíveis.', array( 'status' => 503 ) );
+        }
+
+        $terms = get_terms(
+            array(
+                'taxonomy'   => 'product_brand',
+                'hide_empty' => false,
+                'number'     => 0,
+                'orderby'    => 'name',
+                'order'      => 'ASC',
+            )
+        );
+
+        if ( is_wp_error( $terms ) ) {
+            return $terms;
+        }
+
+        $groups = array();
+
+        foreach ( $terms as $term ) {
+            if ( ! $term instanceof WP_Term ) {
+                continue;
+            }
+
+            $normalized = remove_accents( $term->name );
+            $letter     = strtoupper( substr( $normalized, 0, 1 ) );
+
+            if ( ! preg_match( '/^[A-Z]$/', $letter ) ) {
+                $letter = '#';
+            }
+
+            if ( ! isset( $groups[ $letter ] ) ) {
+                $groups[ $letter ] = array();
+            }
+
+            $thumbnail_id = absint( get_term_meta( $term->term_id, 'thumbnail_id', true ) );
+
+            $groups[ $letter ][] = array(
+                'id'    => (int) $term->term_id,
+                'name'  => $term->name,
+                'slug'  => $term->slug,
+                'count' => (int) $term->count,
+                'logo'  => $thumbnail_id ? ( wp_get_attachment_image_url( $thumbnail_id, 'medium' ) ?: '' ) : '',
+            );
+        }
+
+        ksort( $groups, SORT_NATURAL );
+
+        if ( isset( $groups['#'] ) ) {
+            $other = $groups['#'];
+            unset( $groups['#'] );
+            $groups['#'] = $other;
+        }
+
+        $payload_groups = array();
+
+        foreach ( $groups as $letter => $brands ) {
+            $payload_groups[] = array(
+                'letter' => $letter,
+                'label'  => '#' === $letter ? '0–9 / Outros' : $letter,
+                'id'     => '#' === $letter ? 'marcas-outros' : 'marcas-' . strtolower( $letter ),
+                'brands' => array_values( $brands ),
+            );
+        }
+
+        return rest_ensure_response(
+            array(
+                'ok'         => true,
+                'source'     => 'woocommerce-product-brand',
+                'updated_at' => current_time( DATE_ATOM, true ),
+                'groups'     => $payload_groups,
+                'total'      => count( $terms ),
             )
         );
     }
