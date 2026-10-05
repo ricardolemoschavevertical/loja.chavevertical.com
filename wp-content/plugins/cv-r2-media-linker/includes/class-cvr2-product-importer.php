@@ -404,6 +404,10 @@ final class CVR2_Product_Importer {
         $product->set_description( wp_kses_post( (string) ( $source['description'] ?? '' ) ) );
         $product->set_short_description( wp_kses_post( (string) ( $source['short_description'] ?? '' ) ) );
 
+        if ( method_exists( $product, 'set_global_unique_id' ) && array_key_exists( 'global_unique_id', $source ) ) {
+            $product->set_global_unique_id( wc_clean( (string) $source['global_unique_id'] ) );
+        }
+
         $sku = wc_clean( (string) ( $source['sku'] ?? '' ) );
         if ( $sku ) {
             try {
@@ -741,6 +745,10 @@ final class CVR2_Product_Importer {
             } catch ( WC_Data_Exception $e ) {
                 // Mantém a variação sem alterar SKU se já estiver atribuído noutro registo.
             }
+        }
+
+        if ( method_exists( $variation, 'set_global_unique_id' ) && array_key_exists( 'global_unique_id', $source ) ) {
+            $variation->set_global_unique_id( wc_clean( (string) $source['global_unique_id'] ) );
         }
 
         $variation->set_regular_price( wc_format_decimal( (string) ( $source['regular_price'] ?? '' ) ) );
