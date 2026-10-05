@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Chave Vertical — GitHub Deploy Monitor
  * Description: Monitoriza GitHub Actions, Cloudflare Pages e checks de deploy dos projetos Chave Vertical diretamente no WordPress.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Chave Vertical
  * Requires at least: 6.0
  * Requires PHP: 7.4
@@ -11,7 +11,7 @@
 defined( 'ABSPATH' ) || exit;
 
 final class CV_GitHub_Deploy_Monitor {
-    const VERSION = '1.0.0';
+    const VERSION = '1.0.1';
     const OPTION_TOKEN = 'cvgdm_github_token';
     const CRON_HOOK = 'cvgdm_refresh_status';
     const CACHE_TTL = 120;
@@ -96,19 +96,15 @@ final class CV_GitHub_Deploy_Monitor {
     private function github_request( $path ) {
         $token = $this->token();
 
-        if ( '' === $token ) {
-            return new WP_Error(
-                'missing_token',
-                __( 'Token GitHub em falta. Configure um token de leitura para consultar repositórios privados.', 'cv-github-deploy-monitor' )
-            );
-        }
-
         $headers = array(
             'Accept'               => 'application/vnd.github+json',
-            'Authorization'        => 'Bearer ' . $token,
             'User-Agent'           => 'ChaveVertical-GitHub-Deploy-Monitor/' . self::VERSION,
             'X-GitHub-Api-Version' => '2022-11-28',
         );
+
+        if ( '' !== $token ) {
+            $headers['Authorization'] = 'Bearer ' . $token;
+        }
 
         $response = wp_remote_get(
             'https://api.github.com' . $path,
@@ -130,6 +126,10 @@ final class CV_GitHub_Deploy_Monitor {
             $message = is_array( $body ) && ! empty( $body['message'] )
                 ? (string) $body['message']
                 : sprintf( 'GitHub API HTTP %d', $code );
+
+            if ( 404 === $code && '' === $token ) {
+                $message = __( 'Repositório privado ou não acessível sem token GitHub.', 'cv-github-deploy-monitor' );
+            }
 
             return new WP_Error( 'github_api_error', $message, array( 'status' => $code ) );
         }
@@ -360,10 +360,6 @@ final class CV_GitHub_Deploy_Monitor {
     }
 
     public function prime_cache() {
-        if ( ! $this->token() ) {
-            return;
-        }
-
         foreach ( $this->repositories() as $repository ) {
             $this->get_repository_status( $repository, true );
         }
@@ -450,13 +446,6 @@ final class CV_GitHub_Deploy_Monitor {
     public function render_dashboard_widget() {
         echo '<div class="cvgdm-dashboard">';
 
-        if ( ! $this->token() ) {
-            echo '<p><strong>Token GitHub em falta.</strong></p>';
-            echo '<p><a href="' . esc_url( admin_url( 'admin.php?page=cv-github-deploy-monitor' ) ) . '">Configurar monitor</a></p>';
-            echo '</div>';
-            return;
-        }
-
         foreach ( $this->repositories() as $repository ) {
             $status = $this->get_repository_status( $repository );
             $state  = $status['ok'] ? $this->display_state( $status['overall'] ) : array( 'Erro', 'failure' );
@@ -501,7 +490,7 @@ final class CV_GitHub_Deploy_Monitor {
         echo '</div>';
 
         if ( ! $has_token ) {
-            echo '<div class="notice notice-warning"><p><strong>É necessário configurar um token GitHub.</strong> Os repositórios monitorizados são privados.</p></div>';
+            echo '<div class="notice notice-warning"><p><strong>Sem token GitHub:</strong> o repositório Woo/Loja pode ser consultado publicamente, mas o repositório Astro é privado e requer um token de leitura.</p></div>';
         }
 
         echo '<div class="cvgdm-grid">';
@@ -561,7 +550,7 @@ final class CV_GitHub_Deploy_Monitor {
             echo '<p><span class="cvgdm-pill cvgdm-success">Configurado via wp-config.php</span></p>';
             echo '<p>Está definida a constante <code>CV_GITHUB_DEPLOY_TOKEN</code>. O token nunca é apresentado pelo plugin.</p>';
         } else {
-            echo '<p>Use um Fine-grained Personal Access Token com acesso apenas de leitura aos dois repositórios e permissões <strong>Actions: Read</strong>, <strong>Checks: Read</strong>, <strong>Contents: Read</strong> e <strong>Metadata: Read</strong>.</p>';
+            echo '<p>O token é opcional para repositórios públicos e necessário para o Astro privado. Use um Fine-grained Personal Access Token com acesso apenas de leitura e permissões <strong>Actions: Read</strong>, <strong>Checks: Read</strong>, <strong>Contents: Read</strong> e <strong>Metadata: Read</strong>.</p>';
             echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" class="cvgdm-token-form">';
             echo '<input type="hidden" name="action" value="cvgdm_save_settings">';
             wp_nonce_field( 'cvgdm_save_settings' );
