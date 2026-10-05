@@ -232,6 +232,18 @@ final class CVLOA_Archive {
                 $order['_cvloa_archive_key'] = $key;
                 $existing = ! empty( $index['orders'][ $key ] );
 
+                // Compatibilidade com importações feitas pela versão inicial,
+                // que indexava a origem remota apenas pelo ID numérico.
+                if (
+                    ! $existing
+                    && 'remote' === sanitize_key( (string) ( $order['_cvloa_origin'] ?? '' ) )
+                    && ! empty( $index['orders'][ (string) $id ] )
+                ) {
+                    $key = (string) $id;
+                    $order['_cvloa_archive_key'] = $key;
+                    $existing = true;
+                }
+
                 if ( $existing && ! $replace_existing ) {
                     $result['ignored']++;
                     continue;
