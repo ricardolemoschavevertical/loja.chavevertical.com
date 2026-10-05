@@ -450,6 +450,133 @@ final class CVLOA_Archive {
         return is_array( $decoded ) ? $decoded : null;
     }
 
+    public static function update_statuses( array $order_keys, string $new_status, int $user_id = 0 ) {
+        $ready = self::ensure_storage();
+        if ( is_wp_error( $ready ) ) {
+            return $ready;
+        }
+
+        $new_status = sanitize_key( preg_replace( '/^wc-/', '', $new_status ) );
+        if ( '' === $new_status ) {
+            return new WP_Error( 'cvloa_invalid_status', 'Estado inválido.' );
+        }
+
+        $keys = array_values(
+            array_unique(
+                array_filter(
+                    array_map(
+                        static fn( $key ): string => sanitize_key( (string) $key ),
+                        $order_keys
+                    )
+                )
+            )
+        );
+
+        if ( ! $keys ) {
+            return new WP_Error( 'cvloa_no_orders_selected', 'Não foram selecionadas encomendas.' );
+        }
+
+        $index = self::load_index();
+        if ( ! empty( $index['_error'] ) ) {
+            return new WP_Error( 'cvloa_index_error', (string) $index['_error'] );
+        }
+
+        $handle = @fopen( self::data_path(), 'rb' );
+        if ( false === $handle ) {
+            return new WP_Error( 'cvloa_data_open_failed', 'Não foi possível abrir o ficheiro local das encomendas.' );
+        }
+
+        $orders  = array();
+        $ignored = 0;
+        $errors  = array();
+
+        try {
+            foreach ( $keys as $key ) {
+                $lookup_key = $key;
+
+                if ( empty( $index['orders'][ $lookup_key ] ) && is_numeric( $lookup_key ) ) {
+                    $legacy_key = (string) absint( $lookup_key );
+                    if ( ! empty( $index['orders'][ $legacy_key ] ) ) {
+                        $lookup_key = $legacy_key;
+                    }
+                }
+
+                if ( empty( $index['orders'][ $lookup_key ] ) ) {
+                    $errors[] = $key . ': encomenda não encontrada no índice.';
+                    continue;
+                }
+
+                $entry  = (array) $index['orders'][ $lookup_key ];
+                $offset = absint( $entry['offset'] ?? 0 );
+                $length = absint( $entry['length'] ?? 0 );
+
+                if ( ! $length || 0 !== fseek( $handle, $offset ) ) {
+                    $errors[] = $key . ': localização inválida no arquivo.';
+                    continue;
+                }
+
+                $raw = fread( $handle, $length );
+                if ( false === $raw || '' === $raw ) {
+                    $errors[] = $key . ': não foi possível ler a encomenda.';
+                    continue;
+                }
+
+                $order = json_decode( trim( $raw ), true );
+                if ( ! is_array( $order ) ) {
+                    $errors[] = $key . ': registo JSON inválido.';
+                    continue;
+                }
+
+                $previous_status = sanitize_key(
+                    preg_replace( '/^wc-/', '', (string) ( $order['status'] ?? '' ) )
+                );
+
+                if ( $previous_status === $new_status ) {
+                    $ignored++;
+                    continue;
+                }
+
+                $history   = isset( $order['_cvloa_archive_status_history'] ) && is_array( $order['_cvloa_archive_status_history'] )
+                    ? $order['_cvloa_archive_status_history']
+                    : array();
+                $history[] = array(
+                    'from'       => $previous_status,
+                    'to'         => $new_status,
+                    'changed_at' => gmdate( 'c' ),
+                    'user_id'    => max( 0, $user_id ),
+                );
+
+                $order['status']                            = $new_status;
+                $order['_cvloa_archive_status_history']     = array_slice( $history, -50 );
+                $order['_cvloa_archive_status_changed_at']  = gmdate( 'c' );
+                $order['_cvloa_archive_status_changed_by']  = max( 0, $user_id );
+
+                $orders[] = $order;
+            }
+        } finally {
+            fclose( $handle );
+        }
+
+        if ( ! $orders ) {
+            return array(
+                'updated' => 0,
+                'ignored' => $ignored,
+                'errors'  => $errors,
+            );
+        }
+
+        $saved = self::archive_batch( $orders, true );
+        if ( is_wp_error( $saved ) ) {
+            return $saved;
+        }
+
+        return array(
+            'updated' => absint( $saved['updated'] ?? 0 ) + absint( $saved['archived'] ?? 0 ),
+            'ignored' => $ignored + absint( $saved['ignored'] ?? 0 ),
+            'errors'  => array_merge( $errors, (array) ( $saved['errors'] ?? array() ) ),
+        );
+    }
+
     public static function stats(): array {
         $index  = self::load_index();
         $orders = (array) ( $index['orders'] ?? array() );
