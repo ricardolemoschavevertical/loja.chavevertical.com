@@ -1,0 +1,34 @@
+name: Ensure Catalogos Page
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ops/ensure-catalogos-page.php"
+      - ".github/workflows/ensure-catalogos-page.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ensure-catalogos-page
+  cancel-in-progress: false
+
+jobs:
+  ensure:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Validate script
+        shell: bash
+        run: php -l ops/ensure-catalogos-page.php
+
+      - name: Create or update Catalogos page
+        shell: bash
+        run: php ops/ensure-catalogos-page.php
