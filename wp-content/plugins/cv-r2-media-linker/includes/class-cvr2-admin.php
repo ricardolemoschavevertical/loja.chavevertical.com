@@ -122,6 +122,10 @@ final class CVR2_Admin {
             $import_mode = 'update_existing';
         }
 
+        $requested_batch_size = absint( wp_unslash( $_POST['batch_size'] ?? 10 ) );
+        $requested_batch_size = max( 1, min( 50, $requested_batch_size ) );
+        $batch_size = 'images_only' === $import_mode ? $requested_batch_size : 1;
+
         $state = array(
             'status'      => 'running',
             'phase'       => 'products',
@@ -136,7 +140,7 @@ final class CVR2_Admin {
             'ignored'     => 0,
             'slug_errors' => 0,
             'batch_index' => 0,
-            'batch_size'  => 'images_only' === $import_mode ? 10 : 1,
+            'batch_size'  => $batch_size,
             'recent_results' => array(),
             'current'     => array(),
             'import_mode' => $import_mode,
@@ -203,12 +207,14 @@ final class CVR2_Admin {
 
         /*
          * Modo normal: 1 produto por pedido.
-         * Modo apenas imagens: 10 produtos por pedido para reduzir drasticamente
-         * o overhead REST/AJAX. O batch_index é gravado depois de CADA produto;
+         * Modo apenas imagens: quantidade escolhida pelo utilizador (1 a 50)
+         * para reduzir o overhead REST/AJAX. O batch_index é gravado depois de CADA produto;
          * se houver timeout, pausa ou falha, o pedido seguinte retoma exatamente
          * no item que faltava sem duplicar contadores nem perder progresso.
          */
-        $per_page    = 'images_only' === $import_mode ? 10 : 1;
+        $per_page    = 'images_only' === $import_mode
+            ? max( 1, min( 50, absint( $state['batch_size'] ?? 10 ) ) )
+            : 1;
         $page        = max( 1, absint( $state['page'] ?? 1 ) );
         $batch_index = 'images_only' === $import_mode ? max( 0, absint( $state['batch_index'] ?? 0 ) ) : 0;
 
@@ -372,11 +378,12 @@ final class CVR2_Admin {
 
         $message = 'images_only' === $import_mode
             ? sprintf(
-                'Imagens verificadas: %1$s / %2$s — atualizadas: %3$s; sem alteração: %4$s.',
+                'Imagens verificadas: %1$s / %2$s — lote: %5$s; atualizadas: %3$s; sem alteração: %4$s.',
                 number_format_i18n( (int) $state['processed'] ),
                 number_format_i18n( (int) $state['total'] ),
                 number_format_i18n( (int) ( $state['images_updated'] ?? 0 ) ),
-                number_format_i18n( (int) ( $state['unchanged'] ?? 0 ) )
+                number_format_i18n( (int) ( $state['unchanged'] ?? 0 ) ),
+                number_format_i18n( (int) ( $state['batch_size'] ?? $per_page ) )
             )
             : sprintf(
                 'Produtos processados: %1$s / %2$s.',
@@ -476,8 +483,11 @@ final class CVR2_Admin {
                 .cvr2-status--error{background:#fcf0f1;color:#8a2424}
                 .cvr2-mode{margin:0 0 16px;padding:14px;border:1px solid #dcdcde;border-radius:8px;background:#f6f7f7}
                 .cvr2-mode label{display:block;margin:8px 0}
+                .cvr2-batch-size{margin-top:14px;padding-top:12px;border-top:1px solid #dcdcde;display:grid;grid-template-columns:180px 100px minmax(0,1fr);gap:10px;align-items:center}
+                .cvr2-batch-size label{margin:0}
+                .cvr2-batch-size input{width:90px}
                 .cvr2-stat strong{display:block;font-size:18px}
-                @media(max-width:900px){.cvr2-grid{grid-template-columns:1fr}.cvr2-row{grid-template-columns:1fr}.cvr2-stats{grid-template-columns:1fr 1fr}}
+                @media(max-width:900px){.cvr2-grid{grid-template-columns:1fr}.cvr2-row{grid-template-columns:1fr}.cvr2-stats{grid-template-columns:1fr 1fr}.cvr2-batch-size{grid-template-columns:1fr}}
             </style>
 
             <div class="cvr2-grid">
@@ -507,7 +517,7 @@ final class CVR2_Admin {
                             <strong>Modo de execução</strong>
                             <div>
                                 <strong>Seguro com checkpoint automático</strong><br>
-                                <small>Modo normal: 1 produto por pedido. Modo “apenas imagens”: até 10 produtos por pedido, mas o estado é gravado depois de cada produto. Se houver timeout, pausa ou falha, a retoma continua no ponto guardado sem perder progresso.</small>
+                                <small>Modo normal: 1 produto por pedido. No modo “apenas imagens” podes escolher entre 1 e 50 produtos por lote. O estado continua a ser gravado depois de cada produto, por isso um timeout não perde o progresso já concluído.</small>
                                 <input type="hidden" name="batch_size" value="1">
                             </div>
                         </div>
@@ -528,6 +538,12 @@ final class CVR2_Admin {
                         <label><input type="radio" name="cvr2_import_mode" value="create_only"> Ignorar produtos existentes e criar apenas produtos novos</label>
                         <label><input type="radio" name="cvr2_import_mode" value="images_only"> Apenas atualizar imagens dos produtos existentes</label>
                         <small>No modo de imagens, só são atualizadas a imagem principal, galeria e imagens das variações existentes. Não altera título, SKU, preço, stock, categorias, atributos, metadados ou relações. Produtos inexistentes são ignorados.</small>
+
+                        <div class="cvr2-batch-size">
+                            <label for="cvr2-batch-size"><strong>Quantidade por lote</strong></label>
+                            <input id="cvr2-batch-size" type="number" min="1" max="50" step="1" value="10" inputmode="numeric">
+                            <small>Usado no modo “apenas imagens”. Recomendado: 10 a 20. Máximo: 50.</small>
+                        </div>
                     </div>
                     <div class="cvr2-actions">
                         <button class="button" type="button" data-cvr2-action="test">1. Testar REST</button>
@@ -731,7 +747,10 @@ final class CVR2_Admin {
                 setBusy(true);
                 try {
                     const mode = document.querySelector('input[name="cvr2_import_mode"]:checked')?.value || 'update_existing';
-                    const data = await call('cvr2_start_import', {import_mode: mode});
+                    const batchInput = document.querySelector('#cvr2-batch-size');
+                    const batchSize = Math.max(1, Math.min(50, Number(batchInput?.value || 10)));
+                    if (batchInput) batchInput.value = String(batchSize);
+                    const data = await call('cvr2_start_import', {import_mode: mode, batch_size: batchSize});
                     renderState(data.state);
                     write(data.message);
                     setBusy(false);
