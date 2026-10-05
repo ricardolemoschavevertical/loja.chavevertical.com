@@ -160,6 +160,11 @@ final class CVR2_Product_Importer {
             $term_id  = $existing instanceof WP_Term ? (int) $existing->term_id : 0;
         }
 
+        if ( ! $term_id ) {
+            $existing = get_term_by( 'name', $name, $taxonomy );
+            $term_id  = $existing instanceof WP_Term ? (int) $existing->term_id : 0;
+        }
+
         $args = array(
             'slug' => $slug,
         );
