@@ -5,6 +5,7 @@ final class CVLOA_Admin {
     public static function init(): void {
         add_action( 'admin_menu', array( __CLASS__, 'menu' ), 99 );
         add_action( 'admin_post_cvloa_save_settings', array( __CLASS__, 'save_settings' ) );
+        add_action( 'admin_post_cvloa_bulk_update_status', array( __CLASS__, 'bulk_update_status' ) );
 
         add_action( 'wp_ajax_cvloa_test_source', array( __CLASS__, 'ajax_test_source' ) );
         add_action( 'wp_ajax_cvloa_pull_statuses', array( __CLASS__, 'ajax_pull_statuses' ) );
@@ -23,6 +24,95 @@ final class CVLOA_Admin {
             'cv-legacy-orders',
             array( __CLASS__, 'render' )
         );
+    }
+
+    public static function bulk_update_status(): void {
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_die( esc_html__( 'Sem permissões.', 'cv-legacy-orders-archive' ) );
+        }
+
+        check_admin_referer( 'cvloa_bulk_update_status' );
+
+        $raw_keys = isset( $_POST['order_keys'] ) && is_array( $_POST['order_keys'] )
+            ? wp_unslash( $_POST['order_keys'] )
+            : array();
+
+        $order_keys = array_values(
+            array_unique(
+                array_filter(
+                    array_map(
+                        static fn( $key ): string => sanitize_key( (string) $key ),
+                        $raw_keys
+                    )
+                )
+            )
+        );
+
+        $new_status = sanitize_key(
+            preg_replace(
+                '/^wc-/',
+                '',
+                (string) wp_unslash( $_POST['new_status'] ?? '' )
+            )
+        );
+
+        $index            = CVLOA_Archive::load_index();
+        $allowed_statuses = self::available_statuses( $index );
+
+        if ( ! $order_keys ) {
+            self::redirect_archive_notice( 'warning', 'Selecione pelo menos uma encomenda.' );
+        }
+
+        if ( '' === $new_status || ! isset( $allowed_statuses[ $new_status ] ) ) {
+            self::redirect_archive_notice( 'error', 'Selecione um estado válido.' );
+        }
+
+        $result = CVLOA_Archive::update_statuses(
+            $order_keys,
+            $new_status,
+            get_current_user_id()
+        );
+
+        if ( is_wp_error( $result ) ) {
+            self::redirect_archive_notice( 'error', $result->get_error_message() );
+        }
+
+        $updated = absint( $result['updated'] ?? 0 );
+        $ignored = absint( $result['ignored'] ?? 0 );
+        $errors  = count( (array) ( $result['errors'] ?? array() ) );
+
+        $message = sprintf(
+            '%1$d encomenda(s) atualizada(s) para “%2$s”.',
+            $updated,
+            self::status_label( $new_status )
+        );
+
+        if ( $ignored ) {
+            $message .= sprintf( ' %d já tinham esse estado.', $ignored );
+        }
+
+        if ( $errors ) {
+            $message .= sprintf( ' %d não puderam ser atualizadas.', $errors );
+        }
+
+        self::redirect_archive_notice( $errors ? 'warning' : 'success', $message );
+    }
+
+    private static function redirect_archive_notice( string $type, string $message ): void {
+        $type = in_array( $type, array( 'success', 'warning', 'error' ), true ) ? $type : 'warning';
+
+        $url = add_query_arg(
+            array(
+                'page'               => 'cv-legacy-orders',
+                'tab'                => 'archive',
+                'cvloa_bulk_notice'  => $type,
+                'cvloa_bulk_message' => $message,
+            ),
+            admin_url( 'admin.php' )
+        );
+
+        wp_safe_redirect( $url );
+        exit;
     }
 
     public static function save_settings(): void {
@@ -131,6 +221,48 @@ final class CVLOA_Admin {
         return isset( $cache['statuses'] ) && is_array( $cache['statuses'] )
             ? $cache['statuses']
             : array();
+    }
+
+    private static function available_statuses( ?array $index = null ): array {
+        $statuses = array();
+
+        foreach ( (array) wc_get_order_statuses() as $slug => $label ) {
+            $key = sanitize_key( preg_replace( '/^wc-/', '', (string) $slug ) );
+            if ( $key ) {
+                $statuses[ $key ] = (string) $label;
+            }
+        }
+
+        foreach ( self::cached_source_statuses() as $slug => $row ) {
+            $key = sanitize_key( preg_replace( '/^wc-/', '', (string) $slug ) );
+            if ( ! $key ) {
+                continue;
+            }
+
+            $row = (array) $row;
+            $statuses[ $key ] = ! empty( $row['name'] )
+                ? (string) $row['name']
+                : self::status_label( $key );
+        }
+
+        if ( null === $index ) {
+            $index = CVLOA_Archive::load_index();
+        }
+
+        if ( empty( $index['_error'] ) ) {
+            foreach ( (array) ( $index['orders'] ?? array() ) as $row ) {
+                $key = sanitize_key(
+                    preg_replace( '/^wc-/', '', (string) ( $row['status'] ?? '' ) )
+                );
+
+                if ( $key && ! isset( $statuses[ $key ] ) ) {
+                    $statuses[ $key ] = self::status_label( $key );
+                }
+            }
+        }
+
+        asort( $statuses, SORT_NATURAL | SORT_FLAG_CASE );
+        return $statuses;
     }
 
     public static function ajax_pull_statuses(): void {
@@ -450,7 +582,7 @@ final class CVLOA_Admin {
         ?>
         <div class="wrap cvloa-admin">
             <h1>Encomendas antigas</h1>
-            <p>Arquivo histórico local em modo só leitura. Estas encomendas não são criadas nas tabelas de encomendas atuais do WooCommerce.</p>
+            <p>Arquivo histórico local. Os dados comerciais permanecem só de leitura; o estado administrativo pode ser alterado aqui sem criar ou modificar encomendas WooCommerce atuais.</p>
 
             <nav class="nav-tab-wrapper">
                 <a class="nav-tab <?php echo 'archive' === $tab ? 'nav-tab-active' : ''; ?>" href="<?php echo esc_url( add_query_arg( 'tab', 'archive', $base_url ) ); ?>">Encomendas antigas</a>
@@ -477,6 +609,7 @@ final class CVLOA_Admin {
                 .cvloa-readonly{display:inline-block;padding:5px 9px;border-radius:999px;background:#fff7e6;color:#744b00;font-size:11px;font-weight:800}
                 .cvloa-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.cvloa-detail-card{padding:16px;border:1px solid #dcdcde;border-radius:9px;background:#fff}
                 .cvloa-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0}.cvloa-toolbar input[type=search]{min-width:320px}
+                .cvloa-bulk-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 14px;background:#fff;border:1px solid #dcdcde;border-bottom:0;border-radius:10px 10px 0 0}.cvloa-bulk-toolbar select{min-width:220px}.cvloa-check{width:34px;text-align:center!important}
                 .cvloa-muted{color:#646970}.cvloa-error{color:#b32d2e}.cvloa-path{word-break:break-all;font-family:monospace}
                 @media(max-width:800px){.cvloa-row,.cvloa-detail-grid{grid-template-columns:1fr}.cvloa-toolbar input[type=search]{min-width:0;width:100%}}
             </style>
@@ -944,6 +1077,19 @@ final class CVLOA_Admin {
             return;
         }
 
+        if ( ! empty( $_GET['cvloa_bulk_message'] ) ) {
+            $notice_type = sanitize_key( (string) wp_unslash( $_GET['cvloa_bulk_notice'] ?? 'success' ) );
+            if ( ! in_array( $notice_type, array( 'success', 'warning', 'error' ), true ) ) {
+                $notice_type = 'warning';
+            }
+
+            $notice_message = sanitize_text_field(
+                (string) wp_unslash( $_GET['cvloa_bulk_message'] )
+            );
+
+            echo '<div class="notice notice-' . esc_attr( $notice_type ) . ' is-dismissible"><p>' . esc_html( $notice_message ) . '</p></div>';
+        }
+
         $orders = array_values( (array) ( $index['orders'] ?? array() ) );
         $search = trim( (string) wp_unslash( $_GET['s'] ?? '' ) );
         $status = sanitize_key( (string) wp_unslash( $_GET['status'] ?? '' ) );
@@ -979,14 +1125,7 @@ final class CVLOA_Admin {
             }
         );
 
-        $all_statuses = array_fill_keys( array_keys( self::cached_source_statuses() ), true );
-        foreach ( (array) ( $index['orders'] ?? array() ) as $row ) {
-            $row_status = sanitize_key( preg_replace( '/^wc-/', '', (string) ( $row['status'] ?? '' ) ) );
-            if ( $row_status ) {
-                $all_statuses[ $row_status ] = true;
-            }
-        }
-        ksort( $all_statuses );
+        $all_statuses = self::available_statuses( $index );
 
         $per_page = 50;
         $paged    = max( 1, absint( $_GET['paged'] ?? 1 ) );
@@ -1009,18 +1148,35 @@ final class CVLOA_Admin {
             <input type="search" name="s" value="<?php echo esc_attr( $search ); ?>" placeholder="Nº encomenda, cliente, empresa, email, telefone, produto ou SKU">
             <select name="status">
                 <option value="">Todos os estados</option>
-                <?php foreach ( array_keys( $all_statuses ) as $order_status ) : ?>
-                    <option value="<?php echo esc_attr( $order_status ); ?>" <?php selected( $status, $order_status ); ?>><?php echo esc_html( self::status_label( $order_status ) ); ?></option>
+                <?php foreach ( $all_statuses as $order_status => $order_status_label ) : ?>
+                    <option value="<?php echo esc_attr( $order_status ); ?>" <?php selected( $status, $order_status ); ?>><?php echo esc_html( $order_status_label ); ?></option>
                 <?php endforeach; ?>
             </select>
             <button class="button">Pesquisar</button>
             <a class="button" href="<?php echo esc_url( add_query_arg( array( 'page' => 'cv-legacy-orders', 'tab' => 'archive' ), admin_url( 'admin.php' ) ) ); ?>">Limpar</a>
         </form>
 
-        <div class="cvloa-card" style="padding:0;overflow:auto">
+        <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" onsubmit="return window.confirm('Alterar o estado das encomendas selecionadas apenas no arquivo histórico?');">
+            <input type="hidden" name="action" value="cvloa_bulk_update_status">
+            <?php wp_nonce_field( 'cvloa_bulk_update_status' ); ?>
+
+            <div class="cvloa-bulk-toolbar">
+                <strong>Alterar estado em massa:</strong>
+                <select name="new_status" required>
+                    <option value="">Selecionar novo estado…</option>
+                    <?php foreach ( $all_statuses as $order_status => $order_status_label ) : ?>
+                        <option value="<?php echo esc_attr( $order_status ); ?>"><?php echo esc_html( $order_status_label ); ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <button class="button button-primary" type="submit">Aplicar às selecionadas</button>
+                <span class="cvloa-muted">Apenas altera o arquivo histórico; não envia emails nem altera stock.</span>
+            </div>
+
+            <div class="cvloa-card" style="padding:0;overflow:auto;margin-top:0;border-radius:0 0 10px 10px">
             <table class="cvloa-table">
                 <thead>
                     <tr>
+                        <th class="cvloa-check"><input type="checkbox" data-cvloa-select-all aria-label="Selecionar todas as encomendas desta página"></th>
                         <th>Encomenda</th>
                         <th>Data</th>
                         <th>Cliente / Empresa</th>
@@ -1033,7 +1189,7 @@ final class CVLOA_Admin {
                 </thead>
                 <tbody>
                 <?php if ( ! $slice ) : ?>
-                    <tr><td colspan="8">Não foram encontradas encomendas no arquivo.</td></tr>
+                    <tr><td colspan="9">Não foram encontradas encomendas no arquivo.</td></tr>
                 <?php else : ?>
                     <?php foreach ( $slice as $row ) : ?>
                         <?php
@@ -1048,6 +1204,7 @@ final class CVLOA_Admin {
                         ?>
                         <?php $status_color_class = self::status_color_class( (string) ( $row['status'] ?? '' ) ); ?>
                         <tr class="<?php echo esc_attr( 'cvloa-order-' . $status_color_class ); ?>">
+                            <td class="cvloa-check"><input type="checkbox" name="order_keys[]" value="<?php echo esc_attr( sanitize_key( (string) ( $row['archive_key'] ?? $row['id'] ?? '' ) ) ); ?>" class="cvloa-order-select" aria-label="Selecionar encomenda <?php echo esc_attr( (string) ( $row['number'] ?: $row['id'] ) ); ?>"></td>
                             <td><a href="<?php echo esc_url( $detail_url ); ?>"><strong>#<?php echo esc_html( (string) ( $row['number'] ?: $row['id'] ) ); ?></strong></a><br><span class="cvloa-muted">ID origem <?php echo esc_html( (string) $row['id'] ); ?></span></td>
                             <td><?php echo esc_html( self::format_date( (string) ( $row['date_created'] ?? '' ) ) ); ?></td>
                             <td><strong><?php echo esc_html( (string) ( $row['billing_name'] ?? '' ) ); ?></strong><?php if ( ! empty( $row['billing_company'] ) ) : ?><br><?php echo esc_html( (string) $row['billing_company'] ); ?><?php endif; ?><?php if ( ! empty( $row['billing_email'] ) ) : ?><br><span class="cvloa-muted"><?php echo esc_html( (string) $row['billing_email'] ); ?></span><?php endif; ?></td>
@@ -1061,7 +1218,31 @@ final class CVLOA_Admin {
                 <?php endif; ?>
                 </tbody>
             </table>
-        </div>
+            </div>
+        </form>
+
+        <script>
+        (() => {
+            const selectAll = document.querySelector('[data-cvloa-select-all]');
+            const boxes = Array.from(document.querySelectorAll('.cvloa-order-select'));
+
+            if (!selectAll) return;
+
+            selectAll.addEventListener('change', () => {
+                boxes.forEach((box) => {
+                    box.checked = selectAll.checked;
+                });
+            });
+
+            boxes.forEach((box) => {
+                box.addEventListener('change', () => {
+                    const checked = boxes.filter((item) => item.checked).length;
+                    selectAll.checked = boxes.length > 0 && checked === boxes.length;
+                    selectAll.indeterminate = checked > 0 && checked < boxes.length;
+                });
+            });
+        })();
+        </script>
 
         <?php
         if ( $pages > 1 ) {
@@ -1122,7 +1303,7 @@ final class CVLOA_Admin {
                     <p class="cvloa-muted">ID de origem: <?php echo esc_html( (string) $order_id ); ?> · <?php echo esc_html( self::format_date( (string) ( $order['date_created'] ?? '' ) ) ); ?></p>
                 </div>
                 <?php $status_color_class = self::status_color_class( (string) ( $order['status'] ?? '' ) ); ?>
-                <div><span class="cvloa-readonly">ARQUIVO — SÓ LEITURA</span> <span class="<?php echo esc_attr( 'cvloa-status cvloa-status-' . $status_color_class ); ?>"><?php echo esc_html( self::status_label( (string) ( $order['status'] ?? '' ) ) ); ?></span></div>
+                <div><span class="cvloa-readonly">ARQUIVO — SÓ ESTADO EDITÁVEL</span> <span class="<?php echo esc_attr( 'cvloa-status cvloa-status-' . $status_color_class ); ?>"><?php echo esc_html( self::status_label( (string) ( $order['status'] ?? '' ) ) ); ?></span></div>
             </div>
         </div>
 
