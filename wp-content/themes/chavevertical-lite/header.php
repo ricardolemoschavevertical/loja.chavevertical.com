@@ -112,7 +112,7 @@ defined( 'ABSPATH' ) || exit;
             $cvl_reference_menu = array(
                 array(
                     'label' => 'CATÁLOGOS',
-                    'url'   => 'https://chavevertical.com/catalogos/',
+                    'url'   => home_url( '/catalogos/' ),
                 ),
                 array(
                     'label' => 'MARCAS',
