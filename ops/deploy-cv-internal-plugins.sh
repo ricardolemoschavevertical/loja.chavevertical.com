@@ -112,7 +112,7 @@ echo
 wp --path="$WP_ROOT" eval '$r=CVLOA_Archive::ensure_storage(); if (is_wp_error($r)) { fwrite(STDERR, $r->get_error_message()); exit(1); } $s=CVLOA_Archive::stats(); echo "legacy-orders-storage=" . $s["storage_path"] . ";count=" . $s["count"];'
 echo
 
-for migration in ops/migrations/repair-orders-email-*.php; do
+for migration in ops/migrations/repair-*.php; do
   [[ -f "$migration" ]] || continue
   echo "Running order recovery migration: $migration"
   wp --path="$WP_ROOT" eval-file "$migration"
