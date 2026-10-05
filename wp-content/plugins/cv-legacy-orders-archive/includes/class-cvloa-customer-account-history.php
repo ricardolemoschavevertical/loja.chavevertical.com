@@ -186,6 +186,25 @@ final class CVLOA_Customer_Account_History {
 
         $orders = array();
 
+        $persisted_keys = array_values(
+            array_unique(
+                array_filter(
+                    array_map(
+                        'sanitize_key',
+                        (array) get_user_meta( $user->ID, '_cvloa_historical_order_keys', true )
+                    )
+                )
+            )
+        );
+
+        foreach ( CVLOA_Archive::summaries_by_keys( $persisted_keys ) as $row ) {
+            $row = (array) $row;
+            $key = sanitize_key( (string) ( $row['archive_key'] ?? $row['id'] ?? '' ) );
+            if ( '' !== $key ) {
+                $orders[ $key ] = $row;
+            }
+        }
+
         foreach ( array_unique( array_filter( $emails ) ) as $email ) {
             foreach ( CVLOA_Customer_Identities::orders_for_email( (string) $email ) as $row ) {
                 $row = (array) $row;
@@ -212,6 +231,16 @@ final class CVLOA_Customer_Account_History {
     }
 
     private static function user_owns_order( WP_User $user, string $order_key ): bool {
+        $order_key = sanitize_key( $order_key );
+        $persisted_keys = array_map(
+            'sanitize_key',
+            (array) get_user_meta( $user->ID, '_cvloa_historical_order_keys', true )
+        );
+
+        if ( in_array( $order_key, $persisted_keys, true ) ) {
+            return true;
+        }
+
         $emails = array_merge(
             array( strtolower( sanitize_email( (string) $user->user_email ) ) ),
             (array) get_user_meta( $user->ID, '_cvloa_historical_emails', true )
