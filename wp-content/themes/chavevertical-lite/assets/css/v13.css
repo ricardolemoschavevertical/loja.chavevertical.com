@@ -679,12 +679,14 @@ body.search-results .cvl-search-products li.product-category{display:none!import
 }
 
 
-/* Global 10% side gutters */
-body.cvl-site .cvl-shell{
-  width:80%!important;
-  max-width:none!important;
-  margin-left:auto!important;
-  margin-right:auto!important;
+/* Desktop: 5% side gutters. Tablet/mobile keep their responsive gutters. */
+@media (min-width:1201px){
+  body.cvl-site .cvl-shell{
+    width:90%!important;
+    max-width:none!important;
+    margin-left:auto!important;
+    margin-right:auto!important;
+  }
 }
 
 
