@@ -10,6 +10,7 @@ final class CVLOA_Customer_Admin {
         add_action( 'wp_ajax_cvloa_customer_import_batch', array( __CLASS__, 'ajax_import_batch' ) );
         add_action( 'wp_ajax_cvloa_customer_import_status', array( __CLASS__, 'ajax_import_status' ) );
         add_action( 'wp_ajax_cvloa_customer_reset_import', array( __CLASS__, 'ajax_reset_import' ) );
+        add_action( 'wp_ajax_cvloa_rebuild_customer_identities', array( __CLASS__, 'ajax_rebuild_identities' ) );
     }
 
     public static function menu(): void {
@@ -134,6 +135,33 @@ final class CVLOA_Customer_Admin {
         self::guard_ajax();
         delete_option( CVLOA_CUSTOMER_STATE_OPTION );
         wp_send_json_success( array( 'message' => 'Estado da importação de clientes limpo.' ) );
+    }
+
+    public static function ajax_rebuild_identities(): void {
+        self::guard_ajax();
+        @set_time_limit( 300 );
+
+        $result = CVLOA_Customer_Identities::rebuild();
+
+        if ( is_wp_error( $result ) ) {
+            wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+        }
+
+        $stats      = (array) ( $result['stats'] ?? array() );
+        $guest_sync = (array) ( $result['guest_sync'] ?? array() );
+
+        wp_send_json_success(
+            array(
+                'stats' => CVLOA_Customer_Identities::stats(),
+                'message' => sprintf(
+                    'Identidades reconstruídas: %1$s perfis; %2$s perfis com encomendas de convidado; %3$s encomendas analisadas. Clientes convidados no arquivo: %4$s.',
+                    number_format_i18n( absint( $stats['profiles'] ?? 0 ) ),
+                    number_format_i18n( absint( $stats['guest_profiles'] ?? 0 ) ),
+                    number_format_i18n( absint( $stats['orders_scanned'] ?? 0 ) ),
+                    number_format_i18n( absint( $guest_sync['archived'] ?? 0 ) + absint( $guest_sync['updated'] ?? 0 ) )
+                ),
+            )
+        );
     }
 
     public static function ajax_import_batch(): void {
@@ -349,8 +377,9 @@ final class CVLOA_Customer_Admin {
         $slice    = array_slice( $customers, ( $paged - 1 ) * $per_page, $per_page );
         $archived_order_counts = CVLOA_Archive::email_order_counts();
 
-        $stats = CVLOA_Customer_Archive::stats();
-        $state = (array) get_option( CVLOA_CUSTOMER_STATE_OPTION, array() );
+        $stats          = CVLOA_Customer_Archive::stats();
+        $identity_stats = CVLOA_Customer_Identities::stats();
+        $state          = (array) get_option( CVLOA_CUSTOMER_STATE_OPTION, array() );
         $nonce = wp_create_nonce( 'cvloa_customer_import' );
         ?>
         <div class="wrap cvloa-customer-admin">
@@ -414,6 +443,29 @@ final class CVLOA_Customer_Admin {
 
                 <p class="description">Dados: <span class="cvloa-path"><?php echo esc_html( CVLOA_Customer_Archive::data_path() ); ?></span> — <?php echo esc_html( size_format( $stats['data_bytes'], 1 ) ); ?></p>
                 <p class="description">Índice: <span class="cvloa-path"><?php echo esc_html( CVLOA_Customer_Archive::index_path() ); ?></span> — <?php echo esc_html( size_format( $stats['index_bytes'], 1 ) ); ?></p>
+            </div>
+
+            <div class="cvloa-card">
+                <h2>Clientes convidados e deduplicação</h2>
+                <p>Analisa as encomendas arquivadas e agrupa identidades por <strong>email</strong>, <strong>NIF/NIPC</strong> e <strong>telefone</strong>. Os compradores convidados deduplicados passam também a aparecer em “Clientes antigos”.</p>
+
+                <div class="cvloa-grid">
+                    <div class="cvloa-stat"><span>Perfis deduplicados</span><strong data-identity-stat="profiles"><?php echo esc_html( number_format_i18n( $identity_stats['profiles'] ) ); ?></strong></div>
+                    <div class="cvloa-stat"><span>Perfis com compras de convidado</span><strong data-identity-stat="guest_profiles"><?php echo esc_html( number_format_i18n( $identity_stats['guest_profiles'] ) ); ?></strong></div>
+                    <div class="cvloa-stat"><span>Encomendas convidado</span><strong data-identity-stat="guest_orders"><?php echo esc_html( number_format_i18n( $identity_stats['guest_orders'] ) ); ?></strong></div>
+                    <div class="cvloa-stat"><span>Encomendas analisadas</span><strong data-identity-stat="orders_scanned"><?php echo esc_html( number_format_i18n( $identity_stats['orders_scanned'] ) ); ?></strong></div>
+                </div>
+
+                <div class="cvloa-actions">
+                    <button class="button button-primary" type="button" data-customer-action="identities">Reconstruir clientes convidados</button>
+                </div>
+
+                <p>
+                    <strong>Estado:</strong>
+                    <span data-identity-dirty><?php echo ! empty( $identity_stats['dirty'] ) ? 'Precisa de reconstrução' : 'Atualizado'; ?></span>
+                </p>
+                <div class="cvloa-log" data-identity-log><?php echo ! empty( $identity_stats['dirty'] ) ? 'Foram alterados clientes ou encomendas desde a última reconstrução.' : 'Índice de identidades pronto.'; ?></div>
+                <p class="description">Índice deduplicado: <span class="cvloa-path"><?php echo esc_html( CVLOA_Customer_Identities::path() ); ?></span> — <?php echo esc_html( size_format( $identity_stats['bytes'], 1 ) ); ?></p>
             </div>
 
             <form class="cvloa-toolbar" method="get">
@@ -512,6 +564,8 @@ final class CVLOA_Customer_Admin {
                 const progress = document.querySelector('[data-customer-progress]');
                 const progressText = document.querySelector('[data-customer-progress-text]');
                 const progressPercent = document.querySelector('[data-customer-progress-percent]');
+                const identityLog = document.querySelector('[data-identity-log]');
+                const identityDirty = document.querySelector('[data-identity-dirty]');
                 let running = false;
                 let activeRunId = '';
                 let statusTimer = null;
@@ -673,6 +727,28 @@ final class CVLOA_Customer_Admin {
                     stopPolling();
                     setBusy(false);
                     write('Importação de clientes pausada no browser. O estado ficou guardado para retoma.');
+                });
+
+                document.querySelector('[data-customer-action="identities"]')?.addEventListener('click', async () => {
+                    setBusy(true);
+                    if (identityLog) identityLog.textContent = 'A reconstruir perfis de clientes convidados…';
+
+                    try {
+                        const data = await call('cvloa_rebuild_customer_identities');
+                        const stats = data.stats || {};
+
+                        ['profiles','guest_profiles','guest_orders','orders_scanned'].forEach((key) => {
+                            const el = document.querySelector('[data-identity-stat="' + key + '"]');
+                            if (el) el.textContent = Number(stats[key] || 0).toLocaleString('pt-PT');
+                        });
+
+                        if (identityDirty) identityDirty.textContent = 'Atualizado';
+                        if (identityLog) identityLog.textContent = data.message || 'Índice de identidades reconstruído.';
+                    } catch (error) {
+                        if (identityLog) identityLog.textContent = error.message || error;
+                    } finally {
+                        setBusy(false);
+                    }
                 });
 
                 document.querySelector('[data-customer-action="reset"]')?.addEventListener('click', async () => {
