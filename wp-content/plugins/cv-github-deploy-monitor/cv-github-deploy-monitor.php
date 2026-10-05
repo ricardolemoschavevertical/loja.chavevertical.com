@@ -561,7 +561,7 @@ final class CV_GitHub_Deploy_Monitor {
             echo '<p><span class="cvgdm-pill cvgdm-success">Configurado via wp-config.php</span></p>';
             echo '<p>Está definida a constante <code>CV_GITHUB_DEPLOY_TOKEN</code>. O token nunca é apresentado pelo plugin.</p>';
         } else {
-            echo '<p>Use um Fine-grained Personal Access Token com acesso apenas de leitura aos dois repositórios e permissão <strong>Actions: Read</strong> e <strong>Metadata: Read</strong>.</p>';
+            echo '<p>Use um Fine-grained Personal Access Token com acesso apenas de leitura aos dois repositórios e permissões <strong>Actions: Read</strong>, <strong>Checks: Read</strong>, <strong>Contents: Read</strong> e <strong>Metadata: Read</strong>.</p>';
             echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" class="cvgdm-token-form">';
             echo '<input type="hidden" name="action" value="cvgdm_save_settings">';
             wp_nonce_field( 'cvgdm_save_settings' );
