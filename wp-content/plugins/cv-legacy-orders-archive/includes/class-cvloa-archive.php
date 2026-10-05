@@ -4,8 +4,12 @@ defined( 'ABSPATH' ) || exit;
 final class CVLOA_Archive {
     private const HEADER = "<?php exit; ?>\n";
 
+    public static function root_dir(): string {
+        return trailingslashit( WP_CONTENT_DIR ) . 'cv-private-data';
+    }
+
     public static function base_dir(): string {
-        return trailingslashit( WP_CONTENT_DIR ) . 'cv-private-data/legacy-orders';
+        return trailingslashit( self::root_dir() ) . 'legacy-orders';
     }
 
     public static function data_path(): string {
@@ -17,34 +21,56 @@ final class CVLOA_Archive {
     }
 
     public static function ensure_storage() {
-        $dir = self::base_dir();
+        $root = self::root_dir();
+        $dir  = self::base_dir();
 
-        if ( ! is_dir( $dir ) && ! wp_mkdir_p( $dir ) ) {
-            return new WP_Error( 'cvloa_storage_create_failed', 'Não foi possível criar a pasta privada do arquivo.' );
+        if ( ! is_dir( $root ) && ! wp_mkdir_p( $root ) ) {
+            return new WP_Error( 'cvloa_storage_root_create_failed', 'Não foi possível criar a pasta privada do arquivo.' );
         }
 
-        if ( ! is_writable( $dir ) ) {
-            return new WP_Error( 'cvloa_storage_not_writable', 'A pasta privada do arquivo não tem permissões de escrita.' );
+        // O deploy pode criar estas pastas através de WP-CLI com umask restritivo.
+        // Repor permissões de grupo para que o PHP-FPM da própria loja consiga
+        // ler e escrever sem tornar o arquivo público no sistema.
+        @chmod( $root, 0770 );
+
+        if ( ! is_dir( $dir ) && ! wp_mkdir_p( $dir ) ) {
+            return new WP_Error( 'cvloa_storage_create_failed', 'Não foi possível criar a pasta privada das encomendas.' );
+        }
+
+        @chmod( $dir, 0770 );
+
+        if ( ! is_readable( $dir ) || ! is_writable( $dir ) ) {
+            return new WP_Error(
+                'cvloa_storage_not_accessible',
+                'A pasta privada do arquivo não tem permissões de leitura/escrita para o PHP da loja.'
+            );
         }
 
         $protect_files = array(
-            trailingslashit( $dir ) . 'index.php' => "<?php\nexit;\n",
-            trailingslashit( $dir ) . '.htaccess' => "Require all denied\nDeny from all\n",
+            trailingslashit( $root ) . 'index.php' => "<?php\nexit;\n",
+            trailingslashit( $root ) . '.htaccess' => "Require all denied\nDeny from all\n",
+            trailingslashit( $dir ) . 'index.php'  => "<?php\nexit;\n",
+            trailingslashit( $dir ) . '.htaccess'  => "Require all denied\nDeny from all\n",
         );
 
         foreach ( $protect_files as $path => $content ) {
             if ( ! file_exists( $path ) ) {
-                @file_put_contents( $path, $content, LOCK_EX );
-                @chmod( $path, 0600 );
+                if ( false === @file_put_contents( $path, $content, LOCK_EX ) ) {
+                    return new WP_Error(
+                        'cvloa_protection_write_failed',
+                        'Não foi possível criar os ficheiros de proteção do arquivo.'
+                    );
+                }
             }
+            @chmod( $path, 0660 );
         }
 
         if ( ! file_exists( self::data_path() ) ) {
             if ( false === @file_put_contents( self::data_path(), self::HEADER, LOCK_EX ) ) {
                 return new WP_Error( 'cvloa_data_create_failed', 'Não foi possível criar o ficheiro local das encomendas.' );
             }
-            @chmod( self::data_path(), 0600 );
         }
+        @chmod( self::data_path(), 0660 );
 
         if ( ! file_exists( self::index_path() ) ) {
             $created = self::write_index(
@@ -58,6 +84,22 @@ final class CVLOA_Archive {
             if ( is_wp_error( $created ) ) {
                 return $created;
             }
+        }
+
+        @chmod( self::index_path(), 0660 );
+
+        if ( ! is_readable( self::index_path() ) ) {
+            return new WP_Error(
+                'cvloa_index_not_readable',
+                'O índice local existe, mas o PHP da loja não tem permissão para o ler.'
+            );
+        }
+
+        if ( ! is_writable( self::data_path() ) || ! is_writable( self::index_path() ) ) {
+            return new WP_Error(
+                'cvloa_archive_not_writable',
+                'O arquivo local existe, mas o PHP da loja não tem permissão para o atualizar.'
+            );
         }
 
         return true;
@@ -131,14 +173,14 @@ final class CVLOA_Archive {
             return new WP_Error( 'cvloa_index_write_failed', 'Não foi possível escrever o índice temporário.' );
         }
 
-        @chmod( $tmp, 0600 );
+        @chmod( $tmp, 0660 );
 
         if ( ! @rename( $tmp, self::index_path() ) ) {
             @unlink( $tmp );
             return new WP_Error( 'cvloa_index_replace_failed', 'Não foi possível substituir o índice local.' );
         }
 
-        @chmod( self::index_path(), 0600 );
+        @chmod( self::index_path(), 0660 );
         return true;
     }
 
