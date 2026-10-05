@@ -6,6 +6,14 @@ final class CVR2_Media {
         add_filter( 'wp_get_attachment_url', array( __CLASS__, 'filter_attachment_url' ), 20, 2 );
         add_filter( 'image_downsize', array( __CLASS__, 'filter_image_downsize' ), 20, 3 );
         add_filter( 'wp_prepare_attachment_for_js', array( __CLASS__, 'filter_attachment_js' ), 20, 3 );
+
+        // Filtro R2 na Biblioteca Multimédia em modo lista.
+        add_action( 'restrict_manage_posts', array( __CLASS__, 'render_r2_list_filter' ) );
+        add_action( 'pre_get_posts', array( __CLASS__, 'apply_r2_list_filter' ) );
+
+        // Filtro R2 no modo grelha e nos seletores de imagem/galeria dos produtos.
+        add_filter( 'ajax_query_attachments_args', array( __CLASS__, 'apply_r2_ajax_filter' ) );
+        add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_r2_media_filter' ) );
     }
 
     public static function attachment_for_source_image( array $image ) {
@@ -474,6 +482,210 @@ final class CVR2_Media {
         imagedestroy( $dst );
 
         return $ok ? true : new WP_Error( 'cvr2_gd_write', 'GD não conseguiu gravar WEBP.' );
+    }
+
+    private static function r2_meta_query( string $mode ): array {
+        $r2_keys = array( '_cvr2_r2_url', '_cv_r2_url' );
+
+        if ( 'r2' === $mode ) {
+            return array(
+                'relation' => 'OR',
+                array(
+                    'key'     => $r2_keys[0],
+                    'value'   => '',
+                    'compare' => '!=',
+                ),
+                array(
+                    'key'     => $r2_keys[1],
+                    'value'   => '',
+                    'compare' => '!=',
+                ),
+            );
+        }
+
+        if ( 'local' === $mode ) {
+            return array(
+                'relation' => 'AND',
+                array(
+                    'relation' => 'OR',
+                    array(
+                        'key'     => $r2_keys[0],
+                        'compare' => 'NOT EXISTS',
+                    ),
+                    array(
+                        'key'     => $r2_keys[0],
+                        'value'   => '',
+                        'compare' => '=',
+                    ),
+                ),
+                array(
+                    'relation' => 'OR',
+                    array(
+                        'key'     => $r2_keys[1],
+                        'compare' => 'NOT EXISTS',
+                    ),
+                    array(
+                        'key'     => $r2_keys[1],
+                        'value'   => '',
+                        'compare' => '=',
+                    ),
+                ),
+            );
+        }
+
+        return array();
+    }
+
+    private static function merge_meta_query( array $existing, array $r2_query ): array {
+        if ( ! $r2_query ) {
+            return $existing;
+        }
+
+        if ( ! $existing ) {
+            return $r2_query;
+        }
+
+        return array(
+            'relation' => 'AND',
+            $existing,
+            $r2_query,
+        );
+    }
+
+    public static function render_r2_list_filter( string $post_type ): void {
+        global $pagenow;
+
+        if ( 'upload.php' !== $pagenow || 'attachment' !== $post_type ) {
+            return;
+        }
+
+        $selected = isset( $_GET['cvr2_r2_filter'] )
+            ? sanitize_key( wp_unslash( $_GET['cvr2_r2_filter'] ) )
+            : '';
+
+        ?>
+        <label class="screen-reader-text" for="cvr2-r2-filter-list">Filtrar imagens por armazenamento</label>
+        <select name="cvr2_r2_filter" id="cvr2-r2-filter-list">
+            <option value="" <?php selected( $selected, '' ); ?>>Todas as imagens</option>
+            <option value="r2" <?php selected( $selected, 'r2' ); ?>>R2</option>
+            <option value="local" <?php selected( $selected, 'local' ); ?>>Não R2</option>
+        </select>
+        <?php
+    }
+
+    public static function apply_r2_list_filter( WP_Query $query ): void {
+        global $pagenow;
+
+        if (
+            ! is_admin()
+            || 'upload.php' !== $pagenow
+            || ! $query->is_main_query()
+            || 'attachment' !== $query->get( 'post_type' )
+        ) {
+            return;
+        }
+
+        $mode = isset( $_GET['cvr2_r2_filter'] )
+            ? sanitize_key( wp_unslash( $_GET['cvr2_r2_filter'] ) )
+            : '';
+
+        if ( ! in_array( $mode, array( 'r2', 'local' ), true ) ) {
+            return;
+        }
+
+        $existing = (array) $query->get( 'meta_query' );
+        $query->set( 'meta_query', self::merge_meta_query( $existing, self::r2_meta_query( $mode ) ) );
+    }
+
+    public static function apply_r2_ajax_filter( array $query ): array {
+        $mode = sanitize_key( (string) ( $query['cvr2_r2_filter'] ?? '' ) );
+        unset( $query['cvr2_r2_filter'] );
+
+        if ( ! in_array( $mode, array( 'r2', 'local' ), true ) ) {
+            return $query;
+        }
+
+        $existing = isset( $query['meta_query'] ) && is_array( $query['meta_query'] )
+            ? $query['meta_query']
+            : array();
+
+        $query['meta_query'] = self::merge_meta_query( $existing, self::r2_meta_query( $mode ) );
+
+        return $query;
+    }
+
+    public static function enqueue_r2_media_filter( string $hook_suffix ): void {
+        if ( ! is_admin() ) {
+            return;
+        }
+
+        $screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+
+        $allowed = 'upload.php' === $hook_suffix
+            || in_array( $hook_suffix, array( 'post.php', 'post-new.php' ), true )
+            || ( $screen && in_array( (string) $screen->post_type, array( 'product', 'attachment' ), true ) );
+
+        if ( ! $allowed ) {
+            return;
+        }
+
+        wp_enqueue_media();
+
+        $script = <<<'JS'
+(function(wp){
+    if (!wp || !wp.media || !wp.media.view || !wp.media.view.AttachmentsBrowser) {
+        return;
+    }
+
+    var AttachmentFilters = wp.media.view.AttachmentFilters;
+
+    var CVR2StorageFilter = AttachmentFilters.extend({
+        id: 'cvr2-media-storage-filter',
+        className: 'attachment-filters cvr2-media-storage-filter',
+
+        createFilters: function() {
+            this.filters = {
+                all: {
+                    text: 'Todas as imagens',
+                    props: { cvr2_r2_filter: '' },
+                    priority: 10
+                },
+                r2: {
+                    text: 'R2',
+                    props: { cvr2_r2_filter: 'r2' },
+                    priority: 20
+                },
+                local: {
+                    text: 'Não R2',
+                    props: { cvr2_r2_filter: 'local' },
+                    priority: 30
+                }
+            };
+        }
+    });
+
+    var originalCreateToolbar = wp.media.view.AttachmentsBrowser.prototype.createToolbar;
+
+    wp.media.view.AttachmentsBrowser.prototype.createToolbar = function() {
+        originalCreateToolbar.apply(this, arguments);
+
+        if (!this.collection || !this.collection.props || !this.toolbar) {
+            return;
+        }
+
+        this.toolbar.set(
+            'cvr2StorageFilter',
+            new CVR2StorageFilter({
+                controller: this.controller,
+                model: this.collection.props,
+                priority: -76
+            }).render()
+        );
+    };
+})(window.wp);
+JS;
+
+        wp_add_inline_script( 'media-views', $script, 'after' );
     }
 
     public static function filter_attachment_url( $url, int $post_id ) {
