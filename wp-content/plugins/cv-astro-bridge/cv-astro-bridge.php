@@ -343,6 +343,16 @@ final class CV_Astro_Bridge {
     public function register_rest_routes(): void {
         register_rest_route(
             'cv-astro/v1',
+            '/homepage',
+            array(
+                'methods'             => WP_REST_Server::READABLE,
+                'permission_callback' => '__return_true',
+                'callback'            => array( $this, 'rest_homepage' ),
+            )
+        );
+
+        register_rest_route(
+            'cv-astro/v1',
             '/product/(?P<id>\d+)',
             array(
                 'methods'             => WP_REST_Server::READABLE,
@@ -376,6 +386,126 @@ final class CV_Astro_Bridge {
                         ? $this->rest_product( (int) $post->ID )
                         : new WP_Error( 'cvab_not_found', 'Produto não encontrado.', array( 'status' => 404 ) );
                 },
+            )
+        );
+    }
+
+    public function rest_homepage() {
+        $hero = function_exists( 'cvl_get_homepage_hero' )
+            ? cvl_get_homepage_hero()
+            : array();
+
+        $highlights = function_exists( 'cvl_get_homepage_highlights' )
+            ? cvl_get_homepage_highlights()
+            : array();
+
+        foreach ( array( 'main', 'side' ) as $hero_key ) {
+            if ( isset( $hero[ $hero_key ] ) && is_array( $hero[ $hero_key ] ) && function_exists( 'cvl_homepage_hero_image_url' ) ) {
+                $hero[ $hero_key ]['resolved_image_url'] = cvl_homepage_hero_image_url( $hero[ $hero_key ] );
+            }
+        }
+
+        foreach ( $highlights as $index => $highlight ) {
+            if ( ! is_array( $highlight ) ) {
+                continue;
+            }
+
+            $highlights[ $index ]['resolved_image_url'] = function_exists( 'cvl_homepage_highlight_image_url' )
+                ? cvl_homepage_highlight_image_url( $highlight )
+                : '';
+
+            $highlights[ $index ]['resolved_rotation_images'] = function_exists( 'cvl_homepage_highlight_rotation_images' )
+                ? cvl_homepage_highlight_rotation_images( $highlight )
+                : array();
+        }
+
+        $categories = array();
+
+        if ( taxonomy_exists( 'product_cat' ) ) {
+            $terms = get_terms(
+                array(
+                    'taxonomy'   => 'product_cat',
+                    'parent'     => 0,
+                    'hide_empty' => false,
+                    'number'     => 0,
+                    'orderby'    => 'name',
+                    'order'      => 'ASC',
+                )
+            );
+
+            if ( ! is_wp_error( $terms ) ) {
+                $priority = array(
+                    'oficina-automovel',
+                    'ferramentas-electricas',
+                    'ferramentas-manuais',
+                    'elevacao-e-carga',
+                    'ar-comprimido',
+                    'maquinas-p-industria-metal',
+                    'construcao-civil',
+                    'floresta-e-jardim',
+                    'limpeza',
+                    'equipamentos-de-soldadura',
+                    'geradores',
+                    'carpintaria-de-madeiras',
+                    'ferramentas-pneumaticas',
+                    'medicao-e-nivelamento',
+                    'proteccao-e-seguranca',
+                    'estantaria-e-arrumacao',
+                    'electricidade-e-electronica',
+                    'iluminacao',
+                    'ambiente',
+                    'canalizacao-e-desentupimentos',
+                    'embalamento',
+                    'equip-p-agricultura',
+                    'escadas-escadotes-e-andaimes',
+                    'outros',
+                );
+
+                $rank = array_flip( $priority );
+
+                usort(
+                    $terms,
+                    static function ( $a, $b ) use ( $rank ) {
+                        $ra = $rank[ $a->slug ] ?? 999;
+                        $rb = $rank[ $b->slug ] ?? 999;
+                        return $ra === $rb ? strcasecmp( $a->name, $b->name ) : ( $ra <=> $rb );
+                    }
+                );
+
+                foreach ( array_slice( $terms, 0, 10 ) as $term ) {
+                    if ( ! $term instanceof WP_Term ) {
+                        continue;
+                    }
+
+                    $thumbnail_id = absint( get_term_meta( $term->term_id, 'thumbnail_id', true ) );
+                    $url = get_term_link( $term );
+
+                    $categories[] = array(
+                        'id'    => (int) $term->term_id,
+                        'name'  => $term->name,
+                        'slug'  => $term->slug,
+                        'count' => (int) $term->count,
+                        'image' => $thumbnail_id ? ( wp_get_attachment_image_url( $thumbnail_id, 'medium_large' ) ?: '' ) : '',
+                        'url'   => is_wp_error( $url ) ? '' : $url,
+                    );
+                }
+            }
+        }
+
+        return rest_ensure_response(
+            array(
+                'ok'         => true,
+                'source'     => 'woocommerce-homepage',
+                'updated_at' => current_time( DATE_ATOM, true ),
+                'hero'       => $hero,
+                'highlights' => array_values( $highlights ),
+                'categories' => $categories,
+                'benefits'   => array(
+                    array( 'icon' => 'truck', 'title' => 'Entregas em Portugal', 'subtitle' => 'Encomendas iguais ou superiores a 100 € + IVA*' ),
+                    array( 'icon' => 'box', 'title' => 'Stock para entrega imediata', 'subtitle' => 'Milhares de referências disponíveis' ),
+                    array( 'icon' => 'headset', 'title' => 'Apoio especializado', 'subtitle' => 'Comercial, técnico e pós-venda' ),
+                    array( 'icon' => 'cart', 'title' => 'Mais de 30.000 referências', 'subtitle' => 'Máquinas, ferramentas e consumíveis' ),
+                ),
             )
         );
     }
