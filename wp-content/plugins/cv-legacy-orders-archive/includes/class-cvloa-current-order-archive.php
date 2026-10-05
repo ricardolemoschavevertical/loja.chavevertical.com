@@ -244,7 +244,9 @@ final class CVLOA_Current_Order_Archive {
                 'total'        => (string) $item->get_total(),
                 'total_tax'    => (string) $item->get_total_tax(),
                 'taxes'        => self::normalize_value( $item->get_taxes() ),
-                'sku'          => $product instanceof WC_Product ? (string) $product->get_sku() : '',
+                'sku'          => $product instanceof WC_Product
+                    ? (string) $product->get_sku()
+                    : (string) $item->get_meta( '_cv_recovered_sku', true ),
                 'price'        => $qty > 0 ? (string) ( (float) $item->get_subtotal() / $qty ) : '0',
                 'meta_data'    => self::meta_data( $item->get_meta_data() ),
             );
