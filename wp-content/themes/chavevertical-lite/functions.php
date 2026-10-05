@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.88' );
+define( 'CVL_VERSION', '0.16.89' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -479,11 +479,15 @@ function cvl_loop_product_meta() {
     $sku   = $product->get_sku();
     $brand = cvl_get_product_brand( $product->get_id() );
 
-    echo '<div class="cvl-product-brand-row">';
+    echo '<div class="cvl-product-brand-sku-row">';
+
+    echo '<span class="cvl-product-brand"';
+    if ( $brand ) {
+        echo ' aria-label="' . esc_attr( $brand['name'] ) . '"';
+    }
+    echo '>';
 
     if ( $brand ) {
-        echo '<span class="cvl-product-brand" aria-label="' . esc_attr( $brand['name'] ) . '">';
-
         if ( $brand['thumbnail_id'] ) {
             echo wp_kses_post(
                 wp_get_attachment_image(
@@ -500,16 +504,12 @@ function cvl_loop_product_meta() {
         } else {
             echo '<span class="cvl-product-brand-name">' . esc_html( $brand['name'] ) . '</span>';
         }
-
-        echo '</span>';
     }
 
-    echo '</div>';
-
-    echo '<div class="cvl-product-sku-row">';
+    echo '</span>';
 
     if ( $sku ) {
-        echo '<span class="cvl-product-sku" title="' . esc_attr( $sku ) . '"><i aria-hidden="true"></i>' . esc_html( $sku ) . '</span>';
+        echo '<span class="cvl-product-sku" title="' . esc_attr( $sku ) . '">' . esc_html( $sku ) . '</span>';
     }
 
     echo '</div>';
@@ -556,11 +556,10 @@ function cvl_product_image_badge_data( WC_Product $product ) {
     } elseif ( $product->is_on_sale() ) {
         $class = 'is-sale';
         $label = __( 'PROMOÇÃO', 'chavevertical-lite' );
-    } elseif ( 'instock' === $status ) {
-        $class = 'is-stock';
-        $label = __( 'EM STOCK', 'chavevertical-lite' );
     }
 
+    // O stock normal é mostrado na linha de disponibilidade do card.
+    // Apenas situações comerciais especiais usam badge sobre a imagem.
     if ( $can_manage && null !== $stock_quantity ) {
         $stock_label = sprintf( __( '%d EM STOCK', 'chavevertical-lite' ), $stock_quantity );
 
@@ -611,7 +610,7 @@ add_action( 'wp', function () {
 }, 25 );
 
 /**
- * Card de produto: disponibilidade perto do rating/preço.
+ * Card de produto: disponibilidade à esquerda e avaliação à direita.
  */
 function cvl_loop_product_stock() {
     global $product;
@@ -632,9 +631,109 @@ function cvl_loop_product_stock() {
         $label = __( 'Sob consulta', 'chavevertical-lite' );
     }
 
+    $average = (float) $product->get_average_rating();
+    $count   = (int) $product->get_review_count();
+    $filled  = max( 0, min( 5, (int) round( $average ) ) );
+
+    echo '<div class="cvl-product-status-row">';
     echo '<div class="cvl-product-stock ' . esc_attr( $class ) . '"><span aria-hidden="true"></span>' . esc_html( $label ) . '</div>';
+
+    if ( $count > 0 ) {
+        echo '<div class="cvl-product-card-rating" aria-label="' . esc_attr( sprintf( __( 'Avaliação média: %s em 5', 'chavevertical-lite' ), wc_format_decimal( $average, 1 ) ) ) . '">';
+        echo '<span class="cvl-product-card-stars" aria-hidden="true">';
+        for ( $i = 1; $i <= 5; $i++ ) {
+            echo $i <= $filled ? '★' : '☆';
+        }
+        echo '</span>';
+        echo '<strong>' . esc_html( wc_format_decimal( $average, 1 ) ) . '</strong>';
+        echo '</div>';
+    } else {
+        echo '<span class="cvl-product-card-no-rating">' . esc_html__( 'Sem avaliações', 'chavevertical-lite' ) . '</span>';
+    }
+
+    echo '</div>';
 }
 add_action( 'woocommerce_after_shop_loop_item_title', 'cvl_loop_product_stock', 7 );
+
+/**
+ * Preço do card: valor com IVA em destaque e preço sem IVA à direita.
+ * Não altera qualquer preço do produto; apenas calcula a apresentação.
+ */
+function cvl_loop_product_price_block() {
+    global $product;
+
+    if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product ) {
+        return;
+    }
+
+    $is_variable = $product->is_type( 'variable' );
+
+    if ( $is_variable && method_exists( $product, 'get_variation_price' ) ) {
+        $raw_price   = (float) $product->get_variation_price( 'min', false );
+        $raw_regular = (float) $product->get_variation_regular_price( 'min', false );
+    } else {
+        $raw_price   = (float) $product->get_price();
+        $raw_regular = (float) $product->get_regular_price();
+    }
+
+    if ( $raw_price <= 0 ) {
+        echo '<div class="cvl-product-price-row is-no-price"><span class="cvl-product-price-current">' . esc_html__( 'Preço sob consulta', 'chavevertical-lite' ) . '</span></div>';
+        return;
+    }
+
+    $gross_price = (float) wc_get_price_including_tax(
+        $product,
+        array(
+            'price' => $raw_price,
+        )
+    );
+    $net_price = (float) wc_get_price_excluding_tax(
+        $product,
+        array(
+            'price' => $raw_price,
+        )
+    );
+
+    $gross_regular = 0.0;
+    if ( $raw_regular > $raw_price ) {
+        $gross_regular = (float) wc_get_price_including_tax(
+            $product,
+            array(
+                'price' => $raw_regular,
+            )
+        );
+    }
+
+    echo '<div class="cvl-product-price-row">';
+    echo '<div class="cvl-product-price-primary">';
+
+    if ( $gross_regular > $gross_price ) {
+        echo '<del class="cvl-product-price-regular">' . wp_kses_post( wc_price( $gross_regular ) ) . '</del>';
+    }
+
+    if ( $is_variable ) {
+        echo '<span class="cvl-product-price-from">' . esc_html__( 'Desde', 'chavevertical-lite' ) . '</span>';
+    }
+
+    echo '<span class="cvl-product-price-current">' . wp_kses_post( wc_price( $gross_price ) ) . '</span>';
+    echo '</div>';
+
+    echo '<div class="cvl-product-price-net">';
+    echo '<strong>' . wp_kses_post( wc_price( $net_price ) ) . '</strong>';
+    echo '<span>' . esc_html__( 'sem IVA', 'chavevertical-lite' ) . '</span>';
+    echo '</div>';
+    echo '</div>';
+}
+
+add_action(
+    'wp',
+    static function (): void {
+        remove_action( 'woocommerce_after_shop_loop_item_title', 'woocommerce_template_loop_rating', 5 );
+        remove_action( 'woocommerce_after_shop_loop_item_title', 'woocommerce_template_loop_price', 10 );
+    },
+    30
+);
+add_action( 'woocommerce_after_shop_loop_item_title', 'cvl_loop_product_price_block', 10 );
 
 /**
  * Ações do card: uma única ação comercial.
@@ -648,16 +747,53 @@ function cvl_loop_actions_open() {
 add_action( 'woocommerce_after_shop_loop_item', 'cvl_loop_actions_open', 9 );
 
 function cvl_loop_actions_close() {
+    global $product;
+
+    if ( class_exists( 'WC_Product' ) && $product instanceof WC_Product ) {
+        $eye_icon = '<svg class="cvl-card-eye-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M1.8 12s3.5-6 10.2-6 10.2 6 10.2 6-3.5 6-10.2 6S1.8 12 1.8 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+
+        echo '<a class="cvl-card-eye-button" href="' . esc_url( $product->get_permalink() ) . '" aria-label="' . esc_attr( sprintf( __( 'Ver %s', 'chavevertical-lite' ), $product->get_name() ) ) . '">' . $eye_icon . '</a>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+    }
+
     echo '</div>';
 }
 add_action( 'woocommerce_after_shop_loop_item', 'cvl_loop_actions_close', 11 );
 
-add_filter( 'woocommerce_product_add_to_cart_text', function ( $text, $product ) {
-    if ( class_exists( 'WC_Product' ) && $product instanceof WC_Product && $product->is_type( 'simple' ) && $product->is_purchasable() && $product->is_in_stock() ) {
-        return __( 'ADICIONAR', 'chavevertical-lite' );
+
+
+/**
+ * Botão de favoritos no canto da imagem quando existe um plugin suportado.
+ * Sem plugin de wishlist ativo, não apresenta um controlo sem funcionalidade.
+ */
+function cvl_loop_product_wishlist_button() {
+    global $product;
+
+    if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product ) {
+        return;
     }
 
-    return __( 'VER', 'chavevertical-lite' );
+    $output = '';
+
+    if ( shortcode_exists( 'yith_wcwl_add_to_wishlist' ) ) {
+        $output = do_shortcode( '[yith_wcwl_add_to_wishlist product_id="' . absint( $product->get_id() ) . '"]' );
+    } elseif ( shortcode_exists( 'ti_wishlists_addtowishlist' ) ) {
+        $output = do_shortcode( '[ti_wishlists_addtowishlist product_id="' . absint( $product->get_id() ) . '"]' );
+    }
+
+    if ( '' === trim( (string) $output ) ) {
+        return;
+    }
+
+    echo '<div class="cvl-card-wishlist">' . $output . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+}
+add_action( 'woocommerce_after_shop_loop_item', 'cvl_loop_product_wishlist_button', 12 );
+
+add_filter( 'woocommerce_product_add_to_cart_text', function ( $text, $product ) {
+    if ( class_exists( 'WC_Product' ) && $product instanceof WC_Product && $product->is_type( 'simple' ) && $product->is_purchasable() && $product->is_in_stock() ) {
+        return __( 'ADICIONAR AO CARRINHO', 'chavevertical-lite' );
+    }
+
+    return __( 'VER PRODUTO', 'chavevertical-lite' );
 }, 10, 2 );
 
 add_filter( 'woocommerce_loop_add_to_cart_link', function ( $html, $product ) {
@@ -678,11 +814,11 @@ add_filter( 'woocommerce_loop_add_to_cart_link', function ( $html, $product ) {
             esc_url( $product->get_permalink() ),
             esc_attr( sprintf( __( 'Ver %s', 'chavevertical-lite' ), $product->get_name() ) ),
             $view_icon,
-            esc_html__( 'VER', 'chavevertical-lite' )
+            esc_html__( 'VER PRODUTO', 'chavevertical-lite' )
         );
     }
 
-    $replacement = '>' . $cart_icon . '<span class="cvl-cart-button-label">' . esc_html__( 'ADICIONAR', 'chavevertical-lite' ) . '</span></a>';
+    $replacement = '>' . $cart_icon . '<span class="cvl-cart-button-label">' . esc_html__( 'ADICIONAR AO CARRINHO', 'chavevertical-lite' ) . '</span></a>';
     $html = preg_replace( '/>[^<]*<\/a>$/', $replacement, $html, 1 );
 
     if ( is_string( $html ) ) {
