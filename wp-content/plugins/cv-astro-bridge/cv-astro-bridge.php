@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CV Astro Bridge
  * Description: Ponte entre WooCommerce, Astro e Cloudflare Worker da Chave Vertical.
- * Version: 0.3.5
+ * Version: 0.3.6
  * Author: Chave Vertical
  * Requires at least: 6.5
  * Requires PHP: 8.0
@@ -12,8 +12,8 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVAB_VERSION', '0.3.5' );
-define( 'CVAB_EXPECTED_WORKER_RELEASE', '2026.10.05.08' );
+define( 'CVAB_VERSION', '0.3.6' );
+define( 'CVAB_EXPECTED_WORKER_RELEASE', '2026.10.05.09' );
 define( 'CVAB_STATUS_OPTION', 'cvab_worker_status' );
 define( 'CVAB_FILE', __FILE__ );
 define( 'CVAB_OPTION', 'cvab_settings' );
@@ -47,6 +47,18 @@ final class CV_Astro_Bridge {
         add_action( 'created_product_brand', array( $this, 'brand_changed' ), 30, 1 );
         add_action( 'edited_product_brand', array( $this, 'brand_changed' ), 30, 1 );
         add_action( 'delete_product_brand', array( $this, 'brand_changed' ), 30, 1 );
+
+        add_action( 'created_product_cat', array( $this, 'category_changed' ), 30, 1 );
+        add_action( 'edited_product_cat', array( $this, 'category_changed' ), 30, 1 );
+        add_action( 'delete_product_cat', array( $this, 'category_changed' ), 30, 1 );
+
+        add_action( 'updated_option', array( $this, 'option_changed' ), 30, 3 );
+        add_action( 'added_option', array( $this, 'option_added' ), 30, 2 );
+        add_action( 'deleted_option', array( $this, 'option_deleted' ), 30, 1 );
+
+        add_action( 'post_updated', array( $this, 'product_post_updated' ), 30, 3 );
+        add_action( 'before_delete_post', array( $this, 'product_before_delete' ), 30, 2 );
+        add_action( 'wp_trash_post', array( $this, 'product_before_trash' ), 30, 1 );
     }
 
     public static function activate(): void {
@@ -413,6 +425,8 @@ final class CV_Astro_Bridge {
         }
 
         $this->notify_worker_product( $product_id, 'yes' === $settings['auto_warm'] );
+        $this->notify_worker_content( 'catalog' );
+        $this->notify_worker_content( 'homepage' );
     }
 
     public function variation_changed( int $variation_id ): void {
@@ -428,6 +442,58 @@ final class CV_Astro_Bridge {
         }
 
         $this->notify_worker_brands();
+        $this->notify_worker_content( 'catalog' );
+    }
+
+    public function category_changed( int $term_id ): void {
+        $term = get_term( $term_id, 'product_cat' );
+        $slug = $term instanceof WP_Term ? $term->slug : '';
+
+        $this->notify_worker_content( 'catalog', $slug );
+        $this->notify_worker_content( 'homepage' );
+    }
+
+    public function option_changed( string $option, $old_value, $value ): void {
+        if ( in_array( $option, array(
+            'cvl_homepage_hero_admin',
+            'cvl_homepage_highlights_admin',
+            'cvl_homepage_highlights_source',
+        ), true ) ) {
+            $this->notify_worker_content( 'homepage' );
+        }
+    }
+
+    public function option_added( string $option, $value ): void {
+        $this->option_changed( $option, null, $value );
+    }
+
+    public function option_deleted( string $option ): void {
+        $this->option_changed( $option, null, null );
+    }
+
+    public function product_post_updated( int $post_id, WP_Post $post_after, WP_Post $post_before ): void {
+        if ( 'product' !== $post_after->post_type || $post_before->post_name === $post_after->post_name ) {
+            return;
+        }
+
+        if ( '' !== $post_before->post_name ) {
+            $this->notify_worker_product_slug( $post_before->post_name, false );
+        }
+    }
+
+    public function product_before_delete( int $post_id, WP_Post $post ): void {
+        if ( 'product' === $post->post_type && '' !== $post->post_name ) {
+            $this->notify_worker_product_slug( $post->post_name, false );
+            $this->notify_worker_content( 'catalog' );
+            $this->notify_worker_content( 'homepage' );
+        }
+    }
+
+    public function product_before_trash( int $post_id ): void {
+        $post = get_post( $post_id );
+        if ( $post instanceof WP_Post ) {
+            $this->product_before_delete( $post_id, $post );
+        }
     }
 
     private function notify_worker_brands() {
@@ -456,6 +522,36 @@ final class CV_Astro_Bridge {
         );
 
         return $this->signed_worker_request( '/api/cv-admin/cache/product', $body );
+    }
+
+    private function notify_worker_product_slug( string $slug, bool $warm ) {
+        $slug = sanitize_title( $slug );
+        if ( '' === $slug ) {
+            return new WP_Error( 'cvab_missing_slug', 'Slug do produto em falta.' );
+        }
+
+        return $this->signed_worker_request(
+            '/api/cv-admin/cache/product',
+            wp_json_encode(
+                array(
+                    'slug' => $slug,
+                    'warm' => $warm,
+                )
+            )
+        );
+    }
+
+    private function notify_worker_content( string $scope, string $slug = '' ) {
+        return $this->signed_worker_request(
+            '/api/cv-admin/cache/content',
+            wp_json_encode(
+                array(
+                    'scope'      => sanitize_key( $scope ),
+                    'slug'       => sanitize_title( $slug ),
+                    'changed_at' => gmdate( 'c' ),
+                )
+            )
+        );
     }
 
     private function signed_worker_request( string $path, string $body ) {
@@ -1484,6 +1580,17 @@ final class CV_Astro_Bridge {
             }
         }
 
+        $tags = array();
+        foreach ( wp_get_post_terms( $product_id, 'product_tag' ) as $term ) {
+            if ( $term instanceof WP_Term ) {
+                $tags[] = array(
+                    'id'   => (int) $term->term_id,
+                    'name' => $term->name,
+                    'slug' => $term->slug,
+                );
+            }
+        }
+
         $images = array();
         foreach ( array_unique( array_filter( array_merge( array( $product->get_image_id() ), $product->get_gallery_image_ids() ) ) ) as $image_id ) {
             $images[] = array(
@@ -1526,6 +1633,12 @@ final class CV_Astro_Bridge {
                 'regular_price'     => $product->get_regular_price(),
                 'sale_price'        => $product->get_sale_price(),
                 'on_sale'           => $product->is_on_sale(),
+                'featured'          => $product->get_featured(),
+                'purchasable'       => $product->is_purchasable(),
+                'reviews_allowed'   => $product->get_reviews_allowed(),
+                'average_rating'    => $product->get_average_rating(),
+                'rating_count'      => $product->get_rating_count(),
+                'date_created'      => $product->get_date_created() ? $product->get_date_created()->getTimestamp() : null,
                 'stock_status'      => $product->get_stock_status(),
                 'manage_stock'      => $product->managing_stock(),
                 'stock_quantity'    => in_array( (int) $product->get_stock_quantity(), array( 1, 2 ), true ) ? (int) $product->get_stock_quantity() : null,
@@ -1540,10 +1653,14 @@ final class CV_Astro_Bridge {
                 ),
                 'categories'        => $categories,
                 'brands'            => $brands,
+                'tags'              => $tags,
                 'images'            => $images,
                 'attributes'        => $attributes,
                 'upsell_ids'        => array_map( 'intval', $product->get_upsell_ids() ),
                 'cross_sell_ids'    => array_map( 'intval', $product->get_cross_sell_ids() ),
+                'purchase_url'      => $product->is_type( 'simple' ) && $product->is_purchasable()
+                    ? add_query_arg( 'add-to-cart', $product->get_id(), wc_get_cart_url() )
+                    : $product->get_permalink(),
                 'seo'               => array(
                     'title'         => $seo_title,
                     'description'   => $seo_desc,
