@@ -8,6 +8,7 @@ on:
       - "wp-content/plugins/cv-astro-bridge/**"
       - "wp-content/plugins/cv-pdf-reader/**"
       - "wp-content/plugins/cv-r2-media-linker/**"
+      - "wp-content/plugins/cv-legacy-orders-archive/**"
       - ".github/workflows/cv-internal-plugins.yml"
       - "ops/deploy-cv-internal-plugins.sh"
       - "ops/diagnose-trash-actions.php"
@@ -32,7 +33,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for plugin in chavevertical-core cv-astro-bridge cv-pdf-reader cv-r2-media-linker; do
+          for plugin in chavevertical-core cv-astro-bridge cv-pdf-reader cv-r2-media-linker cv-legacy-orders-archive; do
             test -d "wp-content/plugins/$plugin"
             find "wp-content/plugins/$plugin" -type f -name '*.php' -print0 | xargs -0 -n1 php -l
           done
@@ -43,7 +44,7 @@ jobs:
         run: |
           set -euo pipefail
           cd wp-content/plugins
-          zip -qr cv-internal-plugins.zip chavevertical-core cv-astro-bridge cv-pdf-reader cv-r2-media-linker
+          zip -qr cv-internal-plugins.zip chavevertical-core cv-astro-bridge cv-pdf-reader cv-r2-media-linker cv-legacy-orders-archive
           unzip -t cv-internal-plugins.zip
 
       - name: Upload package
