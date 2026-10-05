@@ -468,6 +468,12 @@ final class CVLOA_Admin {
                 .cvloa-mode label{display:block;margin:9px 0}.cvloa-row{display:grid;grid-template-columns:210px minmax(0,1fr);gap:14px;align-items:center;margin:12px 0}.cvloa-row input[type=text],.cvloa-row input[type=url],.cvloa-row input[type=password],.cvloa-row input[type=number]{width:100%;max-width:720px}
                 .cvloa-table{width:100%;border-collapse:collapse;background:#fff}.cvloa-table th,.cvloa-table td{padding:10px;border-bottom:1px solid #eee;text-align:left;vertical-align:top}.cvloa-table th{background:#f6f7f7}
                 .cvloa-status{display:inline-block;padding:4px 8px;border-radius:999px;background:#f0f0f1;font-size:11px;font-weight:700}
+                .cvloa-status.cvloa-status-completed{background:#dff3e4;color:#145a27;border:1px solid #a8d5b3}
+                .cvloa-status.cvloa-status-failed{background:#fbe3e3;color:#8a1f1f;border:1px solid #e5aaaa}
+                .cvloa-status.cvloa-status-other{background:#fff0db;color:#8a4b08;border:1px solid #efc27f}
+                .cvloa-table tr.cvloa-order-completed>td{background:#f1faf3}
+                .cvloa-table tr.cvloa-order-failed>td{background:#fff1f1}
+                .cvloa-table tr.cvloa-order-other>td{background:#fff8ee}
                 .cvloa-readonly{display:inline-block;padding:5px 9px;border-radius:999px;background:#fff7e6;color:#744b00;font-size:11px;font-weight:800}
                 .cvloa-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.cvloa-detail-card{padding:16px;border:1px solid #dcdcde;border-radius:9px;background:#fff}
                 .cvloa-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0}.cvloa-toolbar input[type=search]{min-width:320px}
@@ -1040,11 +1046,12 @@ final class CVLOA_Admin {
                             admin_url( 'admin.php' )
                         );
                         ?>
-                        <tr>
+                        <?php $status_color_class = self::status_color_class( (string) ( $row['status'] ?? '' ) ); ?>
+                        <tr class="<?php echo esc_attr( 'cvloa-order-' . $status_color_class ); ?>">
                             <td><a href="<?php echo esc_url( $detail_url ); ?>"><strong>#<?php echo esc_html( (string) ( $row['number'] ?: $row['id'] ) ); ?></strong></a><br><span class="cvloa-muted">ID origem <?php echo esc_html( (string) $row['id'] ); ?></span></td>
                             <td><?php echo esc_html( self::format_date( (string) ( $row['date_created'] ?? '' ) ) ); ?></td>
                             <td><strong><?php echo esc_html( (string) ( $row['billing_name'] ?? '' ) ); ?></strong><?php if ( ! empty( $row['billing_company'] ) ) : ?><br><?php echo esc_html( (string) $row['billing_company'] ); ?><?php endif; ?><?php if ( ! empty( $row['billing_email'] ) ) : ?><br><span class="cvloa-muted"><?php echo esc_html( (string) $row['billing_email'] ); ?></span><?php endif; ?></td>
-                            <td><span class="cvloa-status"><?php echo esc_html( self::status_label( (string) ( $row['status'] ?? '' ) ) ); ?></span></td>
+                            <td><span class="<?php echo esc_attr( 'cvloa-status cvloa-status-' . $status_color_class ); ?>"><?php echo esc_html( self::status_label( (string) ( $row['status'] ?? '' ) ) ); ?></span></td>
                             <td><?php echo wp_kses_post( wc_price( (float) ( $row['total'] ?? 0 ), array( 'currency' => (string) ( $row['currency'] ?? get_woocommerce_currency() ) ) ) ); ?></td>
                             <td><?php echo esc_html( number_format_i18n( absint( $row['item_count'] ?? 0 ) ) ); ?></td>
                             <td><?php echo esc_html( (string) ( $row['payment_method_title'] ?? '' ) ); ?></td>
@@ -1106,7 +1113,8 @@ final class CVLOA_Admin {
                     <h2 style="margin-top:0">Encomenda #<?php echo esc_html( (string) ( $order['number'] ?? $order_id ) ); ?></h2>
                     <p class="cvloa-muted">ID de origem: <?php echo esc_html( (string) $order_id ); ?> · <?php echo esc_html( self::format_date( (string) ( $order['date_created'] ?? '' ) ) ); ?></p>
                 </div>
-                <div><span class="cvloa-readonly">ARQUIVO — SÓ LEITURA</span> <span class="cvloa-status"><?php echo esc_html( self::status_label( (string) ( $order['status'] ?? '' ) ) ); ?></span></div>
+                <?php $status_color_class = self::status_color_class( (string) ( $order['status'] ?? '' ) ); ?>
+                <div><span class="cvloa-readonly">ARQUIVO — SÓ LEITURA</span> <span class="<?php echo esc_attr( 'cvloa-status cvloa-status-' . $status_color_class ); ?>"><?php echo esc_html( self::status_label( (string) ( $order['status'] ?? '' ) ) ); ?></span></div>
             </div>
         </div>
 
@@ -1223,6 +1231,20 @@ final class CVLOA_Admin {
         }
 
         echo '<p>' . implode( '<br>', array_map( 'esc_html', $lines ) ) . '</p>';
+    }
+
+    private static function status_color_class( string $status ): string {
+        $status = sanitize_key( preg_replace( '/^wc-/', '', $status ) );
+
+        if ( 'completed' === $status ) {
+            return 'completed';
+        }
+
+        if ( 'failed' === $status ) {
+            return 'failed';
+        }
+
+        return 'other';
     }
 
     private static function status_label( string $status ): string {
