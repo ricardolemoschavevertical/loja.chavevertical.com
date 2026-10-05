@@ -73,9 +73,9 @@ function cvl_homepage_hero_fallback() {
             'secondary_cta'          => 'Ver elevadores',
             'secondary_url'          => '/categoria-produto/elevadores-elevadores/',
             'badge'                  => 'ESCOLHA PROFISSIONAL',
-            'background'             => '#0b4e46',
-            'text_color'             => '#ffffff',
-            'accent_color'           => '#a9d8a1',
+            'background'             => '#f4f5f5',
+            'text_color'             => '#101820',
+            'accent_color'           => '#d62828',
             'image_id'               => 0,
             'image_url'              => 'https://imagens.chavevertical.com/2025/09/elevador-2-colunas-4t-tipo-h-220v-kroftools1.webp',
             'fallback_category_slug' => 'elevadores-elevadores',
@@ -113,9 +113,9 @@ function cvl_normalize_homepage_hero_panel( $panel, $fallback = array() ) {
             'secondary_cta'          => '',
             'secondary_url'          => '',
             'badge'                  => '',
-            'background'             => '#0b4e46',
-            'text_color'             => '#ffffff',
-            'accent_color'           => '#a9d8a1',
+            'background'             => '#f4f5f5',
+            'text_color'             => '#101820',
+            'accent_color'           => '#d62828',
             'image_id'               => 0,
             'image_url'              => '',
             'fallback_category_slug' => '',
@@ -432,9 +432,31 @@ function cvl_homepage_hero_image_url( $panel ) {
     return cvl_homepage_highlight_image_url( $panel );
 }
 
+function cvl_homepage_visual_migration_2026() {
+    if ( '1' === get_option( 'cvl_homepage_visual_migration_2026', '' ) ) {
+        return;
+    }
+
+    $saved = get_option( 'cvl_homepage_hero_admin', array() );
+    if ( isset( $saved['main'] ) && is_array( $saved['main'] ) ) {
+        $background = strtolower( (string) ( $saved['main']['background'] ?? '' ) );
+        if ( in_array( $background, array( '#0b4e46', '#123f39', '#073b36' ), true ) ) {
+            $saved['main']['background']   = '#f4f5f5';
+            $saved['main']['text_color']   = '#101820';
+            $saved['main']['accent_color'] = '#d62828';
+            update_option( 'cvl_homepage_hero_admin', $saved, false );
+        }
+    }
+
+    update_option( 'cvl_homepage_visual_migration_2026', '1', false );
+}
+add_action( 'admin_init', 'cvl_homepage_visual_migration_2026' );
+
 add_action( 'admin_menu', function () {
+    $parent = function_exists( 'cv_admin_parent_slug' ) ? cv_admin_parent_slug() : 'woocommerce';
+
     add_submenu_page(
-        'woocommerce',
+        $parent,
         __( 'Destaques Homepage', 'chavevertical-lite' ),
         __( 'Destaques Homepage', 'chavevertical-lite' ),
         'manage_woocommerce',
@@ -444,7 +466,7 @@ add_action( 'admin_menu', function () {
 }, 45 );
 
 add_action( 'admin_enqueue_scripts', function ( $hook ) {
-    if ( 'woocommerce_page_cvl-homepage-highlights' !== $hook ) {
+    if ( false === strpos( (string) $hook, 'cvl-homepage-highlights' ) ) {
         return;
     }
 
@@ -572,6 +594,7 @@ function cvl_render_homepage_highlights_admin() {
         <?php endif; ?>
 
         <p><?php esc_html_e( 'Personalize o Hero principal, incluindo imagem, textos, botões, links, selo e cores, além da caixa lateral e dos quatro destaques da homepage. Selecione "Usar valores do Admin" para aplicar estas alterações no site.', 'chavevertical-lite' ); ?></p>
+        <p><strong><?php esc_html_e( 'Formatos recomendados:', 'chavevertical-lite' ); ?></strong> Hero principal 1400×720 px · Destaque lateral 600×840 px · Destaques 800×800 px. Preferir WEBP.</p>
 
         <div class="cvl-highlights-source-help">
             <strong><?php esc_html_e( 'Edição pelo GitHub:', 'chavevertical-lite' ); ?></strong>
@@ -610,7 +633,10 @@ function cvl_render_homepage_highlights_admin() {
                         </div>
 
                         <input class="cvl-highlight-image-id" type="hidden" name="hero[<?php echo esc_attr( $hero_key ); ?>][image_id]" value="<?php echo esc_attr( $hero_panel['image_id'] ); ?>">
-                        <input class="cvl-highlight-image-url" type="hidden" name="hero[<?php echo esc_attr( $hero_key ); ?>][image_url]" value="<?php echo esc_attr( $hero_panel['image_url'] ); ?>">
+                        <label>
+                            <span><?php esc_html_e( 'URL da imagem / GitHub / CDN', 'chavevertical-lite' ); ?></span>
+                            <input class="cvl-highlight-image-url" type="text" name="hero[<?php echo esc_attr( $hero_key ); ?>][image_url]" value="<?php echo esc_attr( $hero_panel['image_url'] ); ?>" placeholder="https://... ou theme://assets/images/...">
+                        </label>
 
                         <p class="cvl-highlight-media-actions">
                             <button type="button" class="button cvl-highlight-select-image"><?php esc_html_e( 'Escolher imagem', 'chavevertical-lite' ); ?></button>
@@ -691,7 +717,10 @@ function cvl_render_homepage_highlights_admin() {
                         </div>
 
                         <input class="cvl-highlight-image-id" type="hidden" name="cards[<?php echo esc_attr( $index ); ?>][image_id]" value="<?php echo esc_attr( $card['image_id'] ); ?>">
-                        <input class="cvl-highlight-image-url" type="hidden" name="cards[<?php echo esc_attr( $index ); ?>][image_url]" value="<?php echo esc_attr( $card['image_url'] ); ?>">
+                        <label>
+                            <span><?php esc_html_e( 'URL da imagem / GitHub / CDN', 'chavevertical-lite' ); ?></span>
+                            <input class="cvl-highlight-image-url" type="text" name="cards[<?php echo esc_attr( $index ); ?>][image_url]" value="<?php echo esc_attr( $card['image_url'] ); ?>" placeholder="https://... ou theme://assets/images/...">
+                        </label>
                         <input type="hidden" name="cards[<?php echo esc_attr( $index ); ?>][fallback_category_slug]" value="<?php echo esc_attr( $card['fallback_category_slug'] ); ?>">
 
                         <p class="cvl-highlight-media-actions">
