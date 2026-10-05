@@ -6,6 +6,7 @@ final class CVR2_Media {
         add_filter( 'wp_get_attachment_url', array( __CLASS__, 'filter_attachment_url' ), 20, 2 );
         add_filter( 'image_downsize', array( __CLASS__, 'filter_image_downsize' ), 20, 3 );
         add_filter( 'wp_prepare_attachment_for_js', array( __CLASS__, 'filter_attachment_js' ), 20, 3 );
+        add_filter( 'wp_update_attachment_metadata', array( __CLASS__, 'capture_r2_after_metadata' ), 999, 2 );
 
         // Filtro R2 na Biblioteca Multimédia em modo lista.
         add_action( 'restrict_manage_posts', array( __CLASS__, 'render_r2_list_filter' ) );
@@ -709,6 +710,14 @@ final class CVR2_Media {
 JS;
 
         wp_add_inline_script( 'media-views', $script, 'after' );
+    }
+
+    public static function capture_r2_after_metadata( array $data, int $attachment_id ): array {
+        if ( $attachment_id && get_post_meta( $attachment_id, '_cvr2_native_sideload', true ) ) {
+            self::capture_native_r2_location( $attachment_id );
+        }
+
+        return $data;
     }
 
     public static function filter_attachment_url( $url, int $post_id ) {
