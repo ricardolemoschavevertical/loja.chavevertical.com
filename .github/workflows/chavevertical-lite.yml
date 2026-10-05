@@ -10,6 +10,8 @@ on:
       - "ops/ensure-brands-page.php"
       - "ops/ensure-contactos-page.php"
       - "ops/ensure-quem-somos-page.php"
+      - "ops/ensure-entregas-ao-domicilio-page.php"
+      - "ops/ensure-termos-e-condicoes-page.php"
       - "ops/ensure-pretty-permalinks.php"
   workflow_dispatch:
 
@@ -40,6 +42,8 @@ jobs:
           php -l ops/ensure-brands-page.php
           php -l ops/ensure-contactos-page.php
           php -l ops/ensure-quem-somos-page.php
+          php -l ops/ensure-entregas-ao-domicilio-page.php
+          php -l ops/ensure-termos-e-condicoes-page.php
           php -l ops/ensure-pretty-permalinks.php
 
       - name: Build installable ZIP
@@ -96,6 +100,10 @@ jobs:
         shell: bash
         run: php ops/ensure-entregas-ao-domicilio-page.php
 
+      - name: Ensure terms page
+        shell: bash
+        run: php ops/ensure-termos-e-condicoes-page.php
+
       - name: Ensure pretty permalinks
         shell: bash
         run: php ops/ensure-pretty-permalinks.php
@@ -124,6 +132,20 @@ jobs:
           grep -q 'Produtos volumosos, pesados ou sujeitos a transporte especial' /tmp/cvl-entregas.html
           grep -q 'Última atualização: 20 de junho de 2026' /tmp/cvl-entregas.html
           grep -q 'href="https://loja.chavevertical.com/entregas-ao-domicilio/"' /tmp/cvl-entregas.html
+
+      - name: Verify terms page
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -L --connect-timeout 10 --max-time 60 -sS \
+            'https://loja.chavevertical.com/termos-e-condicoes/?cvltermsverify=1' \
+            -o /tmp/cvl-termos.html
+          grep -q 'cvl-institutional-catalog-hero' /tmp/cvl-termos.html
+          grep -q '>Termos e Condições<' /tmp/cvl-termos.html
+          grep -q '1. Identificação da empresa' /tmp/cvl-termos.html
+          grep -q '19. Lei aplicável' /tmp/cvl-termos.html
+          grep -q 'Última atualização: 16 de maio de 2026' /tmp/cvl-termos.html
+          grep -q 'href="https://loja.chavevertical.com/termos-e-condicoes/"' /tmp/cvl-termos.html
 
       - name: Verify shop catalog layout
         shell: bash
