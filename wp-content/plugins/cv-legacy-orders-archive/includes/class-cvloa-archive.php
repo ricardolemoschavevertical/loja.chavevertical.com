@@ -335,6 +335,10 @@ final class CVLOA_Archive {
             return $written;
         }
 
+        if ( class_exists( 'CVLOA_Customer_Identities' ) && empty( $GLOBALS['cvloa_rebuilding_identities'] ) ) {
+            CVLOA_Customer_Identities::mark_dirty();
+        }
+
         return $result;
     }
 
