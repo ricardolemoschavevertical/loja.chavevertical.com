@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://loja.chavevertical.com/schema/homepage-highlights.schema.json",
+  "title": "Chave Vertical Homepage Campaigns",
+  "description": "Configuration for homepage hero and highlight campaigns.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "hero",
+    "highlights"
+  ],
+  "properties": {
+    "hero": {
+      "type": "object",
+      "required": [
+        "main",
+        "side"
+      ],
+      "properties": {
+        "main": {
+          "$ref": "#/$defs/heroPanel"
+        },
+        "side": {
+          "$ref": "#/$defs/heroPanel"
+        }
+      },
+      "additionalProperties": false
+    },
+    "highlights": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "$ref": "#/$defs/highlight"
+      }
+    }
+  },
+  "$defs": {
+    "baseVisual": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "cta": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "background": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "text_color": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "image_id": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "image_url": {
+          "type": "string",
+          "description": "Absolute HTTPS URL or theme:// path. Prefer CDN/Media Library. Do not embed Base64."
+        },
+        "fallback_category_slug": {
+          "type": "string"
+        },
+        "full_image": {
+          "type": "boolean",
+          "description": "When true, the image fills the entire visual area."
+        },
+        "show_text": {
+          "type": "boolean",
+          "description": "When true, text is rendered over the visual. When false, only the image remains visible."
+        }
+      }
+    },
+    "heroPanel": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/baseVisual"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "title_accent": {
+              "type": "string"
+            },
+            "secondary_cta": {
+              "type": "string"
+            },
+            "secondary_url": {
+              "type": "string"
+            },
+            "badge": {
+              "type": "string"
+            },
+            "accent_color": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "image_only": {
+              "type": "boolean",
+              "description": "Legacy compatibility field. Prefer full_image/show_text."
+            },
+            "specs": {
+              "type": "array",
+              "maxItems": 7,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    "highlight": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/baseVisual"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "rotation_image_ids": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "uniqueItems": true
+            },
+            "rotation_image_urls": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            },
+            "rotation_seconds": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 60
+            }
+          }
+        }
+      ]
+    }
+  }
+}
