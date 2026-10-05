@@ -105,6 +105,7 @@ function cvl_homepage_hero_fallback() {
             'image_id'               => 0,
             'image_url'              => '',
             'fallback_category_slug' => 'ferramentas-electricas',
+            'image_only'             => false,
         ),
     );
 }
@@ -129,6 +130,7 @@ function cvl_normalize_homepage_hero_panel( $panel, $fallback = array() ) {
             'image_url'              => '',
             'fallback_category_slug' => '',
             'specs'                  => array(),
+            'image_only'             => false,
         )
     );
 
@@ -175,6 +177,7 @@ function cvl_normalize_homepage_hero_panel( $panel, $fallback = array() ) {
         'image_url'              => $image_url,
         'fallback_category_slug' => sanitize_title( $panel['fallback_category_slug'] ),
         'specs'                  => $specs,
+        'image_only'             => ! empty( $panel['image_only'] ),
     );
 }
 
