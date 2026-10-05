@@ -10,6 +10,7 @@ on:
       - "wp-content/plugins/cv-r2-media-linker/**"
       - ".github/workflows/cv-internal-plugins.yml"
       - "ops/deploy-cv-internal-plugins.sh"
+      - "ops/diagnose-trash-actions.php"
   workflow_dispatch:
 
 permissions:
@@ -74,6 +75,10 @@ jobs:
         env:
           PLUGIN_ZIP: ${{ runner.temp }}/cv-internal-plugins-${{ github.run_id }}-${{ github.run_attempt }}/cv-internal-plugins.zip
         run: bash ops/deploy-cv-internal-plugins.sh "$PLUGIN_ZIP"
+
+      - name: Verify Woo product trash lifecycle
+        shell: bash
+        run: php ops/diagnose-trash-actions.php
 
       - name: Verify REST endpoints
         shell: bash
