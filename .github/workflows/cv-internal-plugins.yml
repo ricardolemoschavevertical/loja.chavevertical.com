@@ -1,0 +1,82 @@
+name: Package and Deploy Chave Vertical Internal Plugins
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "wp-content/plugins/chavevertical-core/**"
+      - "wp-content/plugins/cv-astro-bridge/**"
+      - ".github/workflows/cv-internal-plugins.yml"
+      - "ops/deploy-cv-internal-plugins.sh"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cv-internal-plugins-deploy
+  cancel-in-progress: false
+
+jobs:
+  package:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate plugins
+        shell: bash
+        run: |
+          set -euo pipefail
+          for plugin in chavevertical-core cv-astro-bridge; do
+            test -d "wp-content/plugins/$plugin"
+            find "wp-content/plugins/$plugin" -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          done
+          bash -n ops/deploy-cv-internal-plugins.sh
+
+      - name: Build package
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd wp-content/plugins
+          zip -qr cv-internal-plugins.zip chavevertical-core cv-astro-bridge
+          unzip -t cv-internal-plugins.zip
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: cv-internal-plugins
+          path: wp-content/plugins/cv-internal-plugins.zip
+          if-no-files-found: error
+          retention-days: 30
+
+  deploy:
+    needs: package
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Download package
+        uses: actions/download-artifact@v4
+        with:
+          name: cv-internal-plugins
+          path: ${{ runner.temp }}/cv-internal-plugins-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Deploy and activate
+        shell: bash
+        env:
+          PLUGIN_ZIP: ${{ runner.temp }}/cv-internal-plugins-${{ github.run_id }}-${{ github.run_attempt }}/cv-internal-plugins.zip
+        run: bash ops/deploy-cv-internal-plugins.sh "$PLUGIN_ZIP"
+
+      - name: Verify REST endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl --connect-timeout 10 --max-time 30 -sS -o /tmp/cvab-product.json -w '%{http_code}' 'https://loja.chavevertical.com/wp-json/cv-astro/v1/product/1602458')
+          test "$code" = "200" || test "$code" = "404"
+          head -c 1000 /tmp/cvab-product.json || true
