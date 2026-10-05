@@ -52,7 +52,14 @@ for slug in chavevertical-core cv-astro-bridge cv-pdf-reader cv-r2-media-linker;
   fi
 
   mkdir -p "$DEST"
-  rsync -rp --delete --chmod=D2770,F660 "$SRC/" "$DEST/"
+
+  if [[ "$slug" == "cv-r2-media-linker" ]]; then
+    # Este plugin já existia no servidor com ownership diferente.
+    # Não tentar alterar permissões das pastas; sincronizar apenas conteúdo.
+    rsync -r --delete --no-perms --omit-dir-times "$SRC/" "$DEST/"
+  else
+    rsync -rp --delete --chmod=D2770,F660 "$SRC/" "$DEST/"
+  fi
 
   DIFF=$(rsync -rcn --delete --out-format='%i %n' "$SRC/" "$DEST/")
   if [[ -n "$DIFF" ]]; then
