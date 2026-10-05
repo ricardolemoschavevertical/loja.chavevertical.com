@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Chave Vertical Core
  * Description: Base comum dos plugins internos da Chave Vertical e menu central de administração.
- * Version: 0.2.0
+ * Version: 0.2.1
  * Author: Chave Vertical
  * Requires at least: 6.5
  * Requires PHP: 8.0
@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CV_CORE_VERSION', '0.2.0' );
+define( 'CV_CORE_VERSION', '0.2.1' );
 define( 'CV_CORE_MENU_SLUG', 'chave-vertical' );
 
 require_once __DIR__ . '/includes/class-cv-core-order-history.php';
