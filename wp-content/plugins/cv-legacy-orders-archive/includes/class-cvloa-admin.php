@@ -900,10 +900,10 @@ final class CVLOA_Admin {
     }
 
     private static function render_archive(): void {
-        $view_id = absint( wp_unslash( $_GET['view_order'] ?? 0 ) );
+        $view_key = sanitize_key( (string) wp_unslash( $_GET['view_order'] ?? '' ) );
 
-        if ( $view_id ) {
-            self::render_order_detail( $view_id );
+        if ( $view_key ) {
+            self::render_order_detail( $view_key );
             return;
         }
 
@@ -1010,7 +1010,7 @@ final class CVLOA_Admin {
                             array(
                                 'page'       => 'cv-legacy-orders',
                                 'tab'        => 'archive',
-                                'view_order' => absint( $row['id'] ?? 0 ),
+                                'view_order' => sanitize_key( (string) ( $row['archive_key'] ?? $row['id'] ?? '' ) ),
                             ),
                             admin_url( 'admin.php' )
                         );
@@ -1060,14 +1060,15 @@ final class CVLOA_Admin {
         }
     }
 
-    private static function render_order_detail( int $order_id ): void {
-        $order = CVLOA_Archive::read_order( $order_id );
+    private static function render_order_detail( string $order_key ): void {
+        $order = CVLOA_Archive::read_order( $order_key );
 
         if ( ! $order ) {
             echo '<div class="notice notice-error"><p>Não foi possível encontrar esta encomenda no arquivo local.</p></div>';
             return;
         }
 
+        $order_id = absint( $order['id'] ?? 0 );
         $billing  = (array) ( $order['billing'] ?? array() );
         $shipping = (array) ( $order['shipping'] ?? array() );
         $currency = (string) ( $order['currency'] ?? get_woocommerce_currency() );
