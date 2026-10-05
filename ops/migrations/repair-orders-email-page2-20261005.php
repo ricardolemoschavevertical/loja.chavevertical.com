@@ -176,7 +176,8 @@ foreach ( $orders as $order_id => $data ) {
     $archive_key = $find_archive_key( (int) $order_id );
 
     if ( '' === $archive_key ) {
-        $errors[] = "#{$order_id}: encomenda não encontrada no arquivo local.";
+        $skipped++;
+        echo "skipped-not-archived-order={$order_id}\n";
         continue;
     }
 
