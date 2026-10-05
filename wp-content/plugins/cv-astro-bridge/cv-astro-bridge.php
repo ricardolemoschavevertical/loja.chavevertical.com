@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CV Astro Bridge
  * Description: Ponte entre WooCommerce, Astro e Cloudflare Worker da Chave Vertical.
- * Version: 0.3.9
+ * Version: 0.3.10
  * Author: Chave Vertical
  * Requires at least: 6.5
  * Requires PHP: 8.0
@@ -12,7 +12,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVAB_VERSION', '0.3.9' );
+define( 'CVAB_VERSION', '0.3.10' );
 define( 'CVAB_EXPECTED_WORKER_RELEASE', '2026.10.05.10' );
 define( 'CVAB_STATUS_OPTION', 'cvab_worker_status' );
 define( 'CVAB_FILE', __FILE__ );
@@ -1515,6 +1515,9 @@ final class CV_Astro_Bridge {
         }
 
         $brand = $brands[0] ?? array();
+        $can_add_to_cart = $product->is_type( 'simple' )
+            && $product->is_purchasable()
+            && $product->is_in_stock();
 
         return array(
             'id'                => $product_id,
@@ -1524,6 +1527,9 @@ final class CV_Astro_Bridge {
             'url'               => 'https://astro.chavevertical.com/produto/' . rawurlencode( $product->get_slug() ) . '/',
             'permalink'         => $product->get_permalink(),
             'purchaseUrl'       => 'https://loja.chavevertical.com/cart/?add-to-cart=' . $product_id,
+            'productType'       => $product->get_type(),
+            'canAddToCart'      => $can_add_to_cart,
+            'can_add_to_cart'   => $can_add_to_cart,
             'priceValue'        => (float) $product->get_price(),
             'regularPriceValue' => (float) $product->get_regular_price(),
             'salePriceValue'    => (float) $product->get_sale_price(),
