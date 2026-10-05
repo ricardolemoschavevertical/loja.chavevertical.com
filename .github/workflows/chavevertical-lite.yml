@@ -104,7 +104,7 @@ jobs:
     needs: package
     if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main' && needs.package.outputs.should_deploy == 'true'
     concurrency:
-      group: chavevertical-lite-deploy
+      group: chavevertical-lite-deploy-v2
       cancel-in-progress: false
     runs-on: [self-hosted, Linux, X64, loja-chavevertical]
     timeout-minutes: 10
