@@ -13,7 +13,7 @@
 defined( 'ABSPATH' ) || exit;
 
 define( 'CVAB_VERSION', '0.3.0' );
-define( 'CVAB_EXPECTED_WORKER_RELEASE', '2026.10.05.02' );
+define( 'CVAB_EXPECTED_WORKER_RELEASE', '2026.10.05.03' );
 define( 'CVAB_STATUS_OPTION', 'cvab_worker_status' );
 define( 'CVAB_FILE', __FILE__ );
 define( 'CVAB_OPTION', 'cvab_settings' );
