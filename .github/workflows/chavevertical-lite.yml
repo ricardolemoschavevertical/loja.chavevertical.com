@@ -12,6 +12,7 @@ on:
       - "ops/ensure-quem-somos-page.php"
       - "ops/ensure-entregas-ao-domicilio-page.php"
       - "ops/ensure-termos-e-condicoes-page.php"
+      - "ops/ensure-politica-de-privacidade-page.php"
       - "ops/ensure-pretty-permalinks.php"
   workflow_dispatch:
 
@@ -44,6 +45,7 @@ jobs:
           php -l ops/ensure-quem-somos-page.php
           php -l ops/ensure-entregas-ao-domicilio-page.php
           php -l ops/ensure-termos-e-condicoes-page.php
+          php -l ops/ensure-politica-de-privacidade-page.php
           php -l ops/ensure-pretty-permalinks.php
 
       - name: Build installable ZIP
@@ -104,6 +106,10 @@ jobs:
         shell: bash
         run: php ops/ensure-termos-e-condicoes-page.php
 
+      - name: Ensure privacy page
+        shell: bash
+        run: php ops/ensure-politica-de-privacidade-page.php
+
       - name: Ensure pretty permalinks
         shell: bash
         run: php ops/ensure-pretty-permalinks.php
@@ -146,6 +152,20 @@ jobs:
           grep -q '19. Lei aplicável' /tmp/cvl-termos.html
           grep -q 'Última atualização: 16 de maio de 2026' /tmp/cvl-termos.html
           grep -q 'href="https://loja.chavevertical.com/termos-e-condicoes/"' /tmp/cvl-termos.html
+
+      - name: Verify privacy page
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -L --connect-timeout 10 --max-time 60 -sS \
+            'https://loja.chavevertical.com/politica-de-privacidade/?cvlprivacyverify=1' \
+            -o /tmp/cvl-privacidade.html
+          grep -q 'cvl-institutional-catalog-hero' /tmp/cvl-privacidade.html
+          grep -q '>Política de Privacidade<' /tmp/cvl-privacidade.html
+          grep -q '1. Introdução' /tmp/cvl-privacidade.html
+          grep -q '13. Contacto' /tmp/cvl-privacidade.html
+          grep -q 'Direitos dos Titulares dos Dados' /tmp/cvl-privacidade.html
+          grep -q 'href="https://loja.chavevertical.com/politica-de-privacidade/"' /tmp/cvl-privacidade.html
 
       - name: Verify shop catalog layout
         shell: bash
