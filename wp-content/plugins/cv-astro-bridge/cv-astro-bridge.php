@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CV Astro Bridge
  * Description: Ponte entre WooCommerce, Astro e Cloudflare Worker da Chave Vertical.
- * Version: 0.2.0
+ * Version: 0.2.1
  * Author: Chave Vertical
  * Requires at least: 6.5
  * Requires PHP: 8.0
@@ -12,7 +12,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVAB_VERSION', '0.2.0' );
+define( 'CVAB_VERSION', '0.2.1' );
 define( 'CVAB_EXPECTED_WORKER_RELEASE', '2026.10.05.02' );
 define( 'CVAB_STATUS_OPTION', 'cvab_worker_status' );
 define( 'CVAB_FILE', __FILE__ );
@@ -112,6 +112,7 @@ final class CV_Astro_Bridge {
         $is_published      = $worker_online && '' !== $release_published && hash_equals( $release_expected, $release_published );
         $deploy_label      = ! $worker_online ? 'INDISPONÍVEL' : ( $is_published ? 'PUBLICADO' : 'NÃO PUBLICADO' );
         $deploy_class      = ! $worker_online ? 'is-error' : ( $is_published ? 'is-ok' : 'is-warning' );
+        $deploy_reason     = $this->worker_status_reason( $worker_status, $release_expected );
         ?>
         <div class="wrap">
             <h1>CHAVE VERTICAL — Astro / Worker <small style="font-size:13px;color:#646970">v<?php echo esc_html( CVAB_VERSION ); ?></small></h1>
@@ -206,9 +207,10 @@ final class CV_Astro_Bridge {
                             <div class="cvab-stat"><strong>Última verificação</strong><span><?php echo ! empty( $worker_status['checked_at'] ) ? esc_html( wp_date( 'd/m/Y H:i:s', (int) $worker_status['checked_at'] ) ) : 'Nunca'; ?></span></div>
                         </div>
 
-                        <?php if ( $worker_online && ! $is_published ) : ?>
-                            <p style="margin-top:14px"><strong>Atenção:</strong> o Worker responde, mas ainda não está a servir a versão esperada. O deploy Cloudflare pode ter falhado ou ainda não ter sido aplicado.</p>
-                        <?php endif; ?>
+                        <div style="margin-top:14px;padding:12px 14px;border-left:4px solid <?php echo $is_published ? '#00a32a' : '#dba617'; ?>;background:#f6f7f7">
+                            <strong>Motivo:</strong>
+                            <span><?php echo esc_html( $deploy_reason ); ?></span>
+                        </div>
                     </div>
 
                     <div class="cvab-card">
@@ -263,13 +265,13 @@ final class CV_Astro_Bridge {
         $ms        = (int) ( $status['latency_ms'] ?? 0 );
 
         if ( '' === $published || ! hash_equals( CVAB_EXPECTED_WORKER_RELEASE, $published ) ) {
+            $reason = $this->worker_status_reason( $status, CVAB_EXPECTED_WORKER_RELEASE );
             $this->redirect_admin(
                 'error',
                 sprintf(
-                    'Worker online em %d ms, mas a versão publicada é %s e a esperada é %s.',
+                    'Worker online em %d ms. %s',
                     $ms,
-                    $published ?: 'desconhecida',
-                    CVAB_EXPECTED_WORKER_RELEASE
+                    $reason
                 )
             );
         }
@@ -282,6 +284,41 @@ final class CV_Astro_Bridge {
                 $ms
             )
         );
+    }
+
+    private function worker_status_reason( array $status, string $expected_release ): string {
+        if ( empty( $status['online'] ) ) {
+            if ( ! empty( $status['error'] ) ) {
+                return 'O Worker não está acessível: ' . (string) $status['error'];
+            }
+
+            if ( ! empty( $status['http_status'] ) ) {
+                return 'O endpoint de saúde respondeu HTTP ' . (int) $status['http_status'] . '.';
+            }
+
+            return 'O Worker não respondeu ao teste de saúde.';
+        }
+
+        $published = (string) ( $status['release'] ?? '' );
+
+        if ( '' === $published ) {
+            return 'O Worker responde, mas não informa a versão ativa. Isto normalmente significa que ainda está publicada uma versão anterior ao sistema de releases.';
+        }
+
+        if ( ! hash_equals( $expected_release, $published ) ) {
+            return sprintf(
+                'A Cloudflare ainda está a servir a versão %s. A versão esperada é %s, por isso o deploy novo ainda não foi aplicado ou falhou antes de ficar ativo.',
+                $published,
+                $expected_release
+            );
+        }
+
+        $origin_status = (int) ( $status['origin_status'] ?? 0 );
+        if ( $origin_status && 200 !== $origin_status ) {
+            return 'A versão correta está publicada, mas o backend WooCommerce respondeu HTTP ' . $origin_status . '.';
+        }
+
+        return 'A versão esperada está publicada e o Worker está a comunicar corretamente com o WooCommerce.';
     }
 
     private function get_worker_status( bool $force = false ): array {
