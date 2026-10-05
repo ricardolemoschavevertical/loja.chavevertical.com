@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CV Astro Bridge
  * Description: Ponte entre WooCommerce, Astro e Cloudflare Worker da Chave Vertical.
- * Version: 0.3.7
+ * Version: 0.3.8
  * Author: Chave Vertical
  * Requires at least: 6.5
  * Requires PHP: 8.0
@@ -12,7 +12,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVAB_VERSION', '0.3.7' );
+define( 'CVAB_VERSION', '0.3.8' );
 define( 'CVAB_EXPECTED_WORKER_RELEASE', '2026.10.05.10' );
 define( 'CVAB_STATUS_OPTION', 'cvab_worker_status' );
 define( 'CVAB_FILE', __FILE__ );
@@ -59,6 +59,12 @@ final class CV_Astro_Bridge {
         add_action( 'post_updated', array( $this, 'product_post_updated' ), 30, 3 );
         add_action( 'before_delete_post', array( $this, 'product_before_delete' ), 30, 2 );
         add_action( 'wp_trash_post', array( $this, 'product_before_trash' ), 30, 1 );
+
+        // Nunca bloquear ações administrativas do WooCommerce com pedidos HTTP ao Worker.
+        // Lixo, reposição, eliminação permanente e esvaziar lixo são processados em background.
+        add_action( 'cvab_async_product_refresh', array( $this, 'async_product_refresh' ), 10, 2 );
+        add_action( 'cvab_async_product_slug_purge', array( $this, 'async_product_slug_purge' ), 10, 1 );
+        add_action( 'cvab_async_content_refresh', array( $this, 'async_content_refresh' ), 10, 2 );
 
         // Cobertura de alterações de catálogo fora do CRUD WooCommerce normal:
         // metadados, taxonomias e media usados pelo produto/termos.
@@ -439,9 +445,7 @@ final class CV_Astro_Bridge {
             return;
         }
 
-        $this->notify_worker_product( $product_id, 'yes' === $settings['auto_warm'] );
-        $this->notify_worker_content( 'catalog' );
-        $this->notify_worker_content( 'homepage' );
+        $this->queue_async_product_refresh( $product_id, 'yes' === $settings['auto_warm'] );
     }
 
     public function variation_changed( int $variation_id ): void {
@@ -500,9 +504,9 @@ final class CV_Astro_Bridge {
 
     public function product_before_delete( int $post_id, WP_Post $post ): void {
         if ( 'product' === $post->post_type && '' !== $post->post_name ) {
-            $this->notify_worker_product_slug( $post->post_name, false );
-            $this->notify_worker_content( 'catalog' );
-            $this->notify_worker_content( 'homepage' );
+            $this->queue_async_product_slug_purge( $post->post_name );
+            $this->queue_async_content_refresh( 'catalog' );
+            $this->queue_async_content_refresh( 'homepage' );
         }
     }
 
@@ -629,6 +633,88 @@ final class CV_Astro_Bridge {
             },
             999
         );
+    }
+
+    private function queue_async_product_refresh( int $product_id, bool $warm ): void {
+        $product_id = absint( $product_id );
+        if ( ! $product_id ) {
+            return;
+        }
+
+        $args = array( $product_id, $warm ? 1 : 0 );
+
+        if ( function_exists( 'as_enqueue_async_action' ) ) {
+            as_enqueue_async_action( 'cvab_async_product_refresh', $args, 'cv-astro-bridge', true );
+            return;
+        }
+
+        if ( ! wp_next_scheduled( 'cvab_async_product_refresh', $args ) ) {
+            wp_schedule_single_event( time() + 5, 'cvab_async_product_refresh', $args );
+        }
+    }
+
+    private function queue_async_product_slug_purge( string $slug ): void {
+        $slug = sanitize_title( $slug );
+        if ( '' === $slug ) {
+            return;
+        }
+
+        $args = array( $slug );
+
+        if ( function_exists( 'as_enqueue_async_action' ) ) {
+            as_enqueue_async_action( 'cvab_async_product_slug_purge', $args, 'cv-astro-bridge', true );
+            return;
+        }
+
+        if ( ! wp_next_scheduled( 'cvab_async_product_slug_purge', $args ) ) {
+            wp_schedule_single_event( time() + 5, 'cvab_async_product_slug_purge', $args );
+        }
+    }
+
+    private function queue_async_content_refresh( string $scope, string $slug = '' ): void {
+        $scope = sanitize_key( $scope );
+        $slug  = sanitize_title( $slug );
+
+        if ( '' === $scope ) {
+            return;
+        }
+
+        $args = array( $scope, $slug );
+
+        if ( function_exists( 'as_enqueue_async_action' ) ) {
+            as_enqueue_async_action( 'cvab_async_content_refresh', $args, 'cv-astro-bridge', true );
+            return;
+        }
+
+        if ( ! wp_next_scheduled( 'cvab_async_content_refresh', $args ) ) {
+            wp_schedule_single_event( time() + 5, 'cvab_async_content_refresh', $args );
+        }
+    }
+
+    public function async_product_refresh( int $product_id, $warm = 0 ): void {
+        $product = wc_get_product( $product_id );
+
+        if ( ! $product ) {
+            return;
+        }
+
+        // Um produto no lixo nunca deve ser reaquecido no frontend.
+        if ( 'trash' === $product->get_status() ) {
+            $this->notify_worker_product_slug( $product->get_slug(), false );
+        } else {
+            $this->notify_worker_product( $product_id, (bool) $warm );
+        }
+
+        $this->notify_worker_content( 'catalog' );
+        $this->notify_worker_content( 'homepage' );
+    }
+
+    public function async_product_slug_purge( string $slug ): void {
+        $this->notify_worker_product_slug( $slug, false );
+    }
+
+    public function async_content_refresh( string $scope, string $slug = '' ): void {
+        $this->notify_worker_content( $scope, $slug );
     }
 
     private function notify_worker_brands() {
