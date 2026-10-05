@@ -61,6 +61,16 @@ final class CVLOA_Archive {
         $root = self::root_dir();
         $dir  = self::base_dir();
 
+        $normalized_dir    = trailingslashit( wp_normalize_path( $dir ) );
+        $normalized_public = trailingslashit( wp_normalize_path( ABSPATH ) );
+
+        if ( str_starts_with( $normalized_dir, $normalized_public ) ) {
+            return new WP_Error(
+                'cvloa_storage_inside_document_root',
+                'Por segurança, o arquivo de encomendas não pode ficar dentro do document root público do WordPress.'
+            );
+        }
+
         if ( ! is_dir( $root ) && ! wp_mkdir_p( $root ) ) {
             return new WP_Error( 'cvloa_storage_root_create_failed', 'Não foi possível criar a pasta privada do arquivo.' );
         }
