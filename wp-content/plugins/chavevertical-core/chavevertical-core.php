@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Chave Vertical Core
  * Description: Base comum dos plugins internos da Chave Vertical e menu central de administração.
- * Version: 0.1.0
+ * Version: 0.2.0
  * Author: Chave Vertical
  * Requires at least: 6.5
  * Requires PHP: 8.0
@@ -11,8 +11,10 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CV_CORE_VERSION', '0.1.0' );
+define( 'CV_CORE_VERSION', '0.2.0' );
 define( 'CV_CORE_MENU_SLUG', 'chave-vertical' );
+
+require_once __DIR__ . '/includes/class-cv-core-order-history.php';
 
 function cv_admin_parent_slug(): string {
     return CV_CORE_MENU_SLUG;
@@ -98,3 +100,14 @@ function cv_core_render_dashboard(): void {
     </div>
     <?php
 }
+
+
+add_action(
+    'plugins_loaded',
+    static function (): void {
+        if ( class_exists( 'WooCommerce' ) ) {
+            CV_Core_Order_History::init();
+        }
+    },
+    50
+);
