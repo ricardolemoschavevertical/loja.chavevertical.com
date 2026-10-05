@@ -1954,3 +1954,45 @@ body.woocommerce-shop .cvl-featured-catalog-page .cvl-search-products li.product
 .cvl-ref-hero-side{
   border-color:#e3e6e8!important;
 }
+
+
+/* Product breadcrumb path */
+body.single-product.woocommerce .cvl-product-breadcrumb{
+  margin:0 0 22px;
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:7px;
+  color:#78838a;
+  font-size:11px;
+  line-height:1.45;
+}
+body.single-product.woocommerce .cvl-product-breadcrumb a{
+  color:#4f5b62;
+  font-weight:600;
+  transition:color .15s ease;
+}
+body.single-product.woocommerce .cvl-product-breadcrumb a:hover{
+  color:var(--cvl-teal);
+}
+body.single-product.woocommerce .cvl-product-breadcrumb-sep{
+  color:#b3bcc1;
+  font-size:13px;
+}
+body.single-product.woocommerce .cvl-product-breadcrumb-current{
+  max-width:min(680px,55vw);
+  overflow:hidden;
+  color:#69747b;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+@media(max-width:767px){
+  body.single-product.woocommerce .cvl-product-breadcrumb{
+    margin-bottom:16px;
+    gap:5px;
+    font-size:10px;
+  }
+  body.single-product.woocommerce .cvl-product-breadcrumb-current{
+    max-width:42vw;
+  }
+}
