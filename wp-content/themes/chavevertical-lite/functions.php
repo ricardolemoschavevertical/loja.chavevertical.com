@@ -644,44 +644,9 @@ function cvl_loop_actions_open() {
 }
 add_action( 'woocommerce_after_shop_loop_item', 'cvl_loop_actions_open', 9 );
 
-function cvl_loop_view_button() {
-    global $product;
-
-    if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product ) {
-        return;
-    }
-
-    echo '<button type="button" class="button cvl-view-product" data-cvl-quick-view data-product-slug="' . esc_attr( $product->get_slug() ) . '" aria-label="' . esc_attr( sprintf( __( 'Ver rapidamente %s', 'chavevertical-lite' ), $product->get_name() ) ) . '" title="' . esc_attr__( 'Ver rápido', 'chavevertical-lite' ) . '"><span aria-hidden="true">👁</span></button>';
-}
-add_action( 'woocommerce_after_shop_loop_item', 'cvl_loop_view_button', 15 );
-
-function cvl_loop_actions_close() {
-    echo '</div>';
-}
-add_action( 'woocommerce_after_shop_loop_item', 'cvl_loop_actions_close', 20 );
-
-/**
- * Modal único de vista rápida para todos os cards do catálogo.
- * Os dados são carregados do endpoint do CV Astro Bridge apenas ao abrir.
- */
-function cvl_product_quick_view_modal() {
-    ?>
-    <div class="cvl-quick-view-modal" data-cvl-quick-view-modal hidden>
-        <div class="cvl-quick-view-backdrop" data-cvl-quick-view-close></div>
-        <section class="cvl-quick-view-dialog" role="dialog" aria-modal="true" aria-labelledby="cvl-quick-view-title">
-            <button type="button" class="cvl-quick-view-close" data-cvl-quick-view-close aria-label="<?php esc_attr_e( 'Fechar', 'chavevertical-lite' ); ?>">×</button>
-            <div class="cvl-quick-view-content" data-cvl-quick-view-content>
-                <div class="cvl-quick-view-loading"><?php esc_html_e( 'A carregar produto…', 'chavevertical-lite' ); ?></div>
-            </div>
-        </section>
-    </div>
-    <?php
-}
-add_action( 'wp_footer', 'cvl_product_quick_view_modal', 80 );
-
 add_filter( 'woocommerce_product_add_to_cart_text', function ( $text, $product ) {
     if ( class_exists( 'WC_Product' ) && $product instanceof WC_Product && $product->is_type( 'simple' ) && $product->is_purchasable() && $product->is_in_stock() ) {
-        return __( 'Adicionar ao carrinho', 'chavevertical-lite' );
+        return __( 'ADICIONAR', 'chavevertical-lite' );
     }
 
     return __( 'Ver produto', 'chavevertical-lite' );
@@ -701,9 +666,8 @@ add_filter( 'woocommerce_loop_add_to_cart_link', function ( $html, $product ) {
         return '';
     }
 
-    $icon = '<svg class="cvl-cart-button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 8H7"></path><circle cx="10" cy="20" r="1.2"></circle><circle cx="18" cy="20" r="1.2"></circle></svg>';
-    $label = esc_html__( 'Adicionar ao carrinho', 'chavevertical-lite' );
-    $replacement = '>' . $icon . '<span class="screen-reader-text">' . $label . '</span></a>';
+    $label = esc_html__( 'ADICIONAR', 'chavevertical-lite' );
+    $replacement = '><span class="cvl-cart-button-label">' . $label . '</span></a>';
 
     $html = preg_replace( '/>[^<]*<\/a>$/', $replacement, $html, 1 );
 
