@@ -384,7 +384,7 @@ final class CVLOA_Customer_Admin {
         ?>
         <div class="wrap cvloa-customer-admin">
             <h1>Clientes antigos</h1>
-            <p>Arquivo privado dos clientes da loja de origem. Não cria utilizadores, não copia palavras-passe e não envia emails.</p>
+            <p>Arquivo privado dos clientes da loja de origem. Não copia palavras-passe. Um cliente histórico sem conta local pode ter a conta WordPress preparada na primeira tentativa de login por email e depois definir uma nova palavra-passe pelo fluxo normal de recuperação.</p>
 
             <style>
                 .cvloa-customer-admin{max-width:1600px}.cvloa-card{background:#fff;border:1px solid #dcdcde;border-radius:10px;padding:18px;margin:16px 0}
