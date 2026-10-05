@@ -543,6 +543,31 @@ final class CVLOA_Admin {
         </div>
 
         <div class="cvloa-card">
+            <h2>Ficheiros do arquivo</h2>
+            <table class="cvloa-table">
+                <thead>
+                    <tr>
+                        <th>Ficheiro</th>
+                        <th>Tamanho</th>
+                        <th>Localização</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code><?php echo esc_html( basename( CVLOA_Archive::data_path() ) ); ?></code></td>
+                        <td><?php echo esc_html( size_format( $stats['data_bytes'], 1 ) ); ?></td>
+                        <td><span class="cvloa-path"><?php echo esc_html( CVLOA_Archive::data_path() ); ?></span></td>
+                    </tr>
+                    <tr>
+                        <td><code><?php echo esc_html( basename( CVLOA_Archive::index_path() ) ); ?></code></td>
+                        <td><?php echo esc_html( size_format( $stats['index_bytes'], 1 ) ); ?></td>
+                        <td><span class="cvloa-path"><?php echo esc_html( CVLOA_Archive::index_path() ); ?></span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="cvloa-card">
             <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
                 <div>
                     <h2 style="margin:0 0 5px">Estados das encomendas na origem</h2>
@@ -617,7 +642,7 @@ final class CVLOA_Admin {
             <?php if ( ! empty( $stats['error'] ) ) : ?>
                 <p class="cvloa-error"><?php echo esc_html( $stats['error'] ); ?></p>
             <?php endif; ?>
-            <p class="description">Arquivo local: <span class="cvloa-path"><?php echo esc_html( $stats['storage_path'] ); ?></span></p>
+            <p class="description">Pasta base do arquivo: <span class="cvloa-path"><?php echo esc_html( $stats['storage_path'] ); ?></span></p>
         </div>
 
         <script>
