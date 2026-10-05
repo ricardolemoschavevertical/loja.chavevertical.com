@@ -1,14 +1,14 @@
-timestamp_utc=2026-10-05T20:28:49Z
+timestamp_utc=2026-10-05T22:52:29Z
 runner_user=codex1
 plugin_active=yes
 plugin_version=0.1.7
-theme_version=0.16.83
+theme_version=0.16.87
 live_search_template_has_filters=yes
 settings={"endpoint":"https://127.0.0.1:19200","auth_type":"basic","username":"wordpress","index":"wordpress-chavevertical-products","enabled":true,"replace_native_search":true,"enable_instant_search":true,"enable_astro_api":true,"verify_ssl":true,"secret_present":true,"ca_file":"/home/chavevertical-loja/htdocs/loja.chavevertical.com/wp-content/plugins/cv-opensearch/certs/opensearch-ca.pem","ca_file_readable":true,"ca_pem_present":false}
 reindex_state={"status":"complete","processed":3442,"total":3436,"started":1791231945,"updated":1791232017,"message":"","finished":1791232017}
 
 client_health={"ok":true,"status":"green","cluster":"wordpress-search"}
-index_probe={"ok":true,"total":3458,"items":1}
+index_probe={"ok":true,"total":3962,"items":1}
 public_health_http=200
 public_health_body={"ok":true,"configured":true,"enabled":true,"cluster":"wordpress-search","status":"green","index":"wordpress-chavevertical-products","plugin":"0.1.7"}
 public_suggest_http=200
@@ -20,7 +20,7 @@ homepage_has_theme_search=yes
 homepage_cvos_script_src=https://loja.chavevertical.com/wp-content/plugins/cv-opensearch/assets/search.js?ver=0.1.7
 
 catalog_http=200
-catalog_summary={"ok":true,"source":"opensearch","total":41,"first_id":57439,"first_name":"Gerador Diesel Trifásico Insonorizado NUAIR NGDT15000 12kW 15kVA 400V/230V","first_category_match":false,"has_brand_facets":true,"has_category_facets":true,"has_price_facet":true}
+catalog_summary={"ok":true,"source":"opensearch","total":45,"first_id":68438,"first_name":"Gerador a Diesel POWERED 6000SN-3 230V/400V 5kW Insonorizado","first_category_match":false,"has_brand_facets":true,"has_category_facets":true,"has_price_facet":true}
 search_page_http=200
 search_page_final_url=https://loja.chavevertical.com/?s=insonorizados&post_type=product
 search_has_filter_panel=yes
@@ -28,9 +28,9 @@ search_has_brand_filter=yes
 search_has_category_filter=yes
 search_has_price_filter=yes
 search_has_category_label_in_product_card=no
-search_first_product_id=57439
+search_first_product_id=68438
 
 price_filtered_page_http=200
 price_filtered_page_final_url=https://loja.chavevertical.com/?s=powered&post_type=product&min_price=100&max_price=5000
 price_filter_panel_present=yes
-price_filter_input_snippet=name="min_price" value="100.00" placeholder="0" name="max_price" value="5000.00" placeholder="19.543" 
+price_filter_input_snippet=name="min_price" value="100.00" placeholder="0" name="max_price" value="5000.00" placeholder="34.960" 
