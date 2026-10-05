@@ -117,6 +117,11 @@ final class CVR2_Admin {
     public static function ajax_start_import(): void {
         self::guard_ajax();
 
+        $import_mode = sanitize_key( (string) wp_unslash( $_POST['import_mode'] ?? 'update_existing' ) );
+        if ( ! in_array( $import_mode, array( 'update_existing', 'create_only' ), true ) ) {
+            $import_mode = 'update_existing';
+        }
+
         $state = array(
             'status'      => 'running',
             'phase'       => 'products',
@@ -126,7 +131,10 @@ final class CVR2_Admin {
             'processed'   => 0,
             'created'     => 0,
             'updated'     => 0,
+            'ignored'     => 0,
             'slug_errors' => 0,
+            'import_mode' => $import_mode,
+            'run_id'      => wp_generate_uuid4(),
             'errors'      => array(),
             'started_at'  => time(),
             'updated_at'  => time(),
@@ -159,7 +167,10 @@ final class CVR2_Admin {
         }
 
         if ( 'relations' === ( $state['phase'] ?? 'products' ) ) {
-            $result = CVR2_Product_Importer::resolve_relations_page( max( 1, absint( $state['page'] ?? 1 ) ), 25 );
+            $relations_run_id = 'create_only' === ( $state['import_mode'] ?? 'update_existing' )
+                ? sanitize_text_field( (string) ( $state['run_id'] ?? '' ) )
+                : '';
+            $result = CVR2_Product_Importer::resolve_relations_page( max( 1, absint( $state['page'] ?? 1 ) ), 25, $relations_run_id );
             $state['page']        = (int) $result['page'] + 1;
             $state['total_pages'] = (int) $result['total_pages'];
             $state['updated_at']  = time();
@@ -230,6 +241,13 @@ final class CVR2_Admin {
 
         foreach ( (array) $result['data'] as $source_product ) {
             $was_existing = self::target_exists_for_source( (array) $source_product );
+
+            if ( $was_existing && 'create_only' === ( $state['import_mode'] ?? 'update_existing' ) ) {
+                $state['ignored'] = absint( $state['ignored'] ?? 0 ) + 1;
+                $state['processed']++;
+                continue;
+            }
+
             $imported = CVR2_Product_Importer::import_source_product( (array) $source_product );
 
             if ( is_wp_error( $imported ) ) {
@@ -240,7 +258,15 @@ final class CVR2_Admin {
                 $state['errors'][] = '#' . $source_id . ': ' . $imported->get_error_message();
                 $state['errors']   = array_slice( $state['errors'], -20 );
             } else {
-                $was_existing ? $state['updated']++ : $state['created']++;
+                if ( $was_existing ) {
+                    $state['updated']++;
+                } else {
+                    $state['created']++;
+                    $target_id = absint( $imported['id'] ?? 0 );
+                    if ( $target_id && ! empty( $state['run_id'] ) ) {
+                        update_post_meta( $target_id, '_cvr2_import_run', sanitize_text_field( (string) $state['run_id'] ) );
+                    }
+                }
             }
 
             $state['processed']++;
@@ -324,7 +350,9 @@ final class CVR2_Admin {
                 .cvr2-log{min-height:72px;padding:12px;border:1px solid #dcdcde;background:#f6f7f7;white-space:pre-wrap}
                 .cvr2-progress{height:14px;margin:12px 0;overflow:hidden;border-radius:999px;background:#e5e5e5}
                 .cvr2-progress>span{height:100%;display:block;width:0;background:#00a32a;transition:width .2s}
-                .cvr2-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.cvr2-stat{padding:10px;background:#f6f7f7;border-radius:7px}
+                .cvr2-stats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}.cvr2-stat{padding:10px;background:#f6f7f7;border-radius:7px}
+                .cvr2-mode{margin:0 0 16px;padding:14px;border:1px solid #dcdcde;border-radius:8px;background:#f6f7f7}
+                .cvr2-mode label{display:block;margin:8px 0}
                 .cvr2-stat strong{display:block;font-size:18px}
                 @media(max-width:900px){.cvr2-grid{grid-template-columns:1fr}.cvr2-row{grid-template-columns:1fr}.cvr2-stats{grid-template-columns:1fr 1fr}}
             </style>
@@ -371,6 +399,12 @@ final class CVR2_Admin {
 
                 <section class="cvr2-card">
                     <h2>Importação</h2>
+                    <div class="cvr2-mode">
+                        <strong>Produtos já existentes</strong>
+                        <label><input type="radio" name="cvr2_import_mode" value="update_existing" checked> Atualizar produtos existentes e criar produtos novos</label>
+                        <label><input type="radio" name="cvr2_import_mode" value="create_only"> Ignorar produtos existentes e criar apenas produtos novos</label>
+                        <small>No modo de ignorar, um produto encontrado por ID de origem, SKU ou slug não é alterado, nem nas imagens, metadados ou relações.</small>
+                    </div>
                     <div class="cvr2-actions">
                         <button class="button" type="button" data-cvr2-action="test">1. Testar REST</button>
                         <button class="button" type="button" data-cvr2-action="structure">2. Sincronizar estrutura</button>
@@ -386,6 +420,7 @@ final class CVR2_Admin {
                         <div class="cvr2-stat"><span>Total</span><strong data-stat="total">0</strong></div>
                         <div class="cvr2-stat"><span>Criados</span><strong data-stat="created">0</strong></div>
                         <div class="cvr2-stat"><span>Atualizados</span><strong data-stat="updated">0</strong></div>
+                        <div class="cvr2-stat"><span>Ignorados</span><strong data-stat="ignored">0</strong></div>
                         <div class="cvr2-stat"><span>Erros de slug</span><strong data-stat="slug_errors">0</strong></div>
                     </div>
                     <h3>Estado</h3>
@@ -418,7 +453,7 @@ final class CVR2_Admin {
 
             function renderState(state) {
                 state = state || {};
-                ['processed','total','created','updated','slug_errors'].forEach((key) => {
+                ['processed','total','created','updated','ignored','slug_errors'].forEach((key) => {
                     const el = document.querySelector('[data-stat="' + key + '"]');
                     if (el) el.textContent = Number(state[key] || 0).toLocaleString('pt-PT');
                 });
@@ -428,8 +463,8 @@ final class CVR2_Admin {
                 if (progress) progress.style.width = total > 0 ? Math.min(100, (processed / total) * 100) + '%' : '0%';
             }
 
-            async function call(action) {
-                const body = new URLSearchParams({action, nonce});
+            async function call(action, params = {}) {
+                const body = new URLSearchParams({action, nonce, ...params});
                 const response = await fetch(ajaxurl, {
                     method: 'POST',
                     credentials: 'same-origin',
@@ -487,7 +522,8 @@ final class CVR2_Admin {
             document.querySelector('[data-cvr2-action="start"]')?.addEventListener('click', async () => {
                 setBusy(true);
                 try {
-                    const data = await call('cvr2_start_import');
+                    const mode = document.querySelector('input[name="cvr2_import_mode"]:checked')?.value || 'update_existing';
+                    const data = await call('cvr2_start_import', {import_mode: mode});
                     renderState(data.state);
                     write(data.message);
                     setBusy(false);
