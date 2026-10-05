@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CV Legacy Orders Archive
  * Description: Arquiva encomendas antigas de um WooCommerce remoto em ficheiros locais privados e disponibiliza consulta no admin sem criar encomendas reais.
- * Version: 1.0.1
+ * Version: 1.0.2
  * Author: Chave Vertical
  * Requires at least: 6.5
  * Requires PHP: 8.0
@@ -12,7 +12,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVLOA_VERSION', '1.0.1' );
+define( 'CVLOA_VERSION', '1.0.2' );
 define( 'CVLOA_FILE', __FILE__ );
 define( 'CVLOA_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CVLOA_OPTION', 'cvloa_settings' );
