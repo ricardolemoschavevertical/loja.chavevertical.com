@@ -434,6 +434,109 @@ final class CVR2_Product_Importer {
         );
     }
 
+    public static function update_source_product_images( array $source ) {
+        $source_id = absint( $source['id'] ?? 0 );
+        $sku       = wc_clean( (string) ( $source['sku'] ?? '' ) );
+        $slug      = sanitize_title( (string) ( $source['slug'] ?? '' ) );
+        $target_id = self::find_product( $source_id, $sku, $slug );
+
+        if ( ! $target_id ) {
+            return new WP_Error( 'cvr2_images_target_missing', 'Produto não encontrado no destino. Nenhum produto novo foi criado.' );
+        }
+
+        $product = wc_get_product( $target_id );
+        if ( ! $product instanceof WC_Product ) {
+            return new WP_Error( 'cvr2_images_product_invalid', 'Não foi possível carregar o produto existente para atualizar as imagens.' );
+        }
+
+        self::apply_images( $product, (array) ( $source['images'] ?? array() ) );
+        $saved_id = $product->save();
+
+        if ( ! $saved_id ) {
+            return new WP_Error( 'cvr2_images_save_failed', 'WooCommerce não guardou as imagens do produto.' );
+        }
+
+        $variation_images_updated = 0;
+
+        if ( $product instanceof WC_Product_Variable && $source_id ) {
+            $variations = CVR2_REST_Client::all_pages(
+                'products/' . $source_id . '/variations',
+                array( 'status' => 'any' )
+            );
+
+            if ( ! is_wp_error( $variations ) ) {
+                foreach ( $variations as $variation_source ) {
+                    if ( self::update_variation_image_only( (array) $variation_source ) ) {
+                        $variation_images_updated++;
+                    }
+                }
+            }
+        }
+
+        return array(
+            'id'                       => $target_id,
+            'source_id'                => $source_id,
+            'sku'                      => $sku,
+            'slug'                     => $slug,
+            'images_only'              => true,
+            'variation_images_updated' => $variation_images_updated,
+        );
+    }
+
+    private static function update_variation_image_only( array $source ): bool {
+        $source_id = absint( $source['id'] ?? 0 );
+        $sku       = wc_clean( (string) ( $source['sku'] ?? '' ) );
+        $target_id = 0;
+
+        if ( $source_id ) {
+            $ids = get_posts(
+                array(
+                    'post_type'      => 'product_variation',
+                    'post_status'    => 'any',
+                    'posts_per_page' => 1,
+                    'fields'         => 'ids',
+                    'meta_key'       => '_cvr2_source_variation_id',
+                    'meta_value'     => $source_id,
+                    'no_found_rows'  => true,
+                )
+            );
+
+            if ( $ids ) {
+                $target_id = absint( $ids[0] );
+            }
+        }
+
+        if ( ! $target_id && $sku ) {
+            $candidate = wc_get_product_id_by_sku( $sku );
+            if ( $candidate && 'product_variation' === get_post_type( $candidate ) ) {
+                $target_id = absint( $candidate );
+            }
+        }
+
+        if ( ! $target_id ) {
+            return false;
+        }
+
+        $variation = wc_get_product( $target_id );
+        if ( ! $variation instanceof WC_Product_Variation ) {
+            return false;
+        }
+
+        $image = $source['image'] ?? null;
+
+        if ( is_array( $image ) && ! empty( $image ) ) {
+            $image_id = CVR2_Media::attachment_for_source_image( $image );
+            if ( is_wp_error( $image_id ) || ! $image_id ) {
+                return false;
+            }
+            $variation->set_image_id( absint( $image_id ) );
+        } elseif ( empty( $image ) ) {
+            $variation->set_image_id( 0 );
+        }
+
+        return (bool) $variation->save();
+    }
+
     private static function find_product( int $source_id, string $sku, string $slug ): int {
         if ( $source_id ) {
             $ids = get_posts(
