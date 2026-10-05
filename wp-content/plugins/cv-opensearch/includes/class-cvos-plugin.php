@@ -32,6 +32,7 @@ final class CVOS_Plugin {
             'plugin_action_links_' . plugin_basename( CVOS_FILE ),
             array( $this, 'action_links' )
         );
+        add_filter( 'cv_admin_modules', array( $this, 'register_cv_module' ) );
     }
 
     public static function activate(): void {
@@ -101,9 +102,21 @@ final class CVOS_Plugin {
         return $links;
     }
 
+    public function register_cv_module( array $modules ): array {
+        $modules[] = array(
+            'title'       => 'OpenSearch',
+            'description' => 'Pesquisa e indexação do catálogo WooCommerce.',
+            'url'         => admin_url( 'admin.php?page=cv-opensearch' ),
+            'active'      => true,
+        );
+        return $modules;
+    }
+
     public function admin_menu(): void {
+        $parent = function_exists( 'cv_admin_parent_slug' ) ? cv_admin_parent_slug() : 'woocommerce';
+
         add_submenu_page(
-            'woocommerce',
+            $parent,
             __( 'OpenSearch', 'cv-opensearch' ),
             __( 'OpenSearch', 'cv-opensearch' ),
             'manage_woocommerce',
