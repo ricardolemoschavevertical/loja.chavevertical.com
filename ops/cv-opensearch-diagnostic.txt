@@ -1,14 +1,14 @@
-timestamp_utc=2026-10-05T16:18:37Z
+timestamp_utc=2026-10-05T18:30:45Z
 runner_user=codex1
 plugin_active=yes
 plugin_version=0.1.7
-theme_version=0.16.79
+theme_version=0.16.80
 live_search_template_has_filters=yes
 settings={"endpoint":"https://127.0.0.1:19200","auth_type":"basic","username":"wordpress","index":"wordpress-chavevertical-products","enabled":true,"replace_native_search":true,"enable_instant_search":true,"enable_astro_api":true,"verify_ssl":true,"secret_present":true,"ca_file":"/home/chavevertical-loja/htdocs/loja.chavevertical.com/wp-content/plugins/cv-opensearch/certs/opensearch-ca.pem","ca_file_readable":true,"ca_pem_present":false}
 reindex_state={"status":"complete","processed":1815,"total":1808,"started":1791156197,"updated":1791156270,"message":"","finished":1791156270}
 
 client_health={"ok":true,"status":"green","cluster":"wordpress-search"}
-index_probe={"ok":true,"total":1894,"items":1}
+index_probe={"ok":true,"total":2686,"items":1}
 public_health_http=200
 public_health_body={"ok":true,"configured":true,"enabled":true,"cluster":"wordpress-search","status":"green","index":"wordpress-chavevertical-products","plugin":"0.1.7"}
 public_suggest_http=200
@@ -20,7 +20,7 @@ homepage_has_theme_search=yes
 homepage_cvos_script_src=https://loja.chavevertical.com/wp-content/plugins/cv-opensearch/assets/search.js?ver=0.1.7
 
 catalog_http=200
-catalog_summary={"ok":true,"source":"opensearch","total":19,"first_id":57439,"first_name":"Gerador Diesel Trifásico Insonorizado NUAIR NGDT15000 12kW 15kVA 400V/230V","first_category_match":true,"has_brand_facets":true,"has_category_facets":true,"has_price_facet":true}
+catalog_summary={"ok":true,"source":"opensearch","total":33,"first_id":57439,"first_name":"Gerador Diesel Trifásico Insonorizado NUAIR NGDT15000 12kW 15kVA 400V/230V","first_category_match":true,"has_brand_facets":true,"has_category_facets":true,"has_price_facet":true}
 search_page_http=200
 search_page_final_url=https://loja.chavevertical.com/?s=insonorizados&post_type=product
 search_has_filter_panel=yes
