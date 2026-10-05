@@ -402,6 +402,61 @@ final class CVLOA_Archive {
         );
     }
 
+    public static function find_by_billing_email( string $email ): array {
+        $email = strtolower( sanitize_email( $email ) );
+        if ( '' === $email ) {
+            return array();
+        }
+
+        $index = self::load_index();
+        if ( ! empty( $index['_error'] ) ) {
+            return array();
+        }
+
+        $matches = array_values(
+            array_filter(
+                (array) ( $index['orders'] ?? array() ),
+                static function ( array $row ) use ( $email ): bool {
+                    return $email === strtolower(
+                        sanitize_email( (string) ( $row['billing_email'] ?? '' ) )
+                    );
+                }
+            )
+        );
+
+        usort(
+            $matches,
+            static function ( array $a, array $b ): int {
+                $ad = strtotime( (string) ( $a['date_created'] ?? '' ) ) ?: 0;
+                $bd = strtotime( (string) ( $b['date_created'] ?? '' ) ) ?: 0;
+                return $bd <=> $ad;
+            }
+        );
+
+        return $matches;
+    }
+
+    public static function email_order_counts(): array {
+        $index = self::load_index();
+        if ( ! empty( $index['_error'] ) ) {
+            return array();
+        }
+
+        $counts = array();
+
+        foreach ( (array) ( $index['orders'] ?? array() ) as $row ) {
+            $email = strtolower(
+                sanitize_email( (string) ( $row['billing_email'] ?? '' ) )
+            );
+
+            if ( '' !== $email ) {
+                $counts[ $email ] = absint( $counts[ $email ] ?? 0 ) + 1;
+            }
+        }
+
+        return $counts;
+    }
+
     public static function read_order( $order_key ): ?array {
         $index = self::load_index();
         $key   = sanitize_key( (string) $order_key );
