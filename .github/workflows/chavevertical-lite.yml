@@ -7,6 +7,7 @@ on:
       - "wp-content/themes/chavevertical-lite/**"
       - ".github/workflows/chavevertical-lite.yml"
       - "ops/deploy-theme.sh"
+      - "ops/assets/**"
       - "ops/ensure-brands-page.php"
       - "ops/ensure-contactos-page.php"
       - "ops/ensure-quem-somos-page.php"
@@ -52,6 +53,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p wp-content/themes/chavevertical-lite/assets/images
+          base64 -d ops/assets/deposito-stilker-campanha-side.webp.b64 > wp-content/themes/chavevertical-lite/assets/images/deposito-stilker-campanha-side.webp
+          file wp-content/themes/chavevertical-lite/assets/images/deposito-stilker-campanha-side.webp
           cd wp-content/themes
           zip -qr chavevertical-lite.zip chavevertical-lite
           unzip -t chavevertical-lite.zip
