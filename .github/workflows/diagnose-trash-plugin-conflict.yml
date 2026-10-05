@@ -1,0 +1,28 @@
+name: Diagnose Woo Trash Plugin Conflict
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/diagnose-trash-plugin-conflict.yml"
+      - "ops/diagnose-trash-plugin-conflict.sh"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate diagnostic script
+        shell: bash
+        run: bash -n ops/diagnose-trash-plugin-conflict.sh
+      - name: Isolate plugin conflict
+        shell: bash
+        run: bash ops/diagnose-trash-plugin-conflict.sh
