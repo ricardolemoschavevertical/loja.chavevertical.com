@@ -65,20 +65,29 @@ function cvl_homepage_hero_fallback() {
     return array(
         'main' => array(
             'eyebrow'                => 'ELEVAÇÃO PROFISSIONAL',
-            'title'                  => 'Elevação segura.',
-            'title_accent'           => 'Oficina preparada.',
-            'description'            => 'Elevador 2 Colunas KROFTOOLS 4T, 220V, robusto e preparado para utilização profissional em oficina.',
-            'cta'                    => 'VER ELEVADOR',
-            'url'                    => '/produto/elevador-2-colunas-4t-tipo-h-220v-kroftools/',
+            'title'                  => 'Elevador 2 Colunas 4T',
+            'title_accent'           => 'Basic-Line KROFTOOLS',
+            'description'            => 'Robusto, fiável e preparado para utilização profissional em oficina.',
+            'cta'                    => 'VER PRODUTO',
+            'url'                    => 'https://loja.chavevertical.com/produto/elevador-2-colunas-4t-basic-line-220v-kroftools/',
             'secondary_cta'          => 'Ver elevadores',
             'secondary_url'          => '/categoria-produto/elevadores-elevadores/',
-            'badge'                  => 'ESCOLHA PROFISSIONAL',
+            'badge'                  => 'ELEVAÇÃO PROFISSIONAL',
             'background'             => '#f4f5f5',
             'text_color'             => '#101820',
             'accent_color'           => '#d62828',
             'image_id'               => 0,
-            'image_url'              => 'https://imagens.chavevertical.com/2025/09/elevador-2-colunas-4t-tipo-h-220v-kroftools1.webp',
+            'image_url'              => 'https://imagens.chavevertical.com/2024/01/elevador-2-colunas-4t-basic-line-kroftools-4000kg-monofasico-1549282-1.webp',
             'fallback_category_slug' => 'elevadores-elevadores',
+            'specs'                  => array(
+                array( 'value' => '4000 kg', 'label' => 'Capacidade de carga' ),
+                array( 'value' => '220V', 'label' => 'Monofásico' ),
+                array( 'value' => '40–60 s', 'label' => 'Tempo de elevação' ),
+                array( 'value' => '2824 mm', 'label' => 'Altura total' ),
+                array( 'value' => '3185 mm', 'label' => 'Largura total' ),
+                array( 'value' => '2820 mm', 'label' => 'Distância entre colunas' ),
+                array( 'value' => '2500 mm', 'label' => 'Largura de passagem' ),
+            ),
         ),
         'side' => array(
             'eyebrow'                => 'CATÁLOGO PROFISSIONAL',
@@ -119,6 +128,7 @@ function cvl_normalize_homepage_hero_panel( $panel, $fallback = array() ) {
             'image_id'               => 0,
             'image_url'              => '',
             'fallback_category_slug' => '',
+            'specs'                  => array(),
         )
     );
 
@@ -134,6 +144,19 @@ function cvl_normalize_homepage_hero_panel( $panel, $fallback = array() ) {
     $background   = sanitize_hex_color( $panel['background'] );
     $text_color   = sanitize_hex_color( $panel['text_color'] );
     $accent_color = sanitize_hex_color( $panel['accent_color'] );
+
+    $specs = array();
+    $raw_specs = isset( $panel['specs'] ) && is_array( $panel['specs'] ) ? $panel['specs'] : array();
+    foreach ( array_slice( $raw_specs, 0, 7 ) as $spec ) {
+        if ( ! is_array( $spec ) ) {
+            continue;
+        }
+        $value = sanitize_text_field( $spec['value'] ?? '' );
+        $label = sanitize_text_field( $spec['label'] ?? '' );
+        if ( '' !== $value || '' !== $label ) {
+            $specs[] = array( 'value' => $value, 'label' => $label );
+        }
+    }
 
     return array(
         'eyebrow'                => sanitize_text_field( $panel['eyebrow'] ),
@@ -151,6 +174,7 @@ function cvl_normalize_homepage_hero_panel( $panel, $fallback = array() ) {
         'image_id'               => absint( $panel['image_id'] ),
         'image_url'              => $image_url,
         'fallback_category_slug' => sanitize_title( $panel['fallback_category_slug'] ),
+        'specs'                  => $specs,
     );
 }
 
