@@ -132,8 +132,13 @@ final class CVR2_Admin {
             'created'     => 0,
             'updated'     => 0,
             'images_updated' => 0,
+            'unchanged'   => 0,
             'ignored'     => 0,
             'slug_errors' => 0,
+            'batch_index' => 0,
+            'batch_size'  => 'images_only' === $import_mode ? 10 : 1,
+            'recent_results' => array(),
+            'current'     => array(),
             'import_mode' => $import_mode,
             'run_id'      => wp_generate_uuid4(),
             'errors'      => array(),
@@ -154,9 +159,6 @@ final class CVR2_Admin {
     public static function ajax_import_batch(): void {
         self::guard_ajax();
 
-        // O JavaScript orquestra a importação. Cada pedido PHP trata apenas um produto,
-        // para que o limite total de execução do PHP não limite a migração completa.
-
         $state = (array) get_option( CVR2_STATE_OPTION, array() );
         if ( empty( $state ) || 'done' === ( $state['status'] ?? '' ) ) {
             wp_send_json_success(
@@ -167,8 +169,14 @@ final class CVR2_Admin {
             );
         }
 
+        $import_mode = (string) ( $state['import_mode'] ?? 'update_existing' );
+
+        if ( 'images_only' === $import_mode ) {
+            @set_time_limit( 180 );
+        }
+
         if ( 'relations' === ( $state['phase'] ?? 'products' ) ) {
-            $relations_run_id = 'create_only' === ( $state['import_mode'] ?? 'update_existing' )
+            $relations_run_id = 'create_only' === $import_mode
                 ? sanitize_text_field( (string) ( $state['run_id'] ?? '' ) )
                 : '';
             $result = CVR2_Product_Importer::resolve_relations_page( max( 1, absint( $state['page'] ?? 1 ) ), 25, $relations_run_id );
@@ -193,33 +201,36 @@ final class CVR2_Admin {
             );
         }
 
-        // Modo JavaScript: exatamente 1 produto por pedido AJAX/PHP.
-        $per_page = 1;
-        $page     = max( 1, absint( $state['page'] ?? 1 ) );
+        /*
+         * Modo normal: 1 produto por pedido.
+         * Modo apenas imagens: 10 produtos por pedido para reduzir drasticamente
+         * o overhead REST/AJAX. O batch_index é gravado depois de CADA produto;
+         * se houver timeout, pausa ou falha, o pedido seguinte retoma exatamente
+         * no item que faltava sem duplicar contadores nem perder progresso.
+         */
+        $per_page    = 'images_only' === $import_mode ? 10 : 1;
+        $page        = max( 1, absint( $state['page'] ?? 1 ) );
+        $batch_index = 'images_only' === $import_mode ? max( 0, absint( $state['batch_index'] ?? 0 ) ) : 0;
 
-        $result = CVR2_REST_Client::request(
-            'products',
-            array(
-                'per_page' => $per_page,
-                'page'     => $page,
-                'orderby'  => 'id',
-                'order'    => 'asc',
-                'status'   => 'any',
-            ),
-            60
+        $request_args = array(
+            'per_page' => $per_page,
+            'page'     => $page,
+            'orderby'  => 'id',
+            'order'    => 'asc',
+            'status'   => 'any',
         );
 
+        if ( 'images_only' === $import_mode ) {
+            // Reduz bastante o payload: este modo não precisa de preços,
+            // descrições, categorias, atributos ou meta.
+            $request_args['_fields'] = 'id,name,type,sku,slug,images';
+        }
+
+        $result = CVR2_REST_Client::request( 'products', $request_args, 60 );
+
         if ( is_wp_error( $result ) ) {
-            $result = CVR2_REST_Client::request(
-                'products',
-                array(
-                    'per_page' => $per_page,
-                    'page'     => $page,
-                    'orderby'  => 'id',
-                    'order'    => 'asc',
-                ),
-                60
-            );
+            unset( $request_args['status'] );
+            $result = CVR2_REST_Client::request( 'products', $request_args, 60 );
         }
 
         if ( is_wp_error( $result ) ) {
@@ -239,90 +250,163 @@ final class CVR2_Admin {
 
         $state['total']       = (int) $result['total'];
         $state['total_pages'] = max( 1, (int) $result['total_pages'] );
+        $state['batch_size']  = $per_page;
 
-        foreach ( (array) $result['data'] as $source_product ) {
-            $was_existing = self::target_exists_for_source( (array) $source_product );
-            $import_mode  = (string) ( $state['import_mode'] ?? 'update_existing' );
+        $items = array_values( (array) $result['data'] );
+
+        foreach ( $items as $index => $source_product ) {
+            if ( 'images_only' === $import_mode && $index < $batch_index ) {
+                continue;
+            }
+
+            $source_product = (array) $source_product;
+            $source_id      = absint( $source_product['id'] ?? 0 );
+
+            // Checkpoint antes do trabalho: se este item falhar a meio,
+            // é repetido com segurança na retoma.
+            $state['current'] = array(
+                'source_id' => $source_id,
+                'sku'       => wc_clean( (string) ( $source_product['sku'] ?? '' ) ),
+                'name'      => sanitize_text_field( (string) ( $source_product['name'] ?? '' ) ),
+                'status'    => 'processing',
+            );
+            $state['updated_at'] = time();
+            update_option( CVR2_STATE_OPTION, $state, false );
+
+            if ( 'images_only' === $import_mode ) {
+                $imported = CVR2_Product_Importer::update_source_product_images( $source_product );
+
+                if ( is_wp_error( $imported ) ) {
+                    if ( 'cvr2_images_target_missing' === $imported->get_error_code() ) {
+                        $state['ignored'] = absint( $state['ignored'] ?? 0 ) + 1;
+                        self::push_recent_result( $state, $source_product, 'ignored', 'Produto não existe no destino.' );
+                    } else {
+                        $state['errors'][] = '#' . $source_id . ': ' . $imported->get_error_message();
+                        $state['errors']   = array_slice( $state['errors'], -20 );
+                        self::push_recent_result( $state, $source_product, 'error', $imported->get_error_message() );
+                    }
+                } elseif ( ! empty( $imported['changed'] ) ) {
+                    $state['images_updated'] = absint( $state['images_updated'] ?? 0 ) + 1;
+                    self::push_recent_result(
+                        $state,
+                        $source_product,
+                        'updated',
+                        sprintf(
+                            'Imagem/galeria atualizada%s.',
+                            ! empty( $imported['variation_images_updated'] )
+                                ? ' + ' . absint( $imported['variation_images_updated'] ) . ' variação(ões)'
+                                : ''
+                        )
+                    );
+                } else {
+                    $state['unchanged'] = absint( $state['unchanged'] ?? 0 ) + 1;
+                    self::push_recent_result( $state, $source_product, 'unchanged', 'Já estava atualizado; nenhuma gravação necessária.' );
+                }
+
+                $state['processed']   = absint( $state['processed'] ?? 0 ) + 1;
+                $state['batch_index'] = $index + 1;
+                $state['updated_at']  = time();
+
+                // Checkpoint por produto — não esperar pelo fim do lote.
+                update_option( CVR2_STATE_OPTION, $state, false );
+                continue;
+            }
+
+            $was_existing = self::target_exists_for_source( $source_product );
 
             if ( $was_existing && 'create_only' === $import_mode ) {
                 $state['ignored'] = absint( $state['ignored'] ?? 0 ) + 1;
                 $state['processed']++;
+                self::push_recent_result( $state, $source_product, 'ignored', 'Produto existente; modo criar apenas novos.' );
+                update_option( CVR2_STATE_OPTION, $state, false );
                 continue;
             }
 
-            if ( 'images_only' === $import_mode ) {
-                if ( ! $was_existing ) {
-                    $state['ignored'] = absint( $state['ignored'] ?? 0 ) + 1;
-                    $state['processed']++;
-                    continue;
-                }
-
-                $imported = CVR2_Product_Importer::update_source_product_images( (array) $source_product );
-
-                if ( is_wp_error( $imported ) ) {
-                    $source_id = absint( $source_product['id'] ?? 0 );
-                    $state['errors'][] = '#' . $source_id . ': ' . $imported->get_error_message();
-                    $state['errors']   = array_slice( $state['errors'], -20 );
-                } else {
-                    $state['images_updated'] = absint( $state['images_updated'] ?? 0 ) + 1;
-                }
-
-                $state['processed']++;
-                continue;
-            }
-
-            $imported = CVR2_Product_Importer::import_source_product( (array) $source_product );
+            $imported = CVR2_Product_Importer::import_source_product( $source_product );
 
             if ( is_wp_error( $imported ) ) {
-                $source_id = absint( $source_product['id'] ?? 0 );
                 if ( str_starts_with( (string) $imported->get_error_code(), 'cvr2_slug_' ) ) {
                     $state['slug_errors'] = absint( $state['slug_errors'] ?? 0 ) + 1;
                 }
                 $state['errors'][] = '#' . $source_id . ': ' . $imported->get_error_message();
                 $state['errors']   = array_slice( $state['errors'], -20 );
+                self::push_recent_result( $state, $source_product, 'error', $imported->get_error_message() );
+            } elseif ( $was_existing ) {
+                $state['updated']++;
+                self::push_recent_result( $state, $source_product, 'updated', 'Produto atualizado.' );
             } else {
-                if ( $was_existing ) {
-                    $state['updated']++;
-                } else {
-                    $state['created']++;
-                    $target_id = absint( $imported['id'] ?? 0 );
-                    if ( $target_id && ! empty( $state['run_id'] ) ) {
-                        update_post_meta( $target_id, '_cvr2_import_run', sanitize_text_field( (string) $state['run_id'] ) );
-                    }
+                $state['created']++;
+                $target_id = absint( $imported['id'] ?? 0 );
+                if ( $target_id && ! empty( $state['run_id'] ) ) {
+                    update_post_meta( $target_id, '_cvr2_import_run', sanitize_text_field( (string) $state['run_id'] ) );
                 }
+                self::push_recent_result( $state, $source_product, 'created', 'Produto criado.' );
             }
 
             $state['processed']++;
+            $state['updated_at'] = time();
+            update_option( CVR2_STATE_OPTION, $state, false );
         }
 
         $state['updated_at'] = time();
 
-        if ( $page >= (int) $state['total_pages'] || empty( $result['data'] ) ) {
-            if ( 'images_only' === ( $state['import_mode'] ?? 'update_existing' ) ) {
+        if ( 'images_only' === $import_mode ) {
+            $state['batch_index'] = 0;
+            $state['current']     = array();
+
+            if ( $page >= (int) $state['total_pages'] || empty( $items ) ) {
                 $state['status']      = 'done';
                 $state['phase']       = 'done';
                 $state['finished_at'] = time();
             } else {
-                $state['phase'] = 'relations';
-                $state['page']  = 1;
+                $state['page'] = $page + 1;
             }
+        } elseif ( $page >= (int) $state['total_pages'] || empty( $items ) ) {
+            $state['phase'] = 'relations';
+            $state['page']  = 1;
         } else {
             $state['page'] = $page + 1;
         }
 
         update_option( CVR2_STATE_OPTION, $state, false );
 
+        $message = 'images_only' === $import_mode
+            ? sprintf(
+                'Imagens verificadas: %1$s / %2$s — atualizadas: %3$s; sem alteração: %4$s.',
+                number_format_i18n( (int) $state['processed'] ),
+                number_format_i18n( (int) $state['total'] ),
+                number_format_i18n( (int) ( $state['images_updated'] ?? 0 ) ),
+                number_format_i18n( (int) ( $state['unchanged'] ?? 0 ) )
+            )
+            : sprintf(
+                'Produtos processados: %1$s / %2$s.',
+                number_format_i18n( (int) $state['processed'] ),
+                number_format_i18n( (int) $state['total'] )
+            );
+
         wp_send_json_success(
             array(
                 'done'    => 'done' === ( $state['status'] ?? '' ),
                 'state'   => $state,
-                'message' => sprintf(
-                    'Produtos processados: %s / %s.',
-                    number_format_i18n( (int) $state['processed'] ),
-                    number_format_i18n( (int) $state['total'] )
-                ),
+                'message' => $message,
             )
         );
+    }
+
+    private static function push_recent_result( array &$state, array $source, string $status, string $message ): void {
+        $row = array(
+            'source_id' => absint( $source['id'] ?? 0 ),
+            'sku'       => wc_clean( (string) ( $source['sku'] ?? '' ) ),
+            'name'      => sanitize_text_field( (string) ( $source['name'] ?? '' ) ),
+            'status'    => sanitize_key( $status ),
+            'message'   => sanitize_text_field( $message ),
+            'time'      => wp_date( 'H:i:s' ),
+        );
+
+        $recent = (array) ( $state['recent_results'] ?? array() );
+        array_unshift( $recent, $row );
+        $state['recent_results'] = array_slice( $recent, 0, 30 );
+        $state['last_result']    = $row;
     }
 
     private static function target_exists_for_source( array $source ): bool {
