@@ -2,10 +2,14 @@
 /**
  * Plugin Name: Chave Vertical PDF Reader
  * Description: Leitor e catálogo automático de PDFs da Chave Vertical.
- * Version: 1.8.0
+ * Version: 1.9.0
  * Author: Chave Vertical
  */
 defined( 'ABSPATH' ) || exit;
+
+require_once __DIR__ . '/admin-catalogs.php';
+register_activation_hook( __FILE__, 'cvpr2_pdf_reader_activate' );
+register_deactivation_hook( __FILE__, 'cvpr2_pdf_reader_deactivate' );
 
 /**
  * CV PDF Reader - Snippet completo
@@ -32,7 +36,7 @@ defined( 'ABSPATH' ) || exit;
  */
 
 if ( ! defined( 'CVPR2_SNIPPET_VERSION' ) ) {
-	define( 'CVPR2_SNIPPET_VERSION', '1.8.0' );
+	define( 'CVPR2_SNIPPET_VERSION', '1.9.0' );
 }
 
 add_shortcode( 'cv_pdf_card', 'cvpr2_pdf_card_shortcode' );
