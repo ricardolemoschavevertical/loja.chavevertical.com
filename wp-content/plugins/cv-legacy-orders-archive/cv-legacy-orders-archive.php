@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CV Legacy Orders Archive
  * Description: Arquiva encomendas e clientes históricos de um WooCommerce remoto em ficheiros locais privados, com associação por email e consulta no admin.
- * Version: 1.3.0
+ * Version: 1.3.1
  * Author: Chave Vertical
  * Requires at least: 6.5
  * Requires PHP: 8.0
@@ -12,7 +12,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVLOA_VERSION', '1.3.0' );
+define( 'CVLOA_VERSION', '1.3.1' );
 define( 'CVLOA_FILE', __FILE__ );
 define( 'CVLOA_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CVLOA_OPTION', 'cvloa_settings' );
@@ -24,6 +24,7 @@ require_once CVLOA_DIR . 'includes/class-cvloa-rest-client.php';
 require_once CVLOA_DIR . 'includes/class-cvloa-archive.php';
 require_once CVLOA_DIR . 'includes/class-cvloa-customer-archive.php';
 require_once CVLOA_DIR . 'includes/class-cvloa-customer-admin.php';
+require_once CVLOA_DIR . 'includes/class-cvloa-customer-account-history.php';
 require_once CVLOA_DIR . 'includes/class-cvloa-order-statuses.php';
 require_once CVLOA_DIR . 'includes/class-cvloa-current-order-archive.php';
 require_once CVLOA_DIR . 'includes/class-cvloa-admin.php';
@@ -48,6 +49,7 @@ add_action(
         CVLOA_Current_Order_Archive::init();
         CVLOA_Admin::init();
         CVLOA_Customer_Admin::init();
+        CVLOA_Customer_Account_History::init();
     },
     45
 );
@@ -90,5 +92,7 @@ register_activation_hook(
 
         CVLOA_Archive::ensure_storage();
         CVLOA_Customer_Archive::ensure_storage();
+        CVLOA_Customer_Account_History::register_endpoint();
+        flush_rewrite_rules();
     }
 );
