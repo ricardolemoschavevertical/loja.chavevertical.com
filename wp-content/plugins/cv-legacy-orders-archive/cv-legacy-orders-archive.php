@@ -23,6 +23,7 @@ define( 'CVLOA_STATUSES_OPTION', 'cvloa_source_order_statuses' );
 require_once CVLOA_DIR . 'includes/class-cvloa-rest-client.php';
 require_once CVLOA_DIR . 'includes/class-cvloa-archive.php';
 require_once CVLOA_DIR . 'includes/class-cvloa-customer-archive.php';
+require_once CVLOA_DIR . 'includes/class-cvloa-customer-admin.php';
 require_once CVLOA_DIR . 'includes/class-cvloa-order-statuses.php';
 require_once CVLOA_DIR . 'includes/class-cvloa-current-order-archive.php';
 require_once CVLOA_DIR . 'includes/class-cvloa-admin.php';
@@ -46,6 +47,7 @@ add_action(
         CVLOA_Order_Statuses::init();
         CVLOA_Current_Order_Archive::init();
         CVLOA_Admin::init();
+        CVLOA_Customer_Admin::init();
     },
     45
 );
@@ -57,6 +59,12 @@ add_filter(
             'title'       => 'Encomendas antigas',
             'description' => 'Arquivo local privado das encomendas históricas, separado das encomendas WooCommerce atuais.',
             'url'         => admin_url( 'admin.php?page=cv-legacy-orders' ),
+            'active'      => true,
+        );
+        $modules[] = array(
+            'title'       => 'Clientes antigos',
+            'description' => 'Arquivo privado dos dados históricos de clientes, sem criar utilizadores nem copiar palavras-passe.',
+            'url'         => admin_url( 'admin.php?page=cv-legacy-customers' ),
             'active'      => true,
         );
         return $modules;
@@ -81,5 +89,6 @@ register_activation_hook(
         }
 
         CVLOA_Archive::ensure_storage();
+        CVLOA_Customer_Archive::ensure_storage();
     }
 );
