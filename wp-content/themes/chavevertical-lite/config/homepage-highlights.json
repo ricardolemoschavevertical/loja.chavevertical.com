@@ -59,7 +59,8 @@
       "accent_color": "#ffd21f",
       "image_id": 0,
       "image_url": "theme://assets/images/deposito-stilker-campanha-side.webp",
-      "fallback_category_slug": "tanques-depositos-de-combustivel"
+      "fallback_category_slug": "tanques-depositos-de-combustivel",
+      "image_only": true
     }
   },
   "highlights": [
