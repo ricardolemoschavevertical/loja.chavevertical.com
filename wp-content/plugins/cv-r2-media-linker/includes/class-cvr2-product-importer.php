@@ -871,24 +871,40 @@ final class CVR2_Product_Importer {
             $attr   = new WC_Product_Attribute();
             $src_id = absint( $source['id'] ?? 0 );
 
+            if ( $src_id && empty( $map[ $src_id ] ) ) {
+                $created_attribute_id = self::ensure_global_attribute( $source );
+                if ( $created_attribute_id ) {
+                    $map = (array) get_option( 'cvr2_attribute_map', array() );
+                }
+            }
+
             if ( $src_id && ! empty( $map[ $src_id ] ) ) {
                 $target_id = absint( $map[ $src_id ] );
                 $taxonomy  = wc_attribute_taxonomy_name_by_id( $target_id );
+
                 if ( $taxonomy ) {
                     self::ensure_attribute_taxonomy_registered( $taxonomy, (string) ( $source['name'] ?? $taxonomy ) );
+
                     $option_ids = array();
                     foreach ( (array) ( $source['options'] ?? array() ) as $option ) {
-                        $term = term_exists( (string) $option, $taxonomy );
-                        if ( ! $term ) {
-                            $term = wp_insert_term( (string) $option, $taxonomy );
+                        $option = sanitize_text_field( (string) $option );
+                        if ( '' === $option ) {
+                            continue;
                         }
+
+                        $term = term_exists( $option, $taxonomy );
+                        if ( ! $term ) {
+                            $term = wp_insert_term( $option, $taxonomy );
+                        }
+
                         if ( ! is_wp_error( $term ) ) {
                             $option_ids[] = absint( is_array( $term ) ? $term['term_id'] : $term );
                         }
                     }
+
                     $attr->set_id( $target_id );
                     $attr->set_name( $taxonomy );
-                    $attr->set_options( $option_ids );
+                    $attr->set_options( array_values( array_unique( $option_ids ) ) );
                 }
             } else {
                 $attr->set_id( 0 );
