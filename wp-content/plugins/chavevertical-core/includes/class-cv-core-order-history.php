@@ -360,8 +360,14 @@ final class CV_Core_Order_History {
         return '' !== $email && '' !== $billing_email && hash_equals( $email, $billing_email );
     }
 
-    private static function archive_root_dir(): string {
-        return trailingslashit( WP_CONTENT_DIR ) . 'cv-private-data/legacy-orders';
+    public static function archive_root_dir(): string {
+        if ( defined( 'CV_ORDER_ARCHIVE_DIR' ) && CV_ORDER_ARCHIVE_DIR ) {
+            return untrailingslashit( (string) CV_ORDER_ARCHIVE_DIR );
+        }
+
+        // ABSPATH = /home/.../htdocs/loja.chavevertical.com/
+        // Dois níveis acima fica fora do document root publicado pelo domínio.
+        return trailingslashit( dirname( dirname( ABSPATH ) ) ) . 'private-data/chavevertical/legacy-orders';
     }
 
     private static function archive_index_path(): string {
