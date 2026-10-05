@@ -277,6 +277,12 @@ function cvl_account_url() {
 }
 
 function cvl_wishlist_url() {
+    $favorites_page = get_page_by_path( 'favoritos', OBJECT, 'page' );
+
+    if ( $favorites_page instanceof WP_Post ) {
+        return get_permalink( $favorites_page->ID );
+    }
+
     if ( function_exists( 'tinv_url_wishlist_default' ) ) {
         $url = tinv_url_wishlist_default();
 
