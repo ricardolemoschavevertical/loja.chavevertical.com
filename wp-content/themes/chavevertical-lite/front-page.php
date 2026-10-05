@@ -196,6 +196,48 @@ $hero_side_image = function_exists( 'cvl_homepage_hero_image_url' )
     ? cvl_homepage_hero_image_url( $hero_side )
     : '';
 
+$hero_main_show_text = ! array_key_exists( 'show_text', $hero_main ) || ! empty( $hero_main['show_text'] );
+$hero_side_show_text = ! array_key_exists( 'show_text', $hero_side ) || ! empty( $hero_side['show_text'] );
+
+$hero_main_has_text = $hero_main_show_text && array_filter(
+    array(
+        $hero_main['eyebrow'] ?? '',
+        $hero_main['title'] ?? '',
+        $hero_main['title_accent'] ?? '',
+        $hero_main['description'] ?? '',
+        $hero_main['cta'] ?? '',
+        $hero_main['secondary_cta'] ?? '',
+        $hero_main['badge'] ?? '',
+    ),
+    static function ( $value ) {
+        return '' !== trim( (string) $value );
+    }
+);
+
+$hero_side_has_text = $hero_side_show_text && array_filter(
+    array(
+        $hero_side['eyebrow'] ?? '',
+        $hero_side['title'] ?? '',
+        $hero_side['title_accent'] ?? '',
+        $hero_side['description'] ?? '',
+        $hero_side['cta'] ?? '',
+    ),
+    static function ( $value ) {
+        return '' !== trim( (string) $value );
+    }
+);
+
+$hero_main_full_image = ! empty( $hero_main['full_image'] ) || ! $hero_main_has_text;
+$hero_side_full_image = ! empty( $hero_side['full_image'] ) || ! $hero_side_has_text;
+
+$hero_main_classes = 'cvl-ref-hero-main';
+$hero_main_classes .= $hero_main_full_image ? ' is-full-image' : '';
+$hero_main_classes .= $hero_main_has_text ? ' has-overlay-text' : ' is-text-hidden';
+
+$hero_side_classes = 'cvl-ref-hero-side';
+$hero_side_classes .= $hero_side_full_image ? ' is-full-image' : '';
+$hero_side_classes .= $hero_side_has_text ? ' has-overlay-text' : ' is-text-hidden';
+
 $hero_main_style = sprintf(
     '--cvl-hero-main-bg:%1$s;--cvl-hero-main-text:%2$s;--cvl-hero-main-accent:%3$s;',
     esc_attr( $hero_main['background'] ?? '#0b4e46' ),
@@ -212,7 +254,8 @@ $hero_side_style = sprintf(
 
 <section class="cvl-ref-hero cvl-ref-hero-showcase">
     <div class="cvl-shell cvl-ref-hero-grid">
-        <article class="cvl-ref-hero-main" style="<?php echo esc_attr( $hero_main_style ); ?>">
+        <article class="<?php echo esc_attr( $hero_main_classes ); ?>" style="<?php echo esc_attr( $hero_main_style ); ?>">
+            <?php if ( $hero_main_has_text ) : ?>
             <div class="cvl-ref-hero-main-copy">
                 <?php if ( ! empty( $hero_main['eyebrow'] ) ) : ?>
                     <span class="cvl-ref-kicker"><?php echo esc_html( $hero_main['eyebrow'] ); ?></span>
@@ -243,6 +286,7 @@ $hero_side_style = sprintf(
                     <?php endif; ?>
                 </div>
             </div>
+            <?php endif; ?>
 
             <a class="cvl-ref-hero-main-media" href="<?php echo esc_url( $hero_main_url ); ?>" aria-label="<?php echo esc_attr( $hero_main['cta'] ?? __( 'Explorar equipamento profissional', 'chavevertical-lite' ) ); ?>">
                 <span class="cvl-ref-hero-orbit" aria-hidden="true"></span>
@@ -252,15 +296,18 @@ $hero_side_style = sprintf(
                     <span class="cvl-ref-hero-media-fallback" aria-hidden="true">CV</span>
                 <?php endif; ?>
 
-                <?php if ( ! empty( $hero_main['badge'] ) ) : ?>
+                <?php if ( $hero_main_has_text && ! empty( $hero_main['badge'] ) ) : ?>
                     <span class="cvl-ref-hero-professional-badge"><?php echo esc_html( $hero_main['badge'] ); ?></span>
                 <?php endif; ?>
             </a>
 
-            <span class="cvl-ref-hero-signature" aria-hidden="true">CHAVE VERTICAL — 01</span>
+            <?php if ( $hero_main_has_text ) : ?>
+                <span class="cvl-ref-hero-signature" aria-hidden="true">CHAVE VERTICAL — 01</span>
+            <?php endif; ?>
         </article>
 
-        <a class="cvl-ref-hero-side" href="<?php echo esc_url( $hero_side_url ); ?>" style="<?php echo esc_attr( $hero_side_style ); ?>">
+        <a class="<?php echo esc_attr( $hero_side_classes ); ?>" href="<?php echo esc_url( $hero_side_url ); ?>" style="<?php echo esc_attr( $hero_side_style ); ?>">
+            <?php if ( $hero_side_has_text ) : ?>
             <span class="cvl-ref-hero-side-copy">
                 <?php if ( ! empty( $hero_side['eyebrow'] ) ) : ?>
                     <small><?php echo esc_html( $hero_side['eyebrow'] ); ?></small>
@@ -277,6 +324,7 @@ $hero_side_style = sprintf(
                     <span><?php echo esc_html( $hero_side['description'] ); ?></span>
                 <?php endif; ?>
             </span>
+            <?php endif; ?>
 
             <span class="cvl-ref-hero-side-media">
                 <?php if ( $hero_side_image ) : ?>
@@ -286,10 +334,12 @@ $hero_side_style = sprintf(
                 <?php endif; ?>
             </span>
 
-            <span class="cvl-ref-hero-side-cta" aria-hidden="true">
-                <span><?php echo esc_html( $hero_side['cta'] ?? '' ); ?></span>
-                <b>→</b>
-            </span>
+            <?php if ( $hero_side_has_text && ! empty( $hero_side['cta'] ) ) : ?>
+                <span class="cvl-ref-hero-side-cta" aria-hidden="true">
+                    <span><?php echo esc_html( $hero_side['cta'] ); ?></span>
+                    <b>→</b>
+                </span>
+            <?php endif; ?>
         </a>
     </div>
 </section>
@@ -404,6 +454,23 @@ $homepage_highlights = function_exists( 'cvl_get_homepage_highlights' )
                 ? max( 2, min( 60, absint( $highlight['rotation_seconds'] ) ) )
                 : 5;
             $highlight_number = str_pad( (string) ( $highlight_index + 1 ), 2, '0', STR_PAD_LEFT );
+            $highlight_show_text = ! array_key_exists( 'show_text', $highlight ) || ! empty( $highlight['show_text'] );
+            $highlight_has_text = $highlight_show_text && array_filter(
+                array(
+                    $highlight['eyebrow'] ?? '',
+                    $highlight['title'] ?? '',
+                    $highlight['description'] ?? '',
+                    $highlight['cta'] ?? '',
+                ),
+                static function ( $value ) {
+                    return '' !== trim( (string) $value );
+                }
+            );
+            $highlight_full_image = ! empty( $highlight['full_image'] ) || ! $highlight_has_text;
+            $highlight_classes = 'cvl-solution-card cvl-homepage-highlight';
+            $highlight_classes .= $highlight_full_image ? ' is-full-image' : '';
+            $highlight_classes .= $highlight_has_text ? ' has-overlay-text' : ' is-text-hidden';
+
             $highlight_style  = sprintf(
                 '--cvl-highlight-bg:%1$s;--cvl-highlight-color:%2$s;',
                 esc_attr( $highlight['background'] ),
@@ -411,7 +478,7 @@ $homepage_highlights = function_exists( 'cvl_get_homepage_highlights' )
             );
             ?>
             <a
-                class="cvl-solution-card cvl-homepage-highlight"
+                class="<?php echo esc_attr( $highlight_classes ); ?>"
                 href="<?php echo esc_url( $highlight['url'] ); ?>"
                 style="<?php echo esc_attr( $highlight_style ); ?>"
             >
@@ -438,13 +505,15 @@ $homepage_highlights = function_exists( 'cvl_get_homepage_highlights' )
                     <?php endif; ?>
                 </span>
 
-                <span class="cvl-homepage-highlight-content">
-                    <span class="cvl-solution-number" aria-hidden="true"><?php echo esc_html( $highlight_number ); ?></span>
-                    <span class="cvl-kicker"><?php echo esc_html( $highlight['eyebrow'] ); ?></span>
-                    <h2><?php echo esc_html( $highlight['title'] ); ?></h2>
-                    <p><?php echo esc_html( $highlight['description'] ); ?></p>
-                    <strong><?php echo esc_html( $highlight['cta'] ); ?></strong>
-                </span>
+                <?php if ( $highlight_has_text ) : ?>
+                    <span class="cvl-homepage-highlight-content">
+                        <span class="cvl-solution-number" aria-hidden="true"><?php echo esc_html( $highlight_number ); ?></span>
+                        <?php if ( ! empty( $highlight['eyebrow'] ) ) : ?><span class="cvl-kicker"><?php echo esc_html( $highlight['eyebrow'] ); ?></span><?php endif; ?>
+                        <?php if ( ! empty( $highlight['title'] ) ) : ?><h2><?php echo esc_html( $highlight['title'] ); ?></h2><?php endif; ?>
+                        <?php if ( ! empty( $highlight['description'] ) ) : ?><p><?php echo esc_html( $highlight['description'] ); ?></p><?php endif; ?>
+                        <?php if ( ! empty( $highlight['cta'] ) ) : ?><strong><?php echo esc_html( $highlight['cta'] ); ?></strong><?php endif; ?>
+                    </span>
+                <?php endif; ?>
             </a>
         <?php endforeach; ?>
     </div>
