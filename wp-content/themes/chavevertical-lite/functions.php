@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.89' );
+define( 'CVL_VERSION', '0.16.90' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -621,7 +621,7 @@ function cvl_loop_product_stock() {
 
     $status = $product->get_stock_status();
     $class  = 'is-backorder';
-    $label  = __( 'Disponível por encomenda', 'chavevertical-lite' );
+    $label  = __( 'Por encomenda', 'chavevertical-lite' );
 
     if ( 'instock' === $status ) {
         $class = 'is-instock';
