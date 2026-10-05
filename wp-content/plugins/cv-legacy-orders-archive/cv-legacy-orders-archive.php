@@ -21,6 +21,7 @@ define( 'CVLOA_STATUSES_OPTION', 'cvloa_source_order_statuses' );
 
 require_once CVLOA_DIR . 'includes/class-cvloa-rest-client.php';
 require_once CVLOA_DIR . 'includes/class-cvloa-archive.php';
+require_once CVLOA_DIR . 'includes/class-cvloa-order-statuses.php';
 require_once CVLOA_DIR . 'includes/class-cvloa-admin.php';
 
 add_action(
@@ -39,6 +40,7 @@ add_action(
             return;
         }
 
+        CVLOA_Order_Statuses::init();
         CVLOA_Admin::init();
     },
     45
