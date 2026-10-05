@@ -16,6 +16,9 @@ final class CVR2_Media {
 
         if ( $source_id ) {
             $existing = self::find_by_meta( '_cvr2_source_attachment_id', (string) $source_id );
+            if ( ! $existing ) {
+                $existing = self::find_by_meta( '_cv_source_attachment_id', (string) $source_id );
+            }
             if ( $existing ) {
                 self::refresh_attachment_text( $existing, $title, $alt );
                 return $existing;
@@ -27,7 +30,7 @@ final class CVR2_Media {
         }
 
         foreach ( self::r2_candidates( $source_url ) as $candidate ) {
-            $existing = self::find_by_meta( '_cvr2_r2_key', $candidate['key'] );
+            $existing = self::find_existing_r2_attachment( $candidate['key'], $candidate['url'] );
 
             if ( $existing ) {
                 if ( $source_id ) {
@@ -65,6 +68,43 @@ final class CVR2_Media {
         );
 
         return $ids ? absint( $ids[0] ) : 0;
+    }
+
+    private static function find_existing_r2_attachment( string $key, string $url ): int {
+        foreach ( array( '_cvr2_r2_key', '_cv_r2_key', '_wp_attached_file' ) as $meta_key ) {
+            $id = self::find_by_meta( $meta_key, $key );
+            if ( $id ) {
+                update_post_meta( $id, '_cvr2_r2_key', $key );
+                update_post_meta( $id, '_cvr2_r2_url', $url );
+                return $id;
+            }
+        }
+
+        foreach ( array( '_cvr2_r2_url', '_cv_r2_url' ) as $meta_key ) {
+            $id = self::find_by_meta( $meta_key, $url );
+            if ( $id ) {
+                update_post_meta( $id, '_cvr2_r2_key', $key );
+                update_post_meta( $id, '_cvr2_r2_url', $url );
+                return $id;
+            }
+        }
+
+        global $wpdb;
+        $id = absint(
+            $wpdb->get_var(
+                $wpdb->prepare(
+                    "SELECT ID FROM {$wpdb->posts} WHERE post_type = 'attachment' AND guid = %s ORDER BY ID ASC LIMIT 1",
+                    $url
+                )
+            )
+        );
+
+        if ( $id ) {
+            update_post_meta( $id, '_cvr2_r2_key', $key );
+            update_post_meta( $id, '_cvr2_r2_url', $url );
+        }
+
+        return $id;
     }
 
     private static function refresh_attachment_text( int $attachment_id, string $title, string $alt ): void {
