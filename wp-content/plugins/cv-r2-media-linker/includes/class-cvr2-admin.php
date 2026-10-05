@@ -463,7 +463,17 @@ final class CVR2_Admin {
                 .cvr2-log{min-height:72px;padding:12px;border:1px solid #dcdcde;background:#f6f7f7;white-space:pre-wrap}
                 .cvr2-progress{height:14px;margin:12px 0;overflow:hidden;border-radius:999px;background:#e5e5e5}
                 .cvr2-progress>span{height:100%;display:block;width:0;background:#00a32a;transition:width .2s}
-                .cvr2-stats{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}.cvr2-stat{padding:10px;background:#f6f7f7;border-radius:7px}
+                .cvr2-stats{display:grid;grid-template-columns:repeat(8,1fr);gap:8px}.cvr2-stat{padding:10px;background:#f6f7f7;border-radius:7px}
+                .cvr2-current{margin:12px 0;padding:10px 12px;border-left:4px solid #2271b1;background:#f0f6fc}
+                .cvr2-results-wrap{margin-top:14px;max-height:360px;overflow:auto;border:1px solid #dcdcde;border-radius:8px;background:#fff}
+                .cvr2-results{width:100%;border-collapse:collapse;font-size:12px}
+                .cvr2-results th,.cvr2-results td{padding:8px 10px;border-bottom:1px solid #f0f0f1;text-align:left;vertical-align:top}
+                .cvr2-results th{position:sticky;top:0;background:#f6f7f7;z-index:1}
+                .cvr2-status{display:inline-block;padding:3px 7px;border-radius:999px;font-size:10px;font-weight:800;text-transform:uppercase}
+                .cvr2-status--updated,.cvr2-status--created{background:#edfaef;color:#116329}
+                .cvr2-status--unchanged{background:#f0f0f1;color:#50575e}
+                .cvr2-status--ignored{background:#fff7e6;color:#7a4b00}
+                .cvr2-status--error{background:#fcf0f1;color:#8a2424}
                 .cvr2-mode{margin:0 0 16px;padding:14px;border:1px solid #dcdcde;border-radius:8px;background:#f6f7f7}
                 .cvr2-mode label{display:block;margin:8px 0}
                 .cvr2-stat strong{display:block;font-size:18px}
@@ -496,8 +506,8 @@ final class CVR2_Admin {
                         <div class="cvr2-row">
                             <strong>Modo de execução</strong>
                             <div>
-                                <strong>JavaScript — 1 produto por pedido</strong><br>
-                                <small>Cada produto corre num pedido PHP independente. O processo completo pode continuar por milhares de produtos sem depender do max_execution_time de uma única execução PHP.</small>
+                                <strong>Seguro com checkpoint automático</strong><br>
+                                <small>Modo normal: 1 produto por pedido. Modo “apenas imagens”: até 10 produtos por pedido, mas o estado é gravado depois de cada produto. Se houver timeout, pausa ou falha, a retoma continua no ponto guardado sem perder progresso.</small>
                                 <input type="hidden" name="batch_size" value="1">
                             </div>
                         </div>
@@ -534,12 +544,32 @@ final class CVR2_Admin {
                         <div class="cvr2-stat"><span>Total</span><strong data-stat="total">0</strong></div>
                         <div class="cvr2-stat"><span>Criados</span><strong data-stat="created">0</strong></div>
                         <div class="cvr2-stat"><span>Atualizados</span><strong data-stat="updated">0</strong></div>
-                        <div class="cvr2-stat"><span>Imagens</span><strong data-stat="images_updated">0</strong></div>
+                        <div class="cvr2-stat"><span>Imagens atualizadas</span><strong data-stat="images_updated">0</strong></div>
+                        <div class="cvr2-stat"><span>Sem alteração</span><strong data-stat="unchanged">0</strong></div>
                         <div class="cvr2-stat"><span>Ignorados</span><strong data-stat="ignored">0</strong></div>
                         <div class="cvr2-stat"><span>Erros de slug</span><strong data-stat="slug_errors">0</strong></div>
                     </div>
                     <h3>Estado</h3>
                     <div class="cvr2-log" data-cvr2-log>Pronto.</div>
+                    <div class="cvr2-current" data-cvr2-current hidden></div>
+
+                    <h3>Últimos produtos processados</h3>
+                    <div class="cvr2-results-wrap">
+                        <table class="cvr2-results">
+                            <thead>
+                                <tr>
+                                    <th>Hora</th>
+                                    <th>Produto</th>
+                                    <th>SKU</th>
+                                    <th>Estado</th>
+                                    <th>Resultado</th>
+                                </tr>
+                            </thead>
+                            <tbody data-cvr2-results>
+                                <tr><td colspan="5">Ainda sem resultados.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
 
                     <?php if ( $state ) : ?>
                         <p><small>Estado guardado: <?php echo esc_html( wp_json_encode( $state, JSON_UNESCAPED_UNICODE ) ); ?></small></p>
@@ -553,6 +583,8 @@ final class CVR2_Admin {
             const nonce = <?php echo wp_json_encode( $nonce ); ?>;
             const log = document.querySelector('[data-cvr2-log]');
             const progress = document.querySelector('[data-cvr2-progress]');
+            const current = document.querySelector('[data-cvr2-current]');
+            const results = document.querySelector('[data-cvr2-results]');
             const buttons = document.querySelectorAll('[data-cvr2-action]');
             let running = false;
 
@@ -568,7 +600,7 @@ final class CVR2_Admin {
 
             function renderState(state) {
                 state = state || {};
-                ['processed','total','created','updated','images_updated','ignored','slug_errors'].forEach((key) => {
+                ['processed','total','created','updated','images_updated','unchanged','ignored','slug_errors'].forEach((key) => {
                     const el = document.querySelector('[data-stat="' + key + '"]');
                     if (el) el.textContent = Number(state[key] || 0).toLocaleString('pt-PT');
                 });
@@ -576,6 +608,67 @@ final class CVR2_Admin {
                 const total = Number(state.total || 0);
                 const processed = Number(state.processed || 0);
                 if (progress) progress.style.width = total > 0 ? Math.min(100, (processed / total) * 100) + '%' : '0%';
+
+                if (current) {
+                    const item = state.current || {};
+                    if (item.source_id || item.sku || item.name) {
+                        current.hidden = false;
+                        current.textContent = 'A processar: ' + [item.name || ('#' + (item.source_id || '')), item.sku ? 'SKU ' + item.sku : ''].filter(Boolean).join(' — ');
+                    } else {
+                        current.hidden = true;
+                        current.textContent = '';
+                    }
+                }
+
+                if (results) {
+                    const rows = Array.isArray(state.recent_results) ? state.recent_results : [];
+                    results.replaceChildren();
+
+                    if (!rows.length) {
+                        const tr = document.createElement('tr');
+                        const td = document.createElement('td');
+                        td.colSpan = 5;
+                        td.textContent = 'Ainda sem resultados.';
+                        tr.appendChild(td);
+                        results.appendChild(tr);
+                    } else {
+                        rows.forEach((row) => {
+                            const tr = document.createElement('tr');
+                            const values = [
+                                row.time || '',
+                                row.name || (row.source_id ? '#' + row.source_id : ''),
+                                row.sku || '',
+                            ];
+
+                            values.forEach((value) => {
+                                const td = document.createElement('td');
+                                td.textContent = String(value || '');
+                                tr.appendChild(td);
+                            });
+
+                            const statusTd = document.createElement('td');
+                            const badge = document.createElement('span');
+                            const labels = {
+                                updated: 'Atualizado',
+                                created: 'Criado',
+                                unchanged: 'Sem alteração',
+                                ignored: 'Ignorado',
+                                error: 'Erro'
+                            };
+                            const status = String(row.status || 'unchanged');
+                            badge.className = 'cvr2-status cvr2-status--' + status;
+                            badge.textContent = labels[status] || status;
+                            statusTd.appendChild(badge);
+                            tr.appendChild(statusTd);
+
+                            const messageTd = document.createElement('td');
+                            messageTd.textContent = String(row.message || '');
+                            tr.appendChild(messageTd);
+
+                            results.appendChild(tr);
+                        });
+                    }
+                }
             }
 
             async function call(action, params = {}) {
@@ -604,7 +697,7 @@ final class CVR2_Admin {
 
                         if (data.done) {
                             running = false;
-                            write('Importação concluída. Slugs verificados, relações e dados processados.');
+                            write(data.message || 'Importação concluída. O estado ficou guardado.');
                             break;
                         }
 
@@ -656,6 +749,8 @@ final class CVR2_Admin {
                 setBusy(false);
                 write('Importação pausada no browser. O progresso ficou guardado e pode ser retomado.');
             });
+
+            renderState(<?php echo wp_json_encode( $state, JSON_UNESCAPED_UNICODE ); ?>);
 
             document.querySelector('[data-cvr2-action="reset"]')?.addEventListener('click', async () => {
                 setBusy(true);
