@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CV Astro Bridge
  * Description: Ponte entre WooCommerce, Astro e Cloudflare Worker da Chave Vertical.
- * Version: 0.2.1
+ * Version: 0.3.0
  * Author: Chave Vertical
  * Requires at least: 6.5
  * Requires PHP: 8.0
@@ -12,7 +12,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVAB_VERSION', '0.2.1' );
+define( 'CVAB_VERSION', '0.3.0' );
 define( 'CVAB_EXPECTED_WORKER_RELEASE', '2026.10.05.02' );
 define( 'CVAB_STATUS_OPTION', 'cvab_worker_status' );
 define( 'CVAB_FILE', __FILE__ );
@@ -487,6 +487,16 @@ final class CV_Astro_Bridge {
 
         register_rest_route(
             'cv-astro/v1',
+            '/category-catalog/(?P<slug>[a-zA-Z0-9\-_]+)',
+            array(
+                'methods'             => WP_REST_Server::READABLE,
+                'permission_callback' => '__return_true',
+                'callback'            => array( $this, 'rest_category_catalog' ),
+            )
+        );
+
+        register_rest_route(
+            'cv-astro/v1',
             '/product/(?P<id>\d+)',
             array(
                 'methods'             => WP_REST_Server::READABLE,
@@ -640,6 +650,413 @@ final class CV_Astro_Bridge {
                     array( 'icon' => 'headset', 'title' => 'Apoio especializado', 'subtitle' => 'Comercial, técnico e pós-venda' ),
                     array( 'icon' => 'cart', 'title' => 'Mais de 30.000 referências', 'subtitle' => 'Máquinas, ferramentas e consumíveis' ),
                 ),
+            )
+        );
+    }
+
+    private function category_branch_ids( WP_Term $term ): array {
+        $children = get_term_children( (int) $term->term_id, 'product_cat' );
+        $children = is_wp_error( $children ) ? array() : array_map( 'absint', $children );
+
+        return array_values(
+            array_unique(
+                array_filter(
+                    array_merge( array( (int) $term->term_id ), $children )
+                )
+            )
+        );
+    }
+
+    private function category_term_payload( WP_Term $term, int $depth = 0 ): array {
+        $thumbnail_id = absint( get_term_meta( $term->term_id, 'thumbnail_id', true ) );
+        $children     = array();
+
+        if ( $depth < 5 ) {
+            $child_terms = get_terms(
+                array(
+                    'taxonomy'   => 'product_cat',
+                    'parent'     => (int) $term->term_id,
+                    'hide_empty' => false,
+                    'pad_counts' => true,
+                    'orderby'    => 'name',
+                    'order'      => 'ASC',
+                )
+            );
+
+            if ( ! is_wp_error( $child_terms ) ) {
+                foreach ( $child_terms as $child ) {
+                    if ( $child instanceof WP_Term ) {
+                        $children[] = $this->category_term_payload( $child, $depth + 1 );
+                    }
+                }
+            }
+        }
+
+        return array(
+            'id'       => (int) $term->term_id,
+            'name'     => $term->name,
+            'slug'     => $term->slug,
+            'parent'   => (int) $term->parent,
+            'count'    => (int) $term->count,
+            'image'    => $thumbnail_id ? ( wp_get_attachment_image_url( $thumbnail_id, 'woocommerce_thumbnail' ) ?: '' ) : '',
+            'children' => $children,
+        );
+    }
+
+    private function category_brand_facets( array $category_ids, float $min_price = 0.0, float $max_price = 0.0 ): array {
+        if ( function_exists( 'cvl_category_archive_brand_facets' ) ) {
+            return cvl_category_archive_brand_facets( $category_ids, $min_price, $max_price );
+        }
+
+        if ( ! taxonomy_exists( 'product_brand' ) || ! $category_ids ) {
+            return array();
+        }
+
+        global $wpdb;
+
+        $category_ids = array_values( array_filter( array_map( 'absint', $category_ids ) ) );
+        if ( ! $category_ids ) {
+            return array();
+        }
+
+        $placeholders = implode( ',', array_fill( 0, count( $category_ids ), '%d' ) );
+        $lookup_table = $wpdb->prefix . 'wc_product_meta_lookup';
+        $sql = "
+            SELECT t.term_id, t.slug, t.name, COUNT(DISTINCT p.ID) AS product_count
+            FROM {$wpdb->posts} p
+            INNER JOIN {$wpdb->term_relationships} trc ON trc.object_id = p.ID
+            INNER JOIN {$wpdb->term_taxonomy} ttc
+                ON ttc.term_taxonomy_id = trc.term_taxonomy_id
+                AND ttc.taxonomy = 'product_cat'
+            INNER JOIN {$wpdb->term_relationships} trb ON trb.object_id = p.ID
+            INNER JOIN {$wpdb->term_taxonomy} ttb
+                ON ttb.term_taxonomy_id = trb.term_taxonomy_id
+                AND ttb.taxonomy = 'product_brand'
+            INNER JOIN {$wpdb->terms} t ON t.term_id = ttb.term_id
+            INNER JOIN {$lookup_table} l ON l.product_id = p.ID
+            WHERE p.post_type = 'product'
+              AND p.post_status = 'publish'
+              AND ttc.term_id IN ({$placeholders})
+        ";
+
+        $args = $category_ids;
+
+        if ( $min_price > 0 ) {
+            $sql .= ' AND l.max_price >= %f';
+            $args[] = $min_price;
+        }
+        if ( $max_price > 0 ) {
+            $sql .= ' AND l.min_price <= %f';
+            $args[] = $max_price;
+        }
+
+        $sql .= ' GROUP BY t.term_id, t.slug, t.name ORDER BY product_count DESC, t.name ASC';
+        $rows = $wpdb->get_results( $wpdb->prepare( $sql, $args ), ARRAY_A );
+
+        return is_array( $rows ) ? $rows : array();
+    }
+
+    private function category_price_bounds( array $category_ids, array $brand_slugs = array() ): array {
+        if ( function_exists( 'cvl_category_archive_price_bounds' ) ) {
+            return cvl_category_archive_price_bounds( $category_ids, $brand_slugs );
+        }
+
+        if ( ! $category_ids ) {
+            return array( 0.0, 0.0 );
+        }
+
+        global $wpdb;
+
+        $category_ids = array_values( array_filter( array_map( 'absint', $category_ids ) ) );
+        $brand_slugs  = array_values( array_unique( array_filter( array_map( 'sanitize_title', $brand_slugs ) ) ) );
+
+        $placeholders = implode( ',', array_fill( 0, count( $category_ids ), '%d' ) );
+        $lookup_table = $wpdb->prefix . 'wc_product_meta_lookup';
+        $sql = "
+            SELECT MIN(l.min_price) AS min_price, MAX(l.max_price) AS max_price
+            FROM {$wpdb->posts} p
+            INNER JOIN {$wpdb->term_relationships} trc ON trc.object_id = p.ID
+            INNER JOIN {$wpdb->term_taxonomy} ttc
+                ON ttc.term_taxonomy_id = trc.term_taxonomy_id
+                AND ttc.taxonomy = 'product_cat'
+            INNER JOIN {$lookup_table} l ON l.product_id = p.ID
+        ";
+        $args = $category_ids;
+
+        if ( $brand_slugs && taxonomy_exists( 'product_brand' ) ) {
+            $sql .= "
+                INNER JOIN {$wpdb->term_relationships} trb ON trb.object_id = p.ID
+                INNER JOIN {$wpdb->term_taxonomy} ttb
+                    ON ttb.term_taxonomy_id = trb.term_taxonomy_id
+                    AND ttb.taxonomy = 'product_brand'
+                INNER JOIN {$wpdb->terms} tb ON tb.term_id = ttb.term_id
+            ";
+        }
+
+        $sql .= "
+            WHERE p.post_type = 'product'
+              AND p.post_status = 'publish'
+              AND ttc.term_id IN ({$placeholders})
+        ";
+
+        if ( $brand_slugs && taxonomy_exists( 'product_brand' ) ) {
+            $brand_placeholders = implode( ',', array_fill( 0, count( $brand_slugs ), '%s' ) );
+            $sql .= " AND tb.slug IN ({$brand_placeholders})";
+            $args = array_merge( $args, $brand_slugs );
+        }
+
+        $row = $wpdb->get_row( $wpdb->prepare( $sql, $args ), ARRAY_A );
+
+        return array(
+            isset( $row['min_price'] ) ? (float) $row['min_price'] : 0.0,
+            isset( $row['max_price'] ) ? (float) $row['max_price'] : 0.0,
+        );
+    }
+
+    private function category_product_payload( WC_Product $product ): array {
+        $product_id = $product->get_id();
+        $image_id   = $product->get_image_id();
+        $categories = array();
+        $brands     = array();
+
+        foreach ( wp_get_post_terms( $product_id, 'product_cat' ) as $term ) {
+            if ( $term instanceof WP_Term ) {
+                $categories[] = array(
+                    'id'   => (int) $term->term_id,
+                    'name' => $term->name,
+                    'slug' => $term->slug,
+                );
+            }
+        }
+
+        if ( taxonomy_exists( 'product_brand' ) ) {
+            foreach ( wp_get_post_terms( $product_id, 'product_brand' ) as $term ) {
+                if ( ! $term instanceof WP_Term ) {
+                    continue;
+                }
+
+                $brand_image_id = absint( get_term_meta( $term->term_id, 'thumbnail_id', true ) );
+                $brands[] = array(
+                    'id'   => (int) $term->term_id,
+                    'name' => $term->name,
+                    'slug' => $term->slug,
+                    'logo' => $brand_image_id ? ( wp_get_attachment_image_url( $brand_image_id, 'medium' ) ?: '' ) : '',
+                );
+            }
+        }
+
+        $brand = $brands[0] ?? array();
+
+        return array(
+            'id'                => $product_id,
+            'name'              => $product->get_name(),
+            'slug'              => $product->get_slug(),
+            'sku'               => $product->get_sku(),
+            'url'               => 'https://astro.chavevertical.com/produto/' . rawurlencode( $product->get_slug() ) . '/',
+            'permalink'         => $product->get_permalink(),
+            'purchaseUrl'       => 'https://loja.chavevertical.com/cart/?add-to-cart=' . $product_id,
+            'priceValue'        => (float) $product->get_price(),
+            'regularPriceValue' => (float) $product->get_regular_price(),
+            'salePriceValue'    => (float) $product->get_sale_price(),
+            'currency'          => get_woocommerce_currency(),
+            'onSale'            => $product->is_on_sale(),
+            'on_sale'           => $product->is_on_sale(),
+            'image'             => $image_id ? ( wp_get_attachment_image_url( $image_id, 'woocommerce_thumbnail' ) ?: '' ) : '',
+            'imageAlt'          => $image_id ? (string) get_post_meta( $image_id, '_wp_attachment_image_alt', true ) : '',
+            'categories'        => $categories,
+            'categoryName'      => (string) ( $categories[0]['name'] ?? '' ),
+            'brands'            => $brands,
+            'brand'             => (string) ( $brand['name'] ?? '' ),
+            'brandSlug'         => (string) ( $brand['slug'] ?? '' ),
+            'brandLogo'         => (string) ( $brand['logo'] ?? '' ),
+            'rating'            => (float) $product->get_average_rating(),
+            'ratingCount'       => (int) $product->get_review_count(),
+            'stockStatus'       => $product->get_stock_status(),
+            'stock_status'      => $product->get_stock_status(),
+            'stock'             => 'outofstock' !== $product->get_stock_status(),
+        );
+    }
+
+    public function rest_category_catalog( WP_REST_Request $request ) {
+        $base_slug = sanitize_title( (string) $request['slug'] );
+        $base_term = get_term_by( 'slug', $base_slug, 'product_cat' );
+
+        if ( ! $base_term instanceof WP_Term ) {
+            return new WP_Error( 'cvab_category_not_found', 'Categoria não encontrada.', array( 'status' => 404 ) );
+        }
+
+        $base_branch_ids = $this->category_branch_ids( $base_term );
+        $selected_slug   = sanitize_title( (string) $request->get_param( 'categoria' ) );
+        $selected_term   = null;
+
+        if ( $selected_slug && $selected_slug !== $base_term->slug ) {
+            $candidate = get_term_by( 'slug', $selected_slug, 'product_cat' );
+            if ( $candidate instanceof WP_Term && in_array( (int) $candidate->term_id, $base_branch_ids, true ) ) {
+                $selected_term = $candidate;
+            }
+        }
+
+        $navigation_parent = $selected_term instanceof WP_Term ? $selected_term : $base_term;
+
+        $child_terms = get_terms(
+            array(
+                'taxonomy'   => 'product_cat',
+                'hide_empty' => false,
+                'pad_counts' => true,
+                'parent'     => (int) $navigation_parent->term_id,
+                'orderby'    => 'name',
+                'order'      => 'ASC',
+            )
+        );
+        $child_terms = is_wp_error( $child_terms ) ? array() : $child_terms;
+        $is_final    = empty( $child_terms );
+
+        $raw_brands = $request->get_param( 'marca' );
+        $raw_brands = is_array( $raw_brands ) ? $raw_brands : explode( ',', (string) $raw_brands );
+        $selected_brands = $is_final
+            ? array_values( array_unique( array_filter( array_map( 'sanitize_title', $raw_brands ) ) ) )
+            : array();
+
+        $min_price = $is_final ? max( 0, (float) wc_format_decimal( (string) $request->get_param( 'min_price' ) ) ) : 0.0;
+        $max_price = $is_final ? max( 0, (float) wc_format_decimal( (string) $request->get_param( 'max_price' ) ) ) : 0.0;
+
+        $facet_category_ids = $this->category_branch_ids( $navigation_parent );
+        $brand_facets       = $is_final ? $this->category_brand_facets( $facet_category_ids, $min_price, $max_price ) : array();
+        $price_bounds       = $is_final ? $this->category_price_bounds( $facet_category_ids, $selected_brands ) : array( 0.0, 0.0 );
+
+        $tax_query = array(
+            array(
+                'taxonomy'         => 'product_cat',
+                'field'            => 'term_id',
+                'terms'            => array( (int) $navigation_parent->term_id ),
+                'include_children' => true,
+                'operator'         => 'IN',
+            ),
+        );
+
+        if ( $is_final && $selected_brands && taxonomy_exists( 'product_brand' ) ) {
+            $tax_query[] = array(
+                'taxonomy' => 'product_brand',
+                'field'    => 'slug',
+                'terms'    => $selected_brands,
+                'operator' => 'IN',
+            );
+        }
+
+        $meta_query = array();
+
+        if ( $is_final && ( $min_price > 0 || $max_price > 0 ) ) {
+            $price_rule = array(
+                'key'  => '_price',
+                'type' => 'NUMERIC',
+            );
+
+            if ( $min_price > 0 && $max_price > 0 ) {
+                $price_rule['value']   = array( $min_price, $max_price );
+                $price_rule['compare'] = 'BETWEEN';
+            } elseif ( $min_price > 0 ) {
+                $price_rule['value']   = $min_price;
+                $price_rule['compare'] = '>=';
+            } else {
+                $price_rule['value']   = $max_price;
+                $price_rule['compare'] = '<=';
+            }
+
+            $meta_query[] = $price_rule;
+        }
+
+        $page  = max( 1, absint( $request->get_param( 'page' ) ) );
+        $sort  = sanitize_key( (string) $request->get_param( 'sort' ) );
+        $query = sanitize_text_field( (string) $request->get_param( 's' ) );
+
+        $catalog_args = array(
+            'post_type'           => 'product',
+            'post_status'         => 'publish',
+            'posts_per_page'      => 24,
+            'paged'               => $page,
+            'ignore_sticky_posts' => true,
+            'no_found_rows'       => false,
+            'tax_query'           => $tax_query,
+            'meta_query'          => $meta_query,
+            'orderby'             => array(
+                'menu_order' => 'ASC',
+                'date'       => 'DESC',
+            ),
+        );
+
+        if ( $query ) {
+            $catalog_args['s'] = $query;
+        }
+
+        if ( 'price-asc' === $sort || 'price-desc' === $sort ) {
+            $catalog_args['meta_key'] = '_price';
+            $catalog_args['orderby']  = 'meta_value_num';
+            $catalog_args['order']    = 'price-asc' === $sort ? 'ASC' : 'DESC';
+        } elseif ( 'name' === $sort ) {
+            $catalog_args['orderby'] = 'title';
+            $catalog_args['order']   = 'ASC';
+        }
+
+        $catalog_query = new WP_Query( $catalog_args );
+        $products      = array();
+
+        foreach ( $catalog_query->posts as $post ) {
+            $product = wc_get_product( $post->ID );
+            if ( $product instanceof WC_Product ) {
+                $products[] = $this->category_product_payload( $product );
+            }
+        }
+
+        $children = array();
+        foreach ( $child_terms as $term ) {
+            if ( $term instanceof WP_Term ) {
+                $children[] = $this->category_term_payload( $term );
+            }
+        }
+
+        $ancestors = array_reverse( get_ancestors( (int) $navigation_parent->term_id, 'product_cat', 'taxonomy' ) );
+        $breadcrumb = array();
+
+        foreach ( $ancestors as $ancestor_id ) {
+            $ancestor = get_term( $ancestor_id, 'product_cat' );
+            if ( $ancestor instanceof WP_Term ) {
+                $breadcrumb[] = array(
+                    'id'   => (int) $ancestor->term_id,
+                    'name' => $ancestor->name,
+                    'slug' => $ancestor->slug,
+                );
+            }
+        }
+
+        $breadcrumb[] = array(
+            'id'   => (int) $navigation_parent->term_id,
+            'name' => $navigation_parent->name,
+            'slug' => $navigation_parent->slug,
+        );
+
+        return rest_ensure_response(
+            array(
+                'ok'                => true,
+                'source'            => 'woocommerce-category-catalog',
+                'base'              => $this->category_term_payload( $base_term, 5 ),
+                'current'           => $this->category_term_payload( $navigation_parent, 5 ),
+                'selected_category' => $selected_term instanceof WP_Term ? $selected_term->slug : '',
+                'children'          => $children,
+                'is_final'          => $is_final,
+                'brands'            => array_values( $brand_facets ),
+                'selected_brands'   => $selected_brands,
+                'price'             => array(
+                    'min'      => $min_price,
+                    'max'      => $max_price,
+                    'floor'    => (float) ( $price_bounds[0] ?? 0 ),
+                    'ceil'     => (float) ( $price_bounds[1] ?? 0 ),
+                ),
+                'breadcrumb'         => $breadcrumb,
+                'products'           => $products,
+                'total'              => (int) $catalog_query->found_posts,
+                'page'               => $page,
+                'total_pages'        => max( 1, (int) $catalog_query->max_num_pages ),
+                'per_page'           => 24,
             )
         );
     }
