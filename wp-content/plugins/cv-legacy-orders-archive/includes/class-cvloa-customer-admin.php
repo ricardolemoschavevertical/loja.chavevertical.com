@@ -347,6 +347,7 @@ final class CVLOA_Customer_Admin {
         $pages    = max( 1, (int) ceil( $total / $per_page ) );
         $paged    = min( $paged, $pages );
         $slice    = array_slice( $customers, ( $paged - 1 ) * $per_page, $per_page );
+        $archived_order_counts = CVLOA_Archive::email_order_counts();
 
         $stats = CVLOA_Customer_Archive::stats();
         $state = (array) get_option( CVLOA_CUSTOMER_STATE_OPTION, array() );
@@ -457,7 +458,11 @@ final class CVLOA_Customer_Admin {
                                 <td><?php echo esc_html( (string) ( $row['phone'] ?? '' ) ); ?></td>
                                 <td><?php echo esc_html( (string) ( $row['company'] ?? '' ) ); ?></td>
                                 <td><?php echo esc_html( trim( (string) ( $row['billing_postcode'] ?? '' ) . ' ' . (string) ( $row['billing_city'] ?? '' ) ) ); ?></td>
-                                <td><?php echo esc_html( number_format_i18n( absint( $row['orders_count'] ?? 0 ) ) ); ?></td>
+                                <?php $row_email = strtolower( sanitize_email( (string) ( $row['email'] ?? '' ) ) ); ?>
+                                <td>
+                                    <strong><?php echo esc_html( number_format_i18n( absint( $archived_order_counts[ $row_email ] ?? 0 ) ) ); ?></strong>
+                                    <br><span class="cvloa-muted"><?php echo esc_html( number_format_i18n( absint( $row['orders_count'] ?? 0 ) ) ); ?> na origem</span>
+                                </td>
                                 <td><?php echo wp_kses_post( wc_price( (float) ( $row['total_spent'] ?? 0 ) ) ); ?></td>
                                 <td><?php echo esc_html( self::format_date( (string) ( $row['date_created'] ?? '' ) ) ); ?></td>
                             </tr>
@@ -701,9 +706,12 @@ final class CVLOA_Customer_Admin {
             return;
         }
 
-        $billing  = (array) ( $customer['billing'] ?? array() );
-        $shipping = (array) ( $customer['shipping'] ?? array() );
-        $name     = trim( (string) ( $customer['first_name'] ?? '' ) . ' ' . (string) ( $customer['last_name'] ?? '' ) );
+        $billing      = (array) ( $customer['billing'] ?? array() );
+        $shipping     = (array) ( $customer['shipping'] ?? array() );
+        $name         = trim( (string) ( $customer['first_name'] ?? '' ) . ' ' . (string) ( $customer['last_name'] ?? '' ) );
+        $email        = sanitize_email( (string) ( $customer['email'] ?? $billing['email'] ?? '' ) );
+        $linked_orders = CVLOA_Archive::find_by_billing_email( $email );
+        $local_user   = '' !== $email ? get_user_by( 'email', $email ) : false;
         ?>
         <div class="wrap cvloa-customer-admin">
             <style>
@@ -715,7 +723,15 @@ final class CVLOA_Customer_Admin {
             <div class="cvloa-card">
                 <h2><?php echo esc_html( $name ?: (string) ( $customer['email'] ?? 'Cliente #' . absint( $customer['id'] ?? 0 ) ) ); ?></h2>
                 <p class="cvloa-muted">ID de origem: <?php echo esc_html( (string) absint( $customer['id'] ?? 0 ) ); ?> · Utilizador: <?php echo esc_html( (string) ( $customer['username'] ?? '' ) ); ?></p>
-                <p><strong>Email:</strong> <?php echo esc_html( (string) ( $customer['email'] ?? '' ) ); ?><br><strong>Perfil:</strong> <?php echo esc_html( (string) ( $customer['role'] ?? '' ) ); ?><br><strong>Registado:</strong> <?php echo esc_html( self::format_date( (string) ( $customer['date_created'] ?? '' ) ) ); ?></p>
+                <p><strong>Email:</strong> <?php echo esc_html( $email ); ?><br><strong>Perfil:</strong> <?php echo esc_html( (string) ( $customer['role'] ?? '' ) ); ?><br><strong>Registado:</strong> <?php echo esc_html( self::format_date( (string) ( $customer['date_created'] ?? '' ) ) ); ?></p>
+                <p><strong>Acesso nesta loja:</strong>
+                    <?php if ( $local_user instanceof WP_User ) : ?>
+                        <span style="color:#008a20;font-weight:700">Conta local existente</span>
+                        — <a href="<?php echo esc_url( get_edit_user_link( $local_user->ID ) ); ?>">utilizador #<?php echo esc_html( (string) $local_user->ID ); ?></a>
+                    <?php else : ?>
+                        <span style="color:#996800;font-weight:700">Apenas arquivado — sem conta local de login</span>
+                    <?php endif; ?>
+                </p>
             </div>
 
             <div class="cvloa-detail-grid">
@@ -736,6 +752,43 @@ final class CVLOA_Customer_Admin {
                 <p><strong>N.º de encomendas:</strong> <?php echo esc_html( number_format_i18n( absint( $customer['orders_count'] ?? 0 ) ) ); ?><br>
                 <strong>Total gasto:</strong> <?php echo wp_kses_post( wc_price( (float) ( $customer['total_spent'] ?? 0 ) ) ); ?><br>
                 <strong>Cliente pagante:</strong> <?php echo ! empty( $customer['is_paying_customer'] ) ? 'Sim' : 'Não'; ?></p>
+            </div>
+
+            <div class="cvloa-card">
+                <h3>Encomendas associadas pelo email</h3>
+                <p class="cvloa-muted">Correspondência pelo email de faturação <strong><?php echo esc_html( $email ?: '—' ); ?></strong>.</p>
+                <?php if ( ! $linked_orders ) : ?>
+                    <p>Não foram encontradas encomendas arquivadas com este email.</p>
+                <?php else : ?>
+                    <table class="cvloa-table">
+                        <thead><tr><th>Encomenda</th><th>Data</th><th>Estado</th><th>Total</th></tr></thead>
+                        <tbody>
+                        <?php foreach ( $linked_orders as $order_row ) : ?>
+                            <?php
+                            $order_url = add_query_arg(
+                                array(
+                                    'page'       => 'cv-legacy-orders',
+                                    'tab'        => 'archive',
+                                    'view_order' => sanitize_key( (string) ( $order_row['archive_key'] ?? $order_row['id'] ?? '' ) ),
+                                ),
+                                admin_url( 'admin.php' )
+                            );
+                            $order_status = sanitize_key( preg_replace( '/^wc-/', '', (string) ( $order_row['status'] ?? '' ) ) );
+                            $order_status_label = wc_get_order_status_name( $order_status );
+                            if ( ! $order_status_label ) {
+                                $order_status_label = ucfirst( str_replace( '-', ' ', $order_status ) );
+                            }
+                            ?>
+                            <tr>
+                                <td><a href="<?php echo esc_url( $order_url ); ?>"><strong>#<?php echo esc_html( (string) ( $order_row['number'] ?: $order_row['id'] ) ); ?></strong></a></td>
+                                <td><?php echo esc_html( self::format_date( (string) ( $order_row['date_created'] ?? '' ) ) ); ?></td>
+                                <td><?php echo esc_html( $order_status_label ); ?></td>
+                                <td><?php echo wp_kses_post( wc_price( (float) ( $order_row['total'] ?? 0 ), array( 'currency' => (string) ( $order_row['currency'] ?? get_woocommerce_currency() ) ) ) ); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php endif; ?>
             </div>
 
             <?php if ( ! empty( $customer['meta_data'] ) ) : ?>
