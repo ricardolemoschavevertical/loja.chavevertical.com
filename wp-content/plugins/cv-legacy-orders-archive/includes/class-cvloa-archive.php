@@ -5,11 +5,46 @@ final class CVLOA_Archive {
     private const HEADER = "<?php exit; ?>\n";
 
     public static function root_dir(): string {
-        return trailingslashit( WP_CONTENT_DIR ) . 'cv-private-data';
+        return dirname( self::base_dir() );
     }
 
     public static function base_dir(): string {
-        return trailingslashit( self::root_dir() ) . 'legacy-orders';
+        if ( class_exists( 'CV_Core_Order_History' ) ) {
+            return CV_Core_Order_History::archive_root_dir();
+        }
+
+        if ( defined( 'CV_ORDER_ARCHIVE_DIR' ) && CV_ORDER_ARCHIVE_DIR ) {
+            return untrailingslashit( (string) CV_ORDER_ARCHIVE_DIR );
+        }
+
+        return trailingslashit( dirname( dirname( ABSPATH ) ) ) . 'private-data/chavevertical/legacy-orders';
+    }
+
+    private static function legacy_base_dir(): string {
+        return trailingslashit( WP_CONTENT_DIR ) . 'cv-private-data/legacy-orders';
+    }
+
+    private static function migrate_legacy_storage(): void {
+        $legacy = self::legacy_base_dir();
+        $target = self::base_dir();
+
+        if ( $legacy === $target || ! is_dir( $legacy ) ) {
+            return;
+        }
+
+        if ( ! is_dir( $target ) ) {
+            @wp_mkdir_p( $target );
+        }
+
+        foreach ( array( 'orders.ndjson.php', 'orders-index.json.php' ) as $file ) {
+            $from = trailingslashit( $legacy ) . $file;
+            $to   = trailingslashit( $target ) . $file;
+
+            if ( is_file( $from ) && ! is_file( $to ) ) {
+                @copy( $from, $to );
+                @chmod( $to, 0660 );
+            }
+        }
     }
 
     public static function data_path(): string {
@@ -21,6 +56,8 @@ final class CVLOA_Archive {
     }
 
     public static function ensure_storage() {
+        self::migrate_legacy_storage();
+
         $root = self::root_dir();
         $dir  = self::base_dir();
 
