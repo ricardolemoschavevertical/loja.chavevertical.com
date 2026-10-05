@@ -296,6 +296,7 @@ final class CVLOA_Admin {
                 'page'     => $page,
                 'orderby'  => 'id',
                 'order'    => 'asc',
+                'status'   => 'any',
             ),
             75
         );
