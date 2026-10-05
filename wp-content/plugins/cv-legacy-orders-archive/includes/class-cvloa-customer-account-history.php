@@ -24,7 +24,7 @@ final class CVLOA_Customer_Account_History {
             return $items;
         }
 
-        $orders = CVLOA_Archive::find_by_billing_email( (string) $user->user_email );
+        $orders = self::orders_for_user( $user );
         if ( ! $orders ) {
             return $items;
         }
@@ -65,11 +65,11 @@ final class CVLOA_Customer_Account_History {
         $view_key = sanitize_key( (string) wp_unslash( $_GET['cvloa_order'] ?? '' ) );
 
         if ( $view_key ) {
-            self::render_order_detail( $view_key, $email );
+            self::render_order_detail( $view_key, $user );
             return;
         }
 
-        $orders = CVLOA_Archive::find_by_billing_email( $email );
+        $orders = self::orders_for_user( $user );
 
         echo '<h2>' . esc_html__( 'Encomendas antigas', 'cv-legacy-orders-archive' ) . '</h2>';
         echo '<p>' . esc_html__( 'Histórico arquivado associado ao email da sua conta.', 'cv-legacy-orders-archive' ) . '</p>';
@@ -120,7 +120,7 @@ final class CVLOA_Customer_Account_History {
         echo '</tbody></table>';
     }
 
-    private static function render_order_detail( string $order_key, string $account_email ): void {
+    private static function render_order_detail( string $order_key, WP_User $user ): void {
         $order = CVLOA_Archive::read_order( $order_key );
 
         if ( ! is_array( $order ) ) {
@@ -128,10 +128,7 @@ final class CVLOA_Customer_Account_History {
             return;
         }
 
-        $billing = (array) ( $order['billing'] ?? array() );
-        $email   = sanitize_email( (string) ( $billing['email'] ?? '' ) );
-
-        if ( '' === $email || strtolower( $email ) !== strtolower( $account_email ) ) {
+        if ( ! self::user_owns_order( $user, $order_key ) ) {
             wc_print_notice( 'Esta encomenda não está associada à sua conta.', 'error' );
             return;
         }
@@ -166,6 +163,54 @@ final class CVLOA_Customer_Account_History {
         echo '<tr><th colspan="3">IVA</th><td>' . wp_kses_post( wc_price( (float) ( $order['total_tax'] ?? 0 ), array( 'currency' => $currency ) ) ) . '</td></tr>';
         echo '<tr><th colspan="3">Total</th><td><strong>' . wp_kses_post( wc_price( (float) ( $order['total'] ?? 0 ), array( 'currency' => $currency ) ) ) . '</strong></td></tr>';
         echo '</tfoot></table>';
+    }
+
+    private static function orders_for_user( WP_User $user ): array {
+        $emails = array_merge(
+            array( strtolower( sanitize_email( (string) $user->user_email ) ) ),
+            (array) get_user_meta( $user->ID, '_cvloa_historical_emails', true )
+        );
+
+        $orders = array();
+
+        foreach ( array_unique( array_filter( $emails ) ) as $email ) {
+            foreach ( CVLOA_Customer_Identities::orders_for_email( (string) $email ) as $row ) {
+                $row = (array) $row;
+                $key = sanitize_key( (string) ( $row['archive_key'] ?? $row['id'] ?? '' ) );
+
+                if ( '' !== $key ) {
+                    $orders[ $key ] = $row;
+                }
+            }
+        }
+
+        $orders = array_values( $orders );
+
+        usort(
+            $orders,
+            static function ( array $a, array $b ): int {
+                $ad = strtotime( (string) ( $a['date_created'] ?? '' ) ) ?: 0;
+                $bd = strtotime( (string) ( $b['date_created'] ?? '' ) ) ?: 0;
+                return $bd <=> $ad;
+            }
+        );
+
+        return $orders;
+    }
+
+    private static function user_owns_order( WP_User $user, string $order_key ): bool {
+        $emails = array_merge(
+            array( strtolower( sanitize_email( (string) $user->user_email ) ) ),
+            (array) get_user_meta( $user->ID, '_cvloa_historical_emails', true )
+        );
+
+        foreach ( array_unique( array_filter( $emails ) ) as $email ) {
+            if ( CVLOA_Customer_Identities::email_owns_order( (string) $email, $order_key ) ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static function format_date( string $value ): string {
