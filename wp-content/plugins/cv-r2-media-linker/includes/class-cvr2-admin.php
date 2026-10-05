@@ -166,6 +166,22 @@ final class CVR2_Admin {
         self::guard_ajax();
 
         $state = (array) get_option( CVR2_STATE_OPTION, array() );
+        $request_run_id = sanitize_text_field( (string) wp_unslash( $_POST['run_id'] ?? '' ) );
+
+        if (
+            $request_run_id
+            && ! empty( $state['run_id'] )
+            && ! hash_equals( (string) $state['run_id'], $request_run_id )
+        ) {
+            wp_send_json_error(
+                array(
+                    'message' => 'A execução ativa foi substituída por outra.',
+                    'state'   => $state,
+                    'code'    => 'stale_run',
+                ),
+                409
+            );
+        }
 
         wp_send_json_success(
             array(
@@ -194,7 +210,55 @@ final class CVR2_Admin {
             );
         }
 
-        $import_mode = (string) ( $state['import_mode'] ?? 'update_existing' );
+        $request_run_id = sanitize_text_field( (string) wp_unslash( $_POST['run_id'] ?? '' ) );
+        $request_mode   = sanitize_key( (string) wp_unslash( $_POST['import_mode'] ?? '' ) );
+        $state_run_id   = sanitize_text_field( (string) ( $state['run_id'] ?? '' ) );
+        $import_mode    = sanitize_key( (string) ( $state['import_mode'] ?? 'update_existing' ) );
+
+        if ( ! $request_run_id || ! hash_equals( $state_run_id, $request_run_id ) ) {
+            wp_send_json_error(
+                array(
+                    'message' => 'Execução antiga bloqueada. Este separador já não controla a importação ativa.',
+                    'state'   => $state,
+                    'code'    => 'stale_run',
+                ),
+                409
+            );
+        }
+
+        if ( ! $request_mode || $request_mode !== $import_mode ) {
+            wp_send_json_error(
+                array(
+                    'message' => 'Modo de importação diferente do modo ativo. Pedido bloqueado.',
+                    'state'   => $state,
+                    'code'    => 'mode_mismatch',
+                ),
+                409
+            );
+        }
+
+        $lock_key   = 'cvr2_batch_lock_' . md5( $state_run_id );
+        $lock_token = wp_generate_uuid4();
+
+        if ( get_transient( $lock_key ) ) {
+            wp_send_json_success(
+                array(
+                    'done'    => false,
+                    'state'   => $state,
+                    'busy'    => true,
+                    'message' => 'Já existe um lote desta execução em processamento. A aguardar.',
+                )
+            );
+        }
+
+        set_transient( $lock_key, $lock_token, 180 );
+        register_shutdown_function(
+            static function () use ( $lock_key, $lock_token ): void {
+                if ( get_transient( $lock_key ) === $lock_token ) {
+                    delete_transient( $lock_key );
+                }
+            }
+        );
 
         if ( absint( $state['batch_size'] ?? 1 ) > 1 ) {
             @set_time_limit( 180 );
@@ -570,7 +634,8 @@ final class CVR2_Admin {
                 .cvr2-card h2{margin-top:0}.cvr2-row{display:grid;grid-template-columns:180px minmax(0,1fr);gap:14px;align-items:center;margin:12px 0}
                 .cvr2-row input{width:100%}.cvr2-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
                 .cvr2-log{min-height:72px;padding:12px;border:1px solid #dcdcde;background:#f6f7f7;white-space:pre-wrap}
-                .cvr2-progress-meta{margin:14px 0 5px;display:flex;justify-content:space-between;gap:12px;color:#50575e;font-size:12px;font-weight:600}
+                .cvr2-active-mode{margin:14px 0 8px;padding:9px 12px;border-radius:7px;background:#f0f6fc;border:1px solid #c6d9ee;font-weight:700;color:#1d4f7a}
+                .cvr2-progress-meta{margin:8px 0 5px;display:flex;justify-content:space-between;gap:12px;color:#50575e;font-size:12px;font-weight:600}
                 .cvr2-progress{height:14px;margin:0 0 12px;overflow:hidden;border-radius:999px;background:#e5e5e5}
                 .cvr2-progress>span{height:100%;display:block;width:0;background:#00a32a;transition:width .2s}
                 .cvr2-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:8px}.cvr2-stat{min-width:0;padding:10px;background:#f6f7f7;border-radius:7px}
@@ -658,6 +723,8 @@ final class CVR2_Admin {
                         <button class="button" type="button" data-cvr2-action="reset">Limpar estado</button>
                     </div>
 
+                    <div class="cvr2-active-mode" data-cvr2-active-mode>Modo ativo: nenhum</div>
+
                     <div class="cvr2-progress-meta">
                         <span data-cvr2-progress-text>0 / 0 produtos</span>
                         <span data-cvr2-progress-percent>0%</span>
@@ -717,23 +784,58 @@ final class CVR2_Admin {
             const progressPercent = document.querySelector('[data-cvr2-progress-percent]');
             const current = document.querySelector('[data-cvr2-current]');
             const results = document.querySelector('[data-cvr2-results]');
+            const activeMode = document.querySelector('[data-cvr2-active-mode]');
             const buttons = document.querySelectorAll('[data-cvr2-action]');
+            const modeInputs = document.querySelectorAll('input[name="cvr2_import_mode"]');
+            const batchInput = document.querySelector('#cvr2-batch-size');
             let running = false;
+            let activeRunId = '';
+            let activeImportMode = '';
             let statusTimer = null;
             let statusRequestActive = false;
 
             const write = (message) => { if (log) log.textContent = String(message || ''); };
-            const setBusy = (busy) => buttons.forEach((button) => {
-                if (button.dataset.cvr2Action === 'pause') {
-                    button.disabled = !running;
-                    return;
+            const setBusy = (busy) => {
+                buttons.forEach((button) => {
+                    if (button.dataset.cvr2Action === 'pause') {
+                        button.disabled = !running;
+                        return;
+                    }
+                    button.disabled = busy;
+                });
+
+                modeInputs.forEach((input) => {
+                    input.disabled = busy;
+                });
+
+                if (batchInput) {
+                    batchInput.disabled = busy;
                 }
-                button.disabled = busy;
-            });
+            };
             const yieldBrowser = () => new Promise((resolve) => window.setTimeout(resolve, 75));
 
             function renderState(state) {
                 state = state || {};
+
+                if (state.run_id) activeRunId = String(state.run_id);
+                if (state.import_mode) activeImportMode = String(state.import_mode);
+
+                const modeLabels = {
+                    update_existing: 'ATUALIZAR EXISTENTES + CRIAR NOVOS',
+                    create_only: 'CRIAR APENAS NOVOS — EXISTENTES IGNORADOS',
+                    images_only: 'APENAS ATUALIZAR IMAGENS'
+                };
+
+                if (activeMode) {
+                    activeMode.textContent = 'Modo ativo: ' + (modeLabels[activeImportMode] || 'nenhum');
+                }
+
+                if (activeImportMode) {
+                    modeInputs.forEach((input) => {
+                        input.checked = input.value === activeImportMode;
+                    });
+                }
+
                 ['processed','total','created','updated','images_updated','unchanged','ignored','slug_errors'].forEach((key) => {
                     const el = document.querySelector('[data-stat="' + key + '"]');
                     if (el) el.textContent = Number(state[key] || 0).toLocaleString('pt-PT');
@@ -837,7 +939,7 @@ final class CVR2_Admin {
                 statusRequestActive = true;
 
                 try {
-                    const data = await call('cvr2_import_status');
+                    const data = await call('cvr2_import_status', activeRunId ? {run_id: activeRunId} : {});
                     renderState(data.state);
                 } catch (error) {
                     // O pedido principal pode continuar a trabalhar mesmo que
@@ -869,8 +971,17 @@ final class CVR2_Admin {
 
                 try {
                     while (running) {
-                        const data = await call('cvr2_import_batch');
+                        const data = await call('cvr2_import_batch', {
+                            run_id: activeRunId,
+                            import_mode: activeImportMode
+                        });
                         renderState(data.state);
+
+                        if (data.busy) {
+                            write(data.message || 'Outro lote desta execução ainda está a terminar.');
+                            await new Promise((resolve) => window.setTimeout(resolve, 600));
+                            continue;
+                        }
                         write(data.message || (data.done ? 'Importação concluída.' : 'A processar…'));
 
                         if (data.done) {
@@ -911,10 +1022,11 @@ final class CVR2_Admin {
                 setBusy(true);
                 try {
                     const mode = document.querySelector('input[name="cvr2_import_mode"]:checked')?.value || 'update_existing';
-                    const batchInput = document.querySelector('#cvr2-batch-size');
                     const batchSize = Math.max(1, Math.min(50, Number(batchInput?.value || 10)));
                     if (batchInput) batchInput.value = String(batchSize);
                     const data = await call('cvr2_start_import', {import_mode: mode, batch_size: batchSize});
+                    activeRunId = String(data.state?.run_id || '');
+                    activeImportMode = String(data.state?.import_mode || mode);
                     renderState(data.state);
                     write(data.message);
                     setBusy(false);
@@ -925,7 +1037,27 @@ final class CVR2_Admin {
                 }
             });
 
-            document.querySelector('[data-cvr2-action="resume"]')?.addEventListener('click', () => loop());
+            document.querySelector('[data-cvr2-action="resume"]')?.addEventListener('click', async () => {
+                setBusy(true);
+                try {
+                    const data = await call('cvr2_import_status');
+                    activeRunId = String(data.state?.run_id || '');
+                    activeImportMode = String(data.state?.import_mode || '');
+                    renderState(data.state);
+
+                    if (!activeRunId || !activeImportMode) {
+                        write('Não existe uma importação válida para retomar.');
+                        setBusy(false);
+                        return;
+                    }
+
+                    setBusy(false);
+                    loop();
+                } catch (error) {
+                    write(error.message || error);
+                    setBusy(false);
+                }
+            });
 
             document.querySelector('[data-cvr2-action="pause"]')?.addEventListener('click', () => {
                 running = false;
@@ -943,7 +1075,10 @@ final class CVR2_Admin {
                 setBusy(true);
                 try {
                     const data = await call('cvr2_reset_import');
+                    activeRunId = '';
+                    activeImportMode = '';
                     renderState({});
+                    if (activeMode) activeMode.textContent = 'Modo ativo: nenhum';
                     write(data.message);
                 } catch (error) {
                     write(error.message || error);
