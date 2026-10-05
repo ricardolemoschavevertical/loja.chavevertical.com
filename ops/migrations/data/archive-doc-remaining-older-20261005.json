@@ -1,0 +1,1413 @@
+{
+  "marker": "cv_repair_archive_doc_remaining_older_20261005_v1",
+  "label": "archive-doc-remaining-older",
+  "batch": "remaining-older-20261005-v1",
+  "source_document": "15AKFFgU0JenFSeeQg7v-tw2FIcX9-nqqW1hjc-wReyQ",
+  "orders": [
+    {
+      "id": 1652523,
+      "items": [
+        {
+          "sku": "POWERED300745",
+          "quantity": 1,
+          "gross": "114.39"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "114.39",
+      "total_tax": "21.39",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1652520,
+      "items": [
+        {
+          "sku": "POWERED300745",
+          "quantity": 1,
+          "gross": "114.39"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "114.39",
+      "total_tax": "21.39",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1649850,
+      "items": [
+        {
+          "sku": "JBM50942",
+          "quantity": 1,
+          "gross": "28.29"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "35.29",
+      "total_tax": "5.29",
+      "payment_method_title": "Receber fatura pro-forma"
+    },
+    {
+      "id": 1649711,
+      "items": [
+        {
+          "sku": "KT2299",
+          "quantity": 1,
+          "gross": "25.83"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "32.83",
+      "total_tax": "4.83",
+      "payment_method_title": "Receber fatura pro-forma"
+    },
+    {
+      "id": 1649495,
+      "items": [
+        {
+          "sku": "HZMMOBAS2",
+          "quantity": 1,
+          "gross": "453.87"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "453.87",
+      "total_tax": "84.87",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1649490,
+      "items": [
+        {
+          "sku": "SOD71549",
+          "quantity": 1,
+          "gross": "9.00"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "6.15",
+      "total": "22.15",
+      "total_tax": "2.83",
+      "payment_method_title": "Envio à cobrança"
+    },
+    {
+      "id": 1649460,
+      "items": [
+        {
+          "sku": "SOD15322",
+          "quantity": 1,
+          "gross": "67.00"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "74.00",
+      "total_tax": "12.53",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1649458,
+      "items": [
+        {
+          "sku": "SOD15322",
+          "quantity": 1,
+          "gross": "67.00"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "74.00",
+      "total_tax": "12.53",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1649032,
+      "items": [
+        {
+          "sku": "JBM52748",
+          "quantity": 1,
+          "gross": "43.05"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "50.05",
+      "total_tax": "8.05",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1648989,
+      "items": [
+        {
+          "sku": "JBM52786",
+          "quantity": 1,
+          "gross": "14.76"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "21.76",
+      "total_tax": "2.76",
+      "payment_method_title": "Transferência Bancária"
+    },
+    {
+      "id": 1648827,
+      "items": [
+        {
+          "sku": "ASK754751579",
+          "quantity": 1,
+          "gross": "2972.91"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "2972.91",
+      "total_tax": "555.91",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1648818,
+      "items": [
+        {
+          "sku": "KT9767",
+          "quantity": 2,
+          "gross": "17.22"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "24.22",
+      "total_tax": "3.22",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1648575,
+      "items": [
+        {
+          "sku": "SOD08241",
+          "quantity": 1,
+          "gross": "317.00"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "317.00",
+      "total_tax": "59.28",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1648574,
+      "items": [
+        {
+          "sku": "UNIC6201701",
+          "quantity": 1,
+          "gross": "47.00"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "54.00",
+      "total_tax": "8.79",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1648254,
+      "items": [
+        {
+          "sku": "SOD72517",
+          "quantity": 1,
+          "gross": "245.00"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "245.00",
+      "total_tax": "45.81",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1648041,
+      "items": [
+        {
+          "sku": "TR10032",
+          "quantity": 1,
+          "gross": "223.86"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "223.86",
+      "total_tax": "41.86",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1646621,
+      "items": [
+        {
+          "sku": "KT9G37-149MRV-G",
+          "quantity": 1,
+          "gross": "1070.10"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "1070.10",
+      "total_tax": "200.10",
+      "payment_method_title": "Até 6x sem juros"
+    },
+    {
+      "id": 1646615,
+      "items": [
+        {
+          "sku": "MEGPRB30",
+          "quantity": 1,
+          "gross": "982.77"
+        },
+        {
+          "sku": "POWERED400500",
+          "quantity": 2,
+          "gross": "1674.00"
+        },
+        {
+          "sku": "MAD55097",
+          "quantity": 1,
+          "gross": "193.65"
+        },
+        {
+          "sku": "KT4753",
+          "quantity": 1,
+          "gross": "40.59"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "2891.01",
+      "total_tax": "540.59",
+      "payment_method_title": "Payshop"
+    },
+    {
+      "id": 1646528,
+      "items": [
+        {
+          "sku": "OPTI3050610",
+          "quantity": 1,
+          "gross": "52.00"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "59.00",
+      "total_tax": "9.72",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1646509,
+      "items": [
+        {
+          "sku": "SOD08612",
+          "quantity": 1,
+          "gross": "380.00"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "380.00",
+      "total_tax": "71.06",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1646508,
+      "items": [
+        {
+          "sku": "VKPHS12I",
+          "quantity": 1,
+          "gross": "229.00"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "229.00",
+      "total_tax": "42.82",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1646501,
+      "items": [
+        {
+          "sku": "VKPBSM075",
+          "quantity": 1,
+          "gross": "1003.00"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "1003.00",
+      "total_tax": "187.55",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1641106,
+      "items": [
+        {
+          "sku": "MAD69275",
+          "quantity": 1,
+          "gross": "8.17"
+        }
+      ],
+      "shipping_title": "LEVANTAMENTO EM CACIA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "8.17",
+      "total_tax": "1.53",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1641104,
+      "items": [
+        {
+          "sku": "AY584650",
+          "quantity": 1,
+          "gross": "1006.00"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "1006.00",
+      "total_tax": "188.11",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1641010,
+      "items": [
+        {
+          "sku": "ND3078",
+          "quantity": 1,
+          "gross": "187.00"
+        },
+        {
+          "sku": "POWERED240144",
+          "quantity": 1,
+          "gross": "15.99"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "202.99",
+      "total_tax": "37.96",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1640996,
+      "items": [
+        {
+          "sku": "VKPCE2TT",
+          "quantity": 1,
+          "gross": "441.57"
+        },
+        {
+          "sku": "JBM54457",
+          "quantity": 1,
+          "gross": "167.00"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "608.57",
+      "total_tax": "113.80",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1640687,
+      "items": [
+        {
+          "sku": "HZMABS1080SS",
+          "quantity": 5,
+          "gross": "18.45"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "25.45",
+      "total_tax": "3.45",
+      "payment_method_title": "Transferência Bancária"
+    },
+    {
+      "id": 1640653,
+      "items": [
+        {
+          "sku": "VKPMS375KG",
+          "quantity": 1,
+          "gross": "450.00"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "450.00",
+      "total_tax": "84.15",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1639501,
+      "items": [
+        {
+          "sku": "KT3049",
+          "quantity": 1,
+          "gross": "62.00"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "69.00",
+      "total_tax": "11.59",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1638745,
+      "items": [
+        {
+          "sku": "BOL78011005",
+          "quantity": 1,
+          "gross": "61.50"
+        }
+      ],
+      "shipping_title": "LEVANTAMENTO EM CACIA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "61.50",
+      "total_tax": "11.50",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1637304,
+      "items": [
+        {
+          "sku": "KINGTP41542MRV",
+          "quantity": 1,
+          "gross": "149.00"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "149.00",
+      "total_tax": "27.86",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1635690,
+      "items": [
+        {
+          "sku": "KT9746",
+          "quantity": 1,
+          "gross": "335.00"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "335.00",
+      "total_tax": "62.64",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1633824,
+      "items": [
+        {
+          "sku": "KT1668",
+          "quantity": 1,
+          "gross": "51.66"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "58.66",
+      "total_tax": "9.66",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1633815,
+      "items": [
+        {
+          "sku": "KT9860",
+          "quantity": 1,
+          "gross": "554.00"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "554.00",
+      "total_tax": "103.59",
+      "payment_method_title": "Transferência Bancária"
+    },
+    {
+      "id": 1632773,
+      "items": [
+        {
+          "sku": "UNIC6260050",
+          "quantity": 1,
+          "gross": "542.00"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "542.00",
+      "total_tax": "101.35",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1630770,
+      "items": [
+        {
+          "sku": "GAYN75-456/4",
+          "quantity": 1,
+          "gross": "861.00"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "861.00",
+      "total_tax": "161.00",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1630769,
+      "items": [
+        {
+          "sku": "SOD51307",
+          "quantity": 2,
+          "gross": "120.54"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "120.54",
+      "total_tax": "22.54",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1630760,
+      "items": [
+        {
+          "sku": "VKPML45PH",
+          "quantity": 1,
+          "gross": "725.70"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "725.70",
+      "total_tax": "135.70",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1630757,
+      "items": [
+        {
+          "sku": "JBM52071",
+          "quantity": 1,
+          "gross": "46.74"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "53.74",
+      "total_tax": "8.74",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1630695,
+      "items": [
+        {
+          "sku": "IRBMC.A1900G012003",
+          "quantity": 1,
+          "gross": "454.00"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "454.00",
+      "total_tax": "84.89",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1630629,
+      "items": [
+        {
+          "sku": "MAD69042",
+          "quantity": 1,
+          "gross": "67.80"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "74.80",
+      "total_tax": "7.80",
+      "payment_method_title": "VISA / MASTERCARD"
+    },
+    {
+      "id": 1630628,
+      "items": [
+        {
+          "sku": "VIMH10",
+          "quantity": 1,
+          "gross": "36.00"
+        },
+        {
+          "sku": "ND12076",
+          "quantity": 1,
+          "gross": "601.00"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "637.00",
+      "total_tax": "119.11",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1630627,
+      "items": [
+        {
+          "sku": "GRVKP-KB120-P",
+          "quantity": 1,
+          "gross": "177.12"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "177.12",
+      "total_tax": "33.12",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1630626,
+      "items": [
+        {
+          "sku": "WK602500",
+          "quantity": 1,
+          "gross": "30.75"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "37.75",
+      "total_tax": "5.75",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1630616,
+      "items": [
+        {
+          "sku": "SOD08524",
+          "quantity": 1,
+          "gross": "247.23"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "6.15",
+      "total": "253.38",
+      "total_tax": "47.38",
+      "payment_method_title": "Envio à cobrança"
+    },
+    {
+      "id": 1630560,
+      "items": [
+        {
+          "sku": "SOD71518",
+          "quantity": 1,
+          "gross": "44.00"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "51.00",
+      "total_tax": "8.23",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1630557,
+      "items": [
+        {
+          "sku": "ST54004",
+          "quantity": 1,
+          "gross": "891.75"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "891.75",
+      "total_tax": "166.75",
+      "payment_method_title": "Até 6x sem juros"
+    },
+    {
+      "id": 1630497,
+      "items": [
+        {
+          "sku": "JBM51356",
+          "quantity": 1,
+          "gross": "47.97"
+        },
+        {
+          "sku": "POWERED240617",
+          "quantity": 1,
+          "gross": "19.68"
+        },
+        {
+          "sku": "KT2044",
+          "quantity": 1,
+          "gross": "23.37"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "98.02",
+      "total_tax": "17.02",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1630385,
+      "items": [
+        {
+          "sku": "JBM51488",
+          "quantity": 1,
+          "gross": "15.99"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "22.99",
+      "total_tax": "2.99",
+      "payment_method_title": "Transferência Bancária"
+    },
+    {
+      "id": 1630133,
+      "items": [
+        {
+          "sku": "VKPMS375KG",
+          "quantity": 1,
+          "gross": "450.00"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "450.00",
+      "total_tax": "84.15",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1630132,
+      "items": [
+        {
+          "sku": "VKPMS375KG",
+          "quantity": 1,
+          "gross": "450.00"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "450.00",
+      "total_tax": "84.15",
+      "payment_method_title": "Transferência Bancária"
+    },
+    {
+      "id": 1627419,
+      "items": [
+        {
+          "sku": "KT2062",
+          "quantity": 1,
+          "gross": "77.49"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "6.15",
+      "total": "90.64",
+      "total_tax": "15.64",
+      "payment_method_title": "Envio à cobrança"
+    },
+    {
+      "id": 1621461,
+      "items": [
+        {
+          "sku": "OPTI3357516",
+          "quantity": 1,
+          "gross": "51.00"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "58.00",
+      "total_tax": "9.54",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1621430,
+      "items": [
+        {
+          "sku": "HZMWB160L",
+          "quantity": 1,
+          "gross": "430.00"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "430.00",
+      "total_tax": "80.41",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1621401,
+      "items": [
+        {
+          "sku": "HZMABS1500FF_400V",
+          "quantity": 1,
+          "gross": "687.57"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "687.57",
+      "total_tax": "128.57",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1621390,
+      "items": [
+        {
+          "sku": "TR10081",
+          "quantity": 1,
+          "gross": "24.60"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "11.00",
+      "fee_gross": "0.00",
+      "total": "35.60",
+      "total_tax": "4.60",
+      "payment_method_title": "Transferência Bancária"
+    },
+    {
+      "id": 1621366,
+      "items": [
+        {
+          "sku": "POWERED205917",
+          "quantity": 1,
+          "gross": "24.60"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "31.60",
+      "total_tax": "4.60",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1621361,
+      "items": [
+        {
+          "sku": "SIRLU.02000.01007",
+          "quantity": 1,
+          "gross": "121.77"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "121.77",
+      "total_tax": "22.77",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1621215,
+      "items": [
+        {
+          "sku": "KT2637",
+          "quantity": 1,
+          "gross": "133.00"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "133.00",
+      "total_tax": "24.87",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1621009,
+      "items": [
+        {
+          "sku": "KT9767",
+          "quantity": 1,
+          "gross": "8.61"
+        },
+        {
+          "sku": "POWERED205917",
+          "quantity": 1,
+          "gross": "24.60"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "40.21",
+      "total_tax": "6.21",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1620575,
+      "items": [
+        {
+          "sku": "SOD08554",
+          "quantity": 1,
+          "gross": "63.96"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "70.96",
+      "total_tax": "11.96",
+      "payment_method_title": "Transferência Bancária"
+    },
+    {
+      "id": 1620480,
+      "items": [
+        {
+          "sku": "SOD08554",
+          "quantity": 1,
+          "gross": "63.96"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "70.96",
+      "total_tax": "11.96",
+      "payment_method_title": "Transferência Bancária"
+    },
+    {
+      "id": 1620195,
+      "items": [
+        {
+          "sku": "BFKWMTG",
+          "quantity": 1,
+          "gross": "2612.56"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "2612.56",
+      "total_tax": "300.56",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1619870,
+      "items": [
+        {
+          "sku": "SOD08612",
+          "quantity": 1,
+          "gross": "380.00"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "380.00",
+      "total_tax": "71.06",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1619618,
+      "items": [
+        {
+          "sku": "UNIC6172100",
+          "quantity": 1,
+          "gross": "880.68"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "880.68",
+      "total_tax": "164.68",
+      "payment_method_title": "VISA / MASTERCARD"
+    },
+    {
+      "id": 1619617,
+      "items": [
+        {
+          "sku": "SOD72517",
+          "quantity": 1,
+          "gross": "245.00"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "245.00",
+      "total_tax": "45.81",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1616952,
+      "items": [
+        {
+          "sku": "POWERED201799",
+          "quantity": 1,
+          "gross": "33.21"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "40.21",
+      "total_tax": "6.21",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1616565,
+      "items": [
+        {
+          "sku": "SOD56000",
+          "quantity": 1,
+          "gross": "576.87"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "576.87",
+      "total_tax": "107.87",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1616383,
+      "items": [
+        {
+          "sku": "VIAGC",
+          "quantity": 1,
+          "gross": "1135.29"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "1135.29",
+      "total_tax": "212.29",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1616361,
+      "items": [
+        {
+          "sku": "POWERED210027",
+          "quantity": 1,
+          "gross": "511.68"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "511.68",
+      "total_tax": "95.68",
+      "payment_method_title": "Transferência Bancária"
+    },
+    {
+      "id": 1616218,
+      "items": [
+        {
+          "sku": "KT6180",
+          "quantity": 1,
+          "gross": "13.53"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "20.53",
+      "total_tax": "2.53",
+      "payment_method_title": "Transferência Bancária"
+    },
+    {
+      "id": 1616196,
+      "items": [
+        {
+          "sku": "VKPRM008",
+          "quantity": 1,
+          "gross": "318.57"
+        }
+      ],
+      "shipping_title": "Envio grátis (Transporte marítimo é da responsabilidade do cliente)",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "318.57",
+      "total_tax": "59.57",
+      "payment_method_title": "Transferência Bancária"
+    },
+    {
+      "id": 1616124,
+      "items": [
+        {
+          "sku": "JCD0B33EGR0",
+          "quantity": 1,
+          "gross": "1068.87"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "1075.87",
+      "total_tax": "199.87",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1616071,
+      "items": [
+        {
+          "sku": "POWERED240517",
+          "quantity": 1,
+          "gross": "2381.28"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "2388.28",
+      "total_tax": "445.28",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1616069,
+      "items": [
+        {
+          "sku": "SOD18500",
+          "quantity": 4,
+          "gross": "787.20"
+        },
+        {
+          "sku": "SOD20784",
+          "quantity": 4,
+          "gross": "319.80"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "6.15",
+      "total": "1113.15",
+      "total_tax": "208.15",
+      "payment_method_title": "Envio à cobrança"
+    },
+    {
+      "id": 1615807,
+      "items": [
+        {
+          "sku": "SOD10472",
+          "quantity": 1,
+          "gross": "17.22"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "24.22",
+      "total_tax": "3.22",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1615743,
+      "items": [
+        {
+          "sku": "ASK754751910",
+          "quantity": 1,
+          "gross": "487.08"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "494.08",
+      "total_tax": "91.08",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1615705,
+      "items": [
+        {
+          "sku": "UNIC6202101",
+          "quantity": 1,
+          "gross": "93.48"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "100.48",
+      "total_tax": "17.48",
+      "payment_method_title": "VISA / MASTERCARD"
+    },
+    {
+      "id": 1615734,
+      "items": [
+        {
+          "sku": "VICOC200B",
+          "quantity": 1,
+          "gross": "861.00"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "861.00",
+      "total_tax": "161.00",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1615730,
+      "items": [
+        {
+          "sku": "MK9110010255",
+          "quantity": 2,
+          "gross": "1264.44"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "1271.44",
+      "total_tax": "236.44",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1615704,
+      "items": [
+        {
+          "sku": "AY585040",
+          "quantity": 1,
+          "gross": "73.80"
+        },
+        {
+          "sku": "AY585030",
+          "quantity": 1,
+          "gross": "152.52"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "233.32",
+      "total_tax": "42.32",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1615703,
+      "items": [
+        {
+          "sku": "KT9762",
+          "quantity": 1,
+          "gross": "153.75"
+        },
+        {
+          "sku": "SOD18521",
+          "quantity": 1,
+          "gross": "27.06"
+        }
+      ],
+      "shipping_title": "ENTREGA GRATUITA*",
+      "shipping_total": "0.00",
+      "fee_gross": "0.00",
+      "total": "180.81",
+      "total_tax": "33.81",
+      "payment_method_title": "MBWAY"
+    },
+    {
+      "id": 1610109,
+      "items": [
+        {
+          "sku": "Manga para Balde / mt linear",
+          "quantity": 3,
+          "gross": "73.80"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "80.80",
+      "total_tax": "13.80",
+      "payment_method_title": "Pagamento de Serviços no Multibanco"
+    },
+    {
+      "id": 1608752,
+      "items": [
+        {
+          "sku": "KINGT623524M",
+          "quantity": 3,
+          "gross": "62.73"
+        }
+      ],
+      "shipping_title": "ENVIO (Portugal Continental)",
+      "shipping_total": "7.00",
+      "fee_gross": "0.00",
+      "total": "69.73",
+      "total_tax": "11.73",
+      "payment_method_title": "MBWAY"
+    }
+  ],
+  "unsupported": []
+}
