@@ -224,7 +224,12 @@ final class CVLOA_Archive {
                     continue;
                 }
 
-                $key      = (string) $id;
+                $key = sanitize_key( (string) ( $order['_cvloa_archive_key'] ?? '' ) );
+                if ( '' === $key ) {
+                    $key = (string) $id;
+                }
+
+                $order['_cvloa_archive_key'] = $key;
                 $existing = ! empty( $index['orders'][ $key ] );
 
                 if ( $existing && ! $replace_existing ) {
@@ -251,7 +256,7 @@ final class CVLOA_Archive {
                     continue;
                 }
 
-                $index['orders'][ $key ] = self::summarize_order( $order, (int) $offset, (int) $bytes );
+                $index['orders'][ $key ] = self::summarize_order( $order, $key, (int) $offset, (int) $bytes );
 
                 if ( $existing ) {
                     $result['updated']++;
@@ -274,7 +279,7 @@ final class CVLOA_Archive {
         return $result;
     }
 
-    private static function summarize_order( array $order, int $offset, int $length ): array {
+    private static function summarize_order( array $order, string $archive_key, int $offset, int $length ): array {
         $billing = (array) ( $order['billing'] ?? array() );
         $items   = (array) ( $order['line_items'] ?? array() );
 
@@ -312,6 +317,10 @@ final class CVLOA_Archive {
         );
 
         return array(
+            'archive_key'          => sanitize_key( $archive_key ),
+            'origin'               => sanitize_key( (string) ( $order['_cvloa_origin'] ?? '' ) ),
+            'source_url'           => esc_url_raw( (string) ( $order['_cvloa_source_url'] ?? '' ) ),
+            'customer_id'          => absint( $order['customer_id'] ?? 0 ),
             'id'                   => absint( $order['id'] ?? 0 ),
             'number'               => sanitize_text_field( (string) ( $order['number'] ?? '' ) ),
             'status'               => sanitize_key( (string) ( $order['status'] ?? '' ) ),
@@ -334,12 +343,21 @@ final class CVLOA_Archive {
         );
     }
 
-    public static function read_order( int $order_id ): ?array {
+    public static function read_order( $order_key ): ?array {
         $index = self::load_index();
-        $key   = (string) absint( $order_id );
+        $key   = sanitize_key( (string) $order_key );
+
+        if ( '' === $key && is_numeric( $order_key ) ) {
+            $key = (string) absint( $order_key );
+        }
 
         if ( empty( $index['orders'][ $key ] ) ) {
-            return null;
+            // Compatibilidade com arquivos da primeira versão, indexados só pelo ID.
+            $legacy_key = is_numeric( $order_key ) ? (string) absint( $order_key ) : '';
+            if ( '' === $legacy_key || empty( $index['orders'][ $legacy_key ] ) ) {
+                return null;
+            }
+            $key = $legacy_key;
         }
 
         $entry  = (array) $index['orders'][ $key ];
