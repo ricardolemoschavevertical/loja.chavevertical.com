@@ -449,29 +449,44 @@ final class CVR2_Product_Importer {
             return new WP_Error( 'cvr2_images_product_invalid', 'Não foi possível carregar o produto existente para atualizar as imagens.' );
         }
 
-        self::apply_images( $product, (array) ( $source['images'] ?? array() ) );
-        $saved_id = $product->save();
+        $source_images          = (array) ( $source['images'] ?? array() );
+        $product_images_changed = ! self::product_images_match_source( $product, $source_images );
 
-        if ( ! $saved_id ) {
-            return new WP_Error( 'cvr2_images_save_failed', 'WooCommerce não guardou as imagens do produto.' );
+        if ( $product_images_changed ) {
+            self::apply_images( $product, $source_images );
+            $saved_id = $product->save();
+
+            if ( ! $saved_id ) {
+                return new WP_Error( 'cvr2_images_save_failed', 'WooCommerce não guardou as imagens do produto.' );
+            }
         }
 
         $variation_images_updated = 0;
+        $variation_images_checked = 0;
 
         if ( $product instanceof WC_Product_Variable && $source_id ) {
             $variations = CVR2_REST_Client::all_pages(
                 'products/' . $source_id . '/variations',
-                array( 'status' => 'any' )
+                array(
+                    'status'  => 'any',
+                    '_fields' => 'id,sku,image',
+                )
             );
 
             if ( ! is_wp_error( $variations ) ) {
                 foreach ( $variations as $variation_source ) {
-                    if ( self::update_variation_image_only( (array) $variation_source ) ) {
+                    $variation_result = self::update_variation_image_only( (array) $variation_source );
+                    if ( 'updated' === $variation_result ) {
                         $variation_images_updated++;
+                    }
+                    if ( in_array( $variation_result, array( 'updated', 'unchanged' ), true ) ) {
+                        $variation_images_checked++;
                     }
                 }
             }
         }
+
+        $changed = $product_images_changed || $variation_images_updated > 0;
 
         return array(
             'id'                       => $target_id,
@@ -479,11 +494,64 @@ final class CVR2_Product_Importer {
             'sku'                      => $sku,
             'slug'                     => $slug,
             'images_only'              => true,
+            'changed'                  => $changed,
+            'status'                   => $changed ? 'updated' : 'unchanged',
             'variation_images_updated' => $variation_images_updated,
+            'variation_images_checked' => $variation_images_checked,
         );
     }
 
-    private static function update_variation_image_only( array $source ): bool {
+    private static function product_images_match_source( WC_Product $product, array $source_images ): bool {
+        $source_ids = array();
+
+        foreach ( $source_images as $source_image ) {
+            $source_image = (array) $source_image;
+            $source_id    = absint( $source_image['id'] ?? 0 );
+
+            // Sem ID estável não assumimos que está igual: resolve-se a imagem
+            // pelo método normal para evitar falsos "sem alteração".
+            if ( ! $source_id ) {
+                return false;
+            }
+
+            $source_ids[] = $source_id;
+        }
+
+        $current_ids = array_filter(
+            array_merge(
+                array( absint( $product->get_image_id() ) ),
+                array_map( 'absint', $product->get_gallery_image_ids() )
+            )
+        );
+
+        if ( count( $source_ids ) !== count( $current_ids ) ) {
+            return false;
+        }
+
+        foreach ( array_values( $current_ids ) as $index => $attachment_id ) {
+            if ( self::attachment_source_id( $attachment_id ) !== (int) $source_ids[ $index ] ) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static function attachment_source_id( int $attachment_id ): int {
+        if ( ! $attachment_id ) {
+            return 0;
+        }
+
+        $source_id = absint( get_post_meta( $attachment_id, '_cvr2_source_attachment_id', true ) );
+
+        if ( ! $source_id ) {
+            $source_id = absint( get_post_meta( $attachment_id, '_cv_source_attachment_id', true ) );
+        }
+
+        return $source_id;
+    }
+
+    private static function update_variation_image_only( array $source ): string {
         $source_id = absint( $source['id'] ?? 0 );
         $sku       = wc_clean( (string) ( $source['sku'] ?? '' ) );
         $target_id = 0;
@@ -514,27 +582,37 @@ final class CVR2_Product_Importer {
         }
 
         if ( ! $target_id ) {
-            return false;
+            return 'missing';
         }
 
         $variation = wc_get_product( $target_id );
         if ( ! $variation instanceof WC_Product_Variation ) {
-            return false;
+            return 'missing';
         }
 
-        $image = $source['image'] ?? null;
+        $image             = $source['image'] ?? null;
+        $current_image_id  = absint( $variation->get_image_id() );
+        $source_attachment = is_array( $image ) ? absint( $image['id'] ?? 0 ) : 0;
+
+        if ( $source_attachment && $current_image_id && self::attachment_source_id( $current_image_id ) === $source_attachment ) {
+            return 'unchanged';
+        }
+
+        if ( empty( $image ) && ! $current_image_id ) {
+            return 'unchanged';
+        }
 
         if ( is_array( $image ) && ! empty( $image ) ) {
             $image_id = CVR2_Media::attachment_for_source_image( $image );
             if ( is_wp_error( $image_id ) || ! $image_id ) {
-                return false;
+                return 'error';
             }
             $variation->set_image_id( absint( $image_id ) );
-        } elseif ( empty( $image ) ) {
+        } else {
             $variation->set_image_id( 0 );
         }
 
-        return (bool) $variation->save();
+        return $variation->save() ? 'updated' : 'error';
     }
 
     private static function find_product( int $source_id, string $sku, string $slug ): int {
