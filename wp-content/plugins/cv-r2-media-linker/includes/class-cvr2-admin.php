@@ -489,7 +489,8 @@ final class CVR2_Admin {
                 .cvr2-card h2{margin-top:0}.cvr2-row{display:grid;grid-template-columns:180px minmax(0,1fr);gap:14px;align-items:center;margin:12px 0}
                 .cvr2-row input{width:100%}.cvr2-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
                 .cvr2-log{min-height:72px;padding:12px;border:1px solid #dcdcde;background:#f6f7f7;white-space:pre-wrap}
-                .cvr2-progress{height:14px;margin:12px 0;overflow:hidden;border-radius:999px;background:#e5e5e5}
+                .cvr2-progress-meta{margin:14px 0 5px;display:flex;justify-content:space-between;gap:12px;color:#50575e;font-size:12px;font-weight:600}
+                .cvr2-progress{height:14px;margin:0 0 12px;overflow:hidden;border-radius:999px;background:#e5e5e5}
                 .cvr2-progress>span{height:100%;display:block;width:0;background:#00a32a;transition:width .2s}
                 .cvr2-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:8px}.cvr2-stat{min-width:0;padding:10px;background:#f6f7f7;border-radius:7px}
                 .cvr2-current{margin:12px 0;padding:10px 12px;border-left:4px solid #2271b1;background:#f0f6fc}
@@ -576,6 +577,10 @@ final class CVR2_Admin {
                         <button class="button" type="button" data-cvr2-action="reset">Limpar estado</button>
                     </div>
 
+                    <div class="cvr2-progress-meta">
+                        <span data-cvr2-progress-text>0 / 0 produtos</span>
+                        <span data-cvr2-progress-percent>0%</span>
+                    </div>
                     <div class="cvr2-progress" aria-hidden="true"><span data-cvr2-progress></span></div>
                     <div class="cvr2-stats">
                         <div class="cvr2-stat"><span>Processados</span><strong data-stat="processed">0</strong></div>
@@ -610,7 +615,12 @@ final class CVR2_Admin {
                     </div>
 
                     <?php if ( $state ) : ?>
-                        <p><small>Estado guardado: <?php echo esc_html( wp_json_encode( $state, JSON_UNESCAPED_UNICODE ) ); ?></small></p>
+                        <p class="description">
+                            <strong>Estado guardado:</strong>
+                            <?php echo esc_html( ucfirst( (string) ( $state['status'] ?? 'desconhecido' ) ) ); ?>
+                            · Lote <?php echo esc_html( (string) absint( $state['batch_size'] ?? 1 ) ); ?>
+                            · <?php echo esc_html( number_format_i18n( absint( $state['processed'] ?? 0 ) ) ); ?> processados
+                        </p>
                     <?php endif; ?>
                 </section>
             </div>
@@ -621,6 +631,8 @@ final class CVR2_Admin {
             const nonce = <?php echo wp_json_encode( $nonce ); ?>;
             const log = document.querySelector('[data-cvr2-log]');
             const progress = document.querySelector('[data-cvr2-progress]');
+            const progressText = document.querySelector('[data-cvr2-progress-text]');
+            const progressPercent = document.querySelector('[data-cvr2-progress-percent]');
             const current = document.querySelector('[data-cvr2-current]');
             const results = document.querySelector('[data-cvr2-results]');
             const buttons = document.querySelectorAll('[data-cvr2-action]');
@@ -647,7 +659,10 @@ final class CVR2_Admin {
 
                 const total = Number(state.total || 0);
                 const processed = Number(state.processed || 0);
-                if (progress) progress.style.width = total > 0 ? Math.min(100, (processed / total) * 100) + '%' : '0%';
+                const percent = total > 0 ? Math.min(100, (processed / total) * 100) : 0;
+                if (progress) progress.style.width = percent + '%';
+                if (progressText) progressText.textContent = processed.toLocaleString('pt-PT') + ' / ' + total.toLocaleString('pt-PT') + ' produtos';
+                if (progressPercent) progressPercent.textContent = percent.toLocaleString('pt-PT', {maximumFractionDigits:1}) + '%';
 
                 if (current) {
                     const item = state.current || {};
@@ -724,8 +739,8 @@ final class CVR2_Admin {
                 return json.data || {};
             }
 
-            async function refreshLiveStatus() {
-                if (!running || statusRequestActive) return;
+            async function refreshLiveStatus(force = false) {
+                if ((!running && !force) || statusRequestActive) return;
                 statusRequestActive = true;
 
                 try {
@@ -741,7 +756,7 @@ final class CVR2_Admin {
 
             function startStatusPolling() {
                 stopStatusPolling();
-                statusTimer = window.setInterval(refreshLiveStatus, 1000);
+                statusTimer = window.setInterval(refreshLiveStatus, 750);
                 refreshLiveStatus();
             }
 
@@ -779,7 +794,7 @@ final class CVR2_Admin {
                     write(error.message || error);
                 } finally {
                     stopStatusPolling();
-                    await refreshLiveStatus();
+                    await refreshLiveStatus(true);
                     setBusy(false);
                 }
             }
@@ -823,7 +838,7 @@ final class CVR2_Admin {
                 running = false;
                 stopStatusPolling();
                 setBusy(false);
-                refreshLiveStatus();
+                refreshLiveStatus(true);
                 write('Importação pausada no browser. O progresso ficou guardado e pode ser retomado.');
             });
 
