@@ -78,6 +78,15 @@ wp --path="$WP_ROOT" plugin is-active cv-astro-bridge
 wp --path="$WP_ROOT" plugin is-active cv-pdf-reader
 wp --path="$WP_ROOT" plugin is-active cv-r2-media-linker
 wp --path="$WP_ROOT" plugin is-active cv-legacy-orders-archive
+
+ARCHIVE_ROOT="$WP_ROOT/wp-content/cv-private-data"
+if [[ -d "$ARCHIVE_ROOT" ]]; then
+  chgrp -R --reference="$WP_ROOT/wp-content" "$ARCHIVE_ROOT"
+  find "$ARCHIVE_ROOT" -type d -exec chmod 0770 {} +
+  find "$ARCHIVE_ROOT" -type f -exec chmod 0660 {} +
+  stat -c 'legacy-orders-perms=%A %U:%G %n' "$ARCHIVE_ROOT" "$ARCHIVE_ROOT/legacy-orders" || true
+fi
+
 wp --path="$WP_ROOT" eval 'echo defined("CV_CORE_VERSION") ? CV_CORE_VERSION : "missing";'
 echo
 wp --path="$WP_ROOT" eval 'echo defined("CVAB_VERSION") ? CVAB_VERSION : "missing";'
