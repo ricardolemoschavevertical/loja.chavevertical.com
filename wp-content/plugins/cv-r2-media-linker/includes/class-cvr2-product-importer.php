@@ -315,7 +315,8 @@ final class CVR2_Product_Importer {
             );
         }
 
-        $target_id = self::find_product( $source_id, $sku, $slug );
+        $existing = self::locate_existing_product( $source );
+        $target_id = absint( $existing['id'] ?? 0 );
         $old_slug  = $target_id ? (string) get_post_field( 'post_name', $target_id ) : '';
 
         $slug_owner = get_page_by_path( $slug, OBJECT, 'product' );
@@ -438,7 +439,8 @@ final class CVR2_Product_Importer {
         $source_id = absint( $source['id'] ?? 0 );
         $sku       = wc_clean( (string) ( $source['sku'] ?? '' ) );
         $slug      = sanitize_title( (string) ( $source['slug'] ?? '' ) );
-        $target_id = self::find_product( $source_id, $sku, $slug );
+        $existing  = self::locate_existing_product( $source );
+        $target_id = absint( $existing['id'] ?? 0 );
 
         if ( ! $target_id ) {
             return new WP_Error( 'cvr2_images_target_missing', 'Produto não encontrado no destino. Nenhum produto novo foi criado.' );
@@ -613,6 +615,120 @@ final class CVR2_Product_Importer {
         }
 
         return $variation->save() ? 'updated' : 'error';
+    }
+
+    public static function locate_existing_product( array $source ): array {
+        $source_id = absint( $source['id'] ?? 0 );
+        $sku       = wc_clean( (string) ( $source['sku'] ?? '' ) );
+        $slug      = sanitize_title( (string) ( $source['slug'] ?? '' ) );
+        $name      = wp_strip_all_tags( (string) ( $source['name'] ?? '' ) );
+
+        if ( $source_id ) {
+            $ids = get_posts(
+                array(
+                    'post_type'      => 'product',
+                    'post_status'    => array( 'publish', 'draft', 'pending', 'private' ),
+                    'posts_per_page' => 1,
+                    'fields'         => 'ids',
+                    'meta_key'       => self::SOURCE_META,
+                    'meta_value'     => $source_id,
+                    'no_found_rows'  => true,
+                )
+            );
+
+            if ( $ids ) {
+                return array(
+                    'id'       => absint( $ids[0] ),
+                    'matched_by'=> 'source_id',
+                );
+            }
+        }
+
+        if ( $slug ) {
+            $ids = get_posts(
+                array(
+                    'post_type'      => 'product',
+                    'post_status'    => array( 'publish', 'draft', 'pending', 'private' ),
+                    'posts_per_page' => 1,
+                    'fields'         => 'ids',
+                    'meta_key'       => '_cvr2_source_slug',
+                    'meta_value'     => (string) ( $source['slug'] ?? '' ),
+                    'no_found_rows'  => true,
+                )
+            );
+
+            if ( $ids ) {
+                return array(
+                    'id'        => absint( $ids[0] ),
+                    'matched_by'=> 'source_slug',
+                );
+            }
+        }
+
+        if ( $sku ) {
+            $id = wc_get_product_id_by_sku( $sku );
+
+            if ( $id ) {
+                if ( 'product_variation' === get_post_type( $id ) ) {
+                    $parent_id = wp_get_post_parent_id( $id );
+                    if ( $parent_id ) {
+                        $id = $parent_id;
+                    }
+                }
+
+                if ( 'product' === get_post_type( $id ) ) {
+                    return array(
+                        'id'        => absint( $id ),
+                        'matched_by'=> 'sku',
+                    );
+                }
+            }
+        }
+
+        if ( $slug ) {
+            $post = get_page_by_path( $slug, OBJECT, 'product' );
+
+            if (
+                $post instanceof WP_Post
+                && in_array( $post->post_status, array( 'publish', 'draft', 'pending', 'private' ), true )
+            ) {
+                return array(
+                    'id'        => (int) $post->ID,
+                    'matched_by'=> 'slug',
+                );
+            }
+        }
+
+        /*
+         * Último recurso para catálogos antigos sem meta de origem, SKU ou slug
+         * consistente: só considera o título quando existe UMA correspondência
+         * exata. Se houver títulos duplicados, não assume para evitar ignorar o
+         * produto errado.
+         */
+        if ( $name ) {
+            $ids = get_posts(
+                array(
+                    'post_type'      => 'product',
+                    'post_status'    => array( 'publish', 'draft', 'pending', 'private' ),
+                    'posts_per_page' => 2,
+                    'fields'         => 'ids',
+                    'title'          => $name,
+                    'no_found_rows'  => true,
+                )
+            );
+
+            if ( 1 === count( $ids ) ) {
+                return array(
+                    'id'        => absint( $ids[0] ),
+                    'matched_by'=> 'title',
+                );
+            }
+        }
+
+        return array(
+            'id'        => 0,
+            'matched_by'=> '',
+        );
     }
 
     private static function find_product( int $source_id, string $sku, string $slug ): int {
