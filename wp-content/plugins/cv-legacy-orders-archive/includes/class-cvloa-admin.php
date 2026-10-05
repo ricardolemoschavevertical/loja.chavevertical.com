@@ -111,6 +111,11 @@ final class CVLOA_Admin {
 
         update_option( CVLOA_STATUSES_OPTION, $cache, false );
 
+        // Depois de guardar as definições da origem, disponibilizá-las já
+        // no WooCommerce atual para encomendas novas e futuras.
+        $cache['woo_sync'] = CVLOA_Order_Statuses::sync_now();
+        update_option( CVLOA_STATUSES_OPTION, $cache, false );
+
         return $cache;
     }
 
@@ -132,14 +137,18 @@ final class CVLOA_Admin {
         }
 
         $statuses = (array) ( $cache['statuses'] ?? array() );
+        $woo_sync = (array) ( $cache['woo_sync'] ?? array() );
 
         wp_send_json_success(
             array(
                 'statuses'   => $statuses,
+                'woo_sync'   => $woo_sync,
                 'fetched_at' => wp_date( 'd/m/Y H:i:s', absint( $cache['fetched_at'] ?? time() ) ),
                 'message'    => sprintf(
-                    'Foram puxados %d estado(s) da loja de origem.',
-                    count( $statuses )
+                    'Foram puxados %1$d estado(s) da origem. %2$d estão disponíveis no WooCommerce atual; %3$d estado(s) personalizado(s) foram registados agora.',
+                    count( $statuses ),
+                    absint( $woo_sync['available'] ?? 0 ),
+                    absint( $woo_sync['registered'] ?? 0 )
                 ),
             )
         );
@@ -162,6 +171,8 @@ final class CVLOA_Admin {
             || (string) ( $status_cache['source_url'] ?? '' ) !== CVLOA_REST_Client::source_url()
         ) {
             self::refresh_source_statuses();
+        } else {
+            CVLOA_Order_Statuses::sync_now();
         }
 
         $state = array(
@@ -513,7 +524,7 @@ final class CVLOA_Admin {
             <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
                 <div>
                     <h2 style="margin:0 0 5px">Estados das encomendas na origem</h2>
-                    <p style="margin:0">Puxa os estados reais do WooCommerce de origem, incluindo estados personalizados. O estado de cada encomenda continua também guardado dentro do respetivo registo arquivado.</p>
+                    <p style="margin:0">Puxa os estados reais do WooCommerce de origem, incluindo estados personalizados, e regista no WooCommerce atual os estados que estiverem em falta para poderem ser usados nas próximas encomendas. O estado de cada encomenda antiga continua também guardado no arquivo.</p>
                 </div>
                 <button class="button" type="button" data-cvloa-action="pull-statuses">Puxar estados da origem</button>
             </div>
