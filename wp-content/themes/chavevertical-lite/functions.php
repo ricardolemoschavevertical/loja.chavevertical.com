@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.78' );
+define( 'CVL_VERSION', '0.16.79' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -2069,6 +2069,19 @@ function cvl_product_category_search_layout(): void {
 
     $is_final = empty( $category_terms );
 
+    $catalog_view = isset( $_GET['vista'] )
+        ? sanitize_key( wp_unslash( $_GET['vista'] ) )
+        : 'produtos';
+
+    if ( ! in_array( $catalog_view, array( 'produtos', 'categorias' ), true ) ) {
+        $catalog_view = 'produtos';
+    }
+
+    // Uma categoria final não tem mais níveis para navegar em cards.
+    if ( $is_final && 'categorias' === $catalog_view ) {
+        $catalog_view = 'produtos';
+    }
+
     $selected_brands = array();
 
     if ( $is_final && isset( $_GET['marca'] ) ) {
@@ -2110,6 +2123,14 @@ function cvl_product_category_search_layout(): void {
         $base_url = home_url( '/' );
     }
 
+    $navigation_url = get_term_link( $navigation_parent );
+    if ( is_wp_error( $navigation_url ) ) {
+        $navigation_url = $base_url;
+    }
+
+    $products_tab_url   = $navigation_url;
+    $categories_tab_url = add_query_arg( 'vista', 'categorias', $navigation_url );
+
     $filter_url = static function ( array $overrides = array() ) use (
         $base_url,
         $selected_category,
@@ -2140,6 +2161,111 @@ function cvl_product_category_search_layout(): void {
             $base_url
         );
     };
+
+    if ( 'categorias' === $catalog_view ) {
+        $category_tree = function_exists( 'cvl_get_product_category_tree' )
+            ? cvl_get_product_category_tree()
+            : array();
+
+        $ancestor_ids = array_reverse(
+            get_ancestors( (int) $navigation_parent->term_id, 'product_cat', 'taxonomy' )
+        );
+        $breadcrumb_terms = array();
+
+        foreach ( $ancestor_ids as $ancestor_id ) {
+            $ancestor_term = get_term( (int) $ancestor_id, 'product_cat' );
+            if ( $ancestor_term instanceof WP_Term ) {
+                $breadcrumb_terms[] = $ancestor_term;
+            }
+        }
+
+        $breadcrumb_terms[] = $navigation_parent;
+        ?>
+        <div class="cvl-shell cvl-content cvl-search-page cvl-category-catalog-page is-parent-category is-categories-view">
+            <header class="cvl-search-heading cvl-search-heading-compact">
+                <span><?php esc_html_e( 'CATEGORIA', 'chavevertical-lite' ); ?></span>
+                <h1><?php echo esc_html( $navigation_parent->name ); ?></h1>
+                <p class="cvl-search-count"><?php esc_html_e( 'Escolha uma subcategoria para continuar.', 'chavevertical-lite' ); ?></p>
+            </header>
+
+            <nav class="cvl-category-view-tabs" aria-label="<?php esc_attr_e( 'Vista da categoria', 'chavevertical-lite' ); ?>">
+                <a class="cvl-category-view-tab" href="<?php echo esc_url( $products_tab_url ); ?>"><?php esc_html_e( 'Produtos', 'chavevertical-lite' ); ?></a>
+                <a class="cvl-category-view-tab is-active" href="<?php echo esc_url( $categories_tab_url ); ?>" aria-current="page"><?php esc_html_e( 'Categorias', 'chavevertical-lite' ); ?></a>
+            </nav>
+
+            <nav class="cvl-category-browser-breadcrumb" aria-label="<?php esc_attr_e( 'Percurso de categorias', 'chavevertical-lite' ); ?>">
+                <?php
+                $shop_url = function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'shop' ) : home_url( '/' );
+                ?>
+                <a href="<?php echo esc_url( $shop_url ); ?>"><?php esc_html_e( 'Catálogo', 'chavevertical-lite' ); ?></a>
+                <?php foreach ( $breadcrumb_terms as $index => $crumb_term ) : ?>
+                    <span aria-hidden="true">›</span>
+                    <?php if ( $index === array_key_last( $breadcrumb_terms ) ) : ?>
+                        <strong aria-current="page"><?php echo esc_html( $crumb_term->name ); ?></strong>
+                    <?php else : ?>
+                        <?php
+                        $crumb_url = get_term_link( $crumb_term );
+                        if ( ! is_wp_error( $crumb_url ) ) {
+                            $crumb_url = add_query_arg( 'vista', 'categorias', $crumb_url );
+                        }
+                        ?>
+                        <?php if ( ! is_wp_error( $crumb_url ) ) : ?>
+                            <a href="<?php echo esc_url( $crumb_url ); ?>"><?php echo esc_html( $crumb_term->name ); ?></a>
+                        <?php else : ?>
+                            <span><?php echo esc_html( $crumb_term->name ); ?></span>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </nav>
+
+            <section class="cvl-category-browser" aria-label="<?php esc_attr_e( 'Subcategorias', 'chavevertical-lite' ); ?>">
+                <div class="cvl-category-browser-grid">
+                    <?php foreach ( $category_terms as $term ) : ?>
+                        <?php
+                        if ( ! $term instanceof WP_Term ) {
+                            continue;
+                        }
+
+                        $term_id      = (int) $term->term_id;
+                        $has_children = ! empty( $category_tree[ $term_id ] );
+                        $term_url      = get_term_link( $term );
+
+                        if ( is_wp_error( $term_url ) ) {
+                            continue;
+                        }
+
+                        if ( $has_children ) {
+                            $term_url = add_query_arg( 'vista', 'categorias', $term_url );
+                        }
+
+                        $thumbnail_id = absint( get_term_meta( $term_id, 'thumbnail_id', true ) );
+                        $image_url    = $thumbnail_id
+                            ? wp_get_attachment_image_url( $thumbnail_id, 'woocommerce_thumbnail' )
+                            : '';
+
+                        if ( ! $image_url && function_exists( 'wc_placeholder_img_src' ) ) {
+                            $image_url = wc_placeholder_img_src( 'woocommerce_thumbnail' );
+                        }
+                        ?>
+                        <a class="cvl-category-browser-card" href="<?php echo esc_url( $term_url ); ?>">
+                            <span class="cvl-category-browser-image">
+                                <?php if ( $image_url ) : ?>
+                                    <img src="<?php echo esc_url( $image_url ); ?>" alt="<?php echo esc_attr( $term->name ); ?>" loading="lazy" decoding="async">
+                                <?php endif; ?>
+                            </span>
+                            <span class="cvl-category-browser-copy">
+                                <strong><?php echo esc_html( $term->name ); ?></strong>
+                                <small><?php echo esc_html( $has_children ? __( 'Explorar subcategorias', 'chavevertical-lite' ) : __( 'Ver produtos', 'chavevertical-lite' ) ); ?></small>
+                            </span>
+                            <span class="cvl-category-browser-arrow" aria-hidden="true">›</span>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+        </div>
+        <?php
+        return;
+    }
 
     /*
      * Consulta própria do catálogo.
@@ -2248,6 +2374,15 @@ function cvl_product_category_search_layout(): void {
                 ?>
             </p>
         </header>
+
+        <nav class="cvl-category-view-tabs" aria-label="<?php esc_attr_e( 'Vista da categoria', 'chavevertical-lite' ); ?>">
+            <a class="cvl-category-view-tab is-active" href="<?php echo esc_url( $products_tab_url ); ?>" aria-current="page"><?php esc_html_e( 'Produtos', 'chavevertical-lite' ); ?></a>
+            <?php if ( $is_final ) : ?>
+                <span class="cvl-category-view-tab is-disabled" aria-disabled="true"><?php esc_html_e( 'Categorias', 'chavevertical-lite' ); ?></span>
+            <?php else : ?>
+                <a class="cvl-category-view-tab" href="<?php echo esc_url( $categories_tab_url ); ?>"><?php esc_html_e( 'Categorias', 'chavevertical-lite' ); ?></a>
+            <?php endif; ?>
+        </nav>
 
         <?php if ( $carousel_terms ) : ?>
             <section class="cvl-category-carousel" data-cvl-category-carousel aria-label="<?php esc_attr_e( 'Categorias', 'chavevertical-lite' ); ?>">
