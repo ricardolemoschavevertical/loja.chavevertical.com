@@ -270,7 +270,11 @@ final class CV_Core_Order_History {
                                         echo '<a href="' . esc_url( self::archive_view_url( (string) ( $summary['archive_key'] ?? '' ) ) ) . '" class="woocommerce-button button view">' . esc_html__( 'Ver', 'woocommerce' ) . '</a>';
                                     }
                                 } else {
-                                    do_action( 'woocommerce_my_account_my_orders_column_' . $column_id, $order );
+                                    if ( $is_live ) {
+                                        do_action( 'woocommerce_my_account_my_orders_column_' . $column_id, $order );
+                                    } else {
+                                        echo '&mdash;';
+                                    }
                                 }
                                 ?>
                             </td>
