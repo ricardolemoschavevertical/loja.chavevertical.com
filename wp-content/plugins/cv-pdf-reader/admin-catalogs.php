@@ -8,6 +8,7 @@ add_action( 'init', 'cvpr2_register_pdf_sitemap' );
 add_filter( 'query_vars', 'cvpr2_pdf_sitemap_query_var' );
 add_action( 'template_redirect', 'cvpr2_render_pdf_sitemap' );
 add_filter( 'robots_txt', 'cvpr2_pdf_sitemap_robots', 20, 2 );
+add_action( 'rest_api_init', 'cvpr2_register_catalog_rest' );
 
 function cvpr2_catalog_paths() {
 	$upload = wp_upload_dir();
@@ -362,4 +363,58 @@ function cvpr2_pdf_reader_activate() {
 
 function cvpr2_pdf_reader_deactivate() {
 	flush_rewrite_rules();
+}
+
+
+function cvpr2_register_catalog_rest() {
+	register_rest_route(
+		'cv-pdf/v1',
+		'/catalogos',
+		array(
+			'methods'             => WP_REST_Server::READABLE,
+			'callback'            => 'cvpr2_catalog_rest_response',
+			'permission_callback' => '__return_true',
+		)
+	);
+}
+
+function cvpr2_catalog_rest_response() {
+	$paths = cvpr2_catalog_paths();
+	$files = cvpr2_catalog_list_files( $paths['public'] );
+	$items = array();
+
+	foreach ( $files as $file ) {
+		$name = basename( $file );
+		$url  = trailingslashit( $paths['public_url'] ) . rawurlencode( $name );
+		$label = function_exists( 'cvpr2_pdf_catalogos_auto_title_from_filename' )
+			? cvpr2_pdf_catalogos_auto_title_from_filename( $name )
+			: preg_replace( '/\.pdf$/i', '', $name );
+		$title = function_exists( 'cvpr2_pdf_catalogos_auto_title_label' )
+			? cvpr2_pdf_catalogos_auto_title_label( $label )
+			: $label;
+		$cover = function_exists( 'cvpr2_resolve_cover_url' ) ? cvpr2_resolve_cover_url( $url, '' ) : '';
+
+		$items[] = array(
+			'id'       => sanitize_key( sanitize_title( $label ) ),
+			'name'     => $label,
+			'title'    => $title,
+			'filename' => $name,
+			'url'      => esc_url_raw( $url ),
+			'cover'    => esc_url_raw( $cover ),
+			'modified' => gmdate( 'c', filemtime( $file ) ),
+			'size'     => filesize( $file ),
+		);
+	}
+
+	$response = rest_ensure_response(
+		array(
+			'ok'         => true,
+			'count'      => count( $items ),
+			'catalogs'   => $items,
+			'sitemap'    => home_url( '/catalogos-pdf-sitemap.xml' ),
+			'updated_at' => gmdate( 'c' ),
+		)
+	);
+	$response->header( 'Cache-Control', 'public, max-age=300, s-maxage=300' );
+	return $response;
 }
