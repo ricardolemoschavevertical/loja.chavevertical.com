@@ -297,7 +297,7 @@ final class CVR2_Product_Importer {
         );
     }
 
-    public static function import_source_product( array $source ) {
+    public static function import_source_product( array $source, bool $create_only = false ) {
         $source_id      = absint( $source['id'] ?? 0 );
         $type           = sanitize_key( (string) ( $source['type'] ?? 'simple' ) );
         $sku            = wc_clean( (string) ( $source['sku'] ?? '' ) );
@@ -317,6 +317,18 @@ final class CVR2_Product_Importer {
 
         $existing = self::locate_existing_product( $source );
         $target_id = absint( $existing['id'] ?? 0 );
+
+        if ( $create_only && $target_id ) {
+            return array(
+                'id'               => $target_id,
+                'source_id'        => $source_id,
+                'sku'              => $sku,
+                'slug'             => $slug,
+                'ignored_existing' => true,
+                'matched_by'       => (string) ( $existing['matched_by'] ?? '' ),
+            );
+        }
+
         $old_slug  = $target_id ? (string) get_post_field( 'post_name', $target_id ) : '';
 
         $slug_owner = get_page_by_path( $slug, OBJECT, 'product' );
@@ -729,41 +741,6 @@ final class CVR2_Product_Importer {
             'id'        => 0,
             'matched_by'=> '',
         );
-    }
-
-    private static function find_product( int $source_id, string $sku, string $slug ): int {
-        if ( $source_id ) {
-            $ids = get_posts(
-                array(
-                    'post_type'      => 'product',
-                    'post_status'    => 'any',
-                    'posts_per_page' => 1,
-                    'fields'         => 'ids',
-                    'meta_key'       => self::SOURCE_META,
-                    'meta_value'     => $source_id,
-                    'no_found_rows'  => true,
-                )
-            );
-            if ( $ids ) {
-                return absint( $ids[0] );
-            }
-        }
-
-        if ( $sku ) {
-            $id = wc_get_product_id_by_sku( $sku );
-            if ( $id ) {
-                return absint( $id );
-            }
-        }
-
-        if ( $slug ) {
-            $post = get_page_by_path( $slug, OBJECT, 'product' );
-            if ( $post instanceof WP_Post ) {
-                return (int) $post->ID;
-            }
-        }
-
-        return 0;
     }
 
     private static function product_instance( string $type, int $id ) {
