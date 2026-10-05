@@ -1006,6 +1006,61 @@ final class CV_Astro_Bridge {
             }
         }
 
+        $recent_products = array();
+        $promo_products  = array();
+
+        if ( function_exists( 'wc_get_products' ) ) {
+            foreach (
+                wc_get_products(
+                    array(
+                        'status'  => 'publish',
+                        'limit'   => 8,
+                        'orderby' => 'date',
+                        'order'   => 'DESC',
+                        'return'  => 'objects',
+                    )
+                ) as $product
+            ) {
+                if ( $product instanceof WC_Product && $product->is_visible() ) {
+                    $recent_products[] = $this->category_product_payload( $product );
+                }
+            }
+
+            if ( function_exists( 'wc_get_product_ids_on_sale' ) ) {
+                $sale_product_ids = array_values(
+                    array_filter(
+                        array_map( 'absint', wc_get_product_ids_on_sale() ),
+                        static function ( $product_id ) {
+                            return $product_id > 0 && 'product' === get_post_type( $product_id );
+                        }
+                    )
+                );
+
+                if ( $sale_product_ids ) {
+                    foreach (
+                        wc_get_products(
+                            array(
+                                'status'  => 'publish',
+                                'include' => $sale_product_ids,
+                                'limit'   => 16,
+                                'orderby' => 'date',
+                                'order'   => 'DESC',
+                                'return'  => 'objects',
+                            )
+                        ) as $product
+                    ) {
+                        if (
+                            $product instanceof WC_Product
+                            && $product->is_visible()
+                            && $product->is_on_sale()
+                        ) {
+                            $promo_products[] = $this->category_product_payload( $product );
+                        }
+                    }
+                }
+            }
+        }
+
         return rest_ensure_response(
             array(
                 'ok'         => true,
@@ -1013,8 +1068,10 @@ final class CV_Astro_Bridge {
                 'updated_at' => current_time( DATE_ATOM, true ),
                 'hero'       => $hero,
                 'highlights' => array_values( $highlights ),
-                'categories' => $categories,
-                'benefits'   => array(
+                'categories'      => $categories,
+                'promo_products'  => $promo_products,
+                'recent_products' => $recent_products,
+                'benefits'        => array(
                     array( 'icon' => 'truck', 'title' => 'Entregas em Portugal', 'subtitle' => 'Encomendas iguais ou superiores a 100 € + IVA*' ),
                     array( 'icon' => 'box', 'title' => 'Stock para entrega imediata', 'subtitle' => 'Milhares de referências disponíveis' ),
                     array( 'icon' => 'headset', 'title' => 'Apoio especializado', 'subtitle' => 'Comercial, técnico e pós-venda' ),
