@@ -246,7 +246,7 @@ foreach ( $orders as $order_id => $data ) {
     $shipping->set_method_title( (string) $data['shipping_title'] );
     $shipping->set_method_id( 'cv-email-recovered' );
     $shipping->set_total( wc_format_decimal( $data['shipping_total'] ) );
-    $shipping->set_total_tax( '0' );
+    $shipping->set_taxes( array( 'total' => array() ) );
     $shipping->add_meta_data( '_cv_recovered_from_email', (string) $data['email_id'], true );
     $order->add_item( $shipping );
 
