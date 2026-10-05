@@ -2459,3 +2459,238 @@ body.cvl-quick-view-open{overflow:hidden}
   .cvl-category-browser-copy small{display:none}
 }
 
+
+
+/* =========================================================
+   Quem Somos — replica da pagina institucional Astro
+   ========================================================= */
+.cvl-about-catalog-hero{
+  padding:42px 0 48px;
+  border-bottom:1px solid #e2e7ea;
+  background:#f5f7f7;
+}
+.cvl-about-breadcrumbs{
+  margin-bottom:28px;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  gap:9px;
+  color:#7a858d;
+  font-size:11px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.cvl-about-breadcrumbs a{
+  color:inherit;
+  text-decoration:none;
+}
+.cvl-about-breadcrumbs a:hover,
+.cvl-about-breadcrumbs a:focus{
+  color:#d62828;
+}
+.cvl-about-catalog-kicker,
+.cvl-about-kicker{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  color:#d62828;
+  font-size:.78rem;
+  font-weight:800;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+.cvl-about-catalog-hero h1{
+  margin:10px 0 12px;
+  color:#101820;
+  font-family:"Manrope","DM Sans",system-ui,sans-serif;
+  font-size:clamp(35px,4vw,52px);
+  font-weight:800;
+  line-height:1.08;
+  letter-spacing:-.035em;
+}
+.cvl-about-catalog-hero p{
+  max-width:760px;
+  margin:0;
+  color:#66727c;
+  line-height:1.65;
+}
+.cvl-about-page{
+  padding:54px 0 80px;
+}
+.cvl-about-hero{
+  padding:46px;
+  display:grid;
+  grid-template-columns:minmax(0,1.45fr) minmax(280px,.55fr);
+  gap:44px;
+  border-radius:22px;
+  background:linear-gradient(135deg,#111820 0%,#1c2731 100%);
+  color:#fff;
+  box-shadow:0 18px 48px rgba(17,24,32,.13);
+}
+.cvl-about-hero-copy{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+}
+.cvl-about-kicker{
+  margin-bottom:12px;
+}
+.cvl-about-hero h2{
+  margin:0 0 18px;
+  color:#fff;
+  font-family:"Manrope","DM Sans",system-ui,sans-serif;
+  font-size:clamp(2rem,4vw,3.2rem);
+  line-height:1.05;
+}
+.cvl-about-hero p{
+  max-width:820px;
+  margin:0 0 16px;
+  color:#dce3e9;
+  line-height:1.75;
+}
+.cvl-about-hero .cvl-about-lead{
+  font-size:1.08rem;
+  font-weight:600;
+}
+.cvl-about-button{
+  margin-top:12px;
+  padding:13px 17px;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  border-radius:10px;
+  background:#d62828;
+  color:#fff!important;
+  font-weight:800;
+  text-decoration:none!important;
+}
+.cvl-about-button:hover,
+.cvl-about-button:focus{
+  background:#b91f1f;
+  color:#fff!important;
+}
+.cvl-about-button svg{
+  width:18px;
+  height:18px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.cvl-about-brand-panel{
+  padding:28px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:26px;
+  border-radius:18px;
+  background:#fff;
+}
+.cvl-about-brand-panel img{
+  width:100%;
+  height:auto;
+  object-fit:contain;
+}
+.cvl-about-since{
+  padding-top:20px;
+  display:flex;
+  align-items:center;
+  gap:18px;
+  border-top:1px solid #e4e7ea;
+  color:#4f5a64;
+}
+.cvl-about-since strong{
+  color:#d62828;
+  font-size:2rem;
+}
+.cvl-about-since span{
+  line-height:1.45;
+}
+.cvl-about-values-grid{
+  margin-top:22px;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:16px;
+}
+.cvl-about-values-grid article{
+  padding:24px;
+  border:1px solid #e1e6ea;
+  border-radius:16px;
+  background:#fff;
+}
+.cvl-about-values-grid article>span{
+  margin-bottom:22px;
+  display:inline-flex;
+  color:#d62828;
+  font-size:.78rem;
+  font-weight:900;
+  letter-spacing:.08em;
+}
+.cvl-about-values-grid h3{
+  margin:0 0 8px;
+  color:#18212a;
+  font-size:1.08rem;
+}
+.cvl-about-values-grid p{
+  margin:0;
+  color:#66717b;
+  line-height:1.6;
+}
+.cvl-about-timeline{
+  margin-top:22px;
+  padding:40px;
+  display:grid;
+  grid-template-columns:180px minmax(0,1fr);
+  gap:38px;
+  align-items:start;
+  border-radius:20px;
+  background:#f2f4f6;
+}
+.cvl-about-timeline-year{
+  color:#d62828;
+  font-size:clamp(3rem,7vw,5.5rem);
+  font-weight:900;
+  line-height:1;
+}
+.cvl-about-timeline-copy h3{
+  margin:0 0 16px;
+  color:#18212a;
+  font-size:1.7rem;
+}
+.cvl-about-timeline-copy p{
+  margin:0 0 14px;
+  color:#5f6a74;
+  line-height:1.75;
+}
+.cvl-about-timeline-copy p:last-child{
+  margin-bottom:0;
+}
+@media(max-width:980px){
+  .cvl-about-hero{
+    grid-template-columns:1fr;
+    padding:34px;
+  }
+  .cvl-about-values-grid{
+    grid-template-columns:1fr;
+  }
+}
+@media(max-width:680px){
+  .cvl-about-catalog-hero{
+    padding:30px 0 36px;
+  }
+  .cvl-about-page{
+    padding:30px 0 56px;
+  }
+  .cvl-about-hero{
+    padding:26px 20px;
+    border-radius:16px;
+  }
+  .cvl-about-brand-panel{
+    padding:20px;
+  }
+  .cvl-about-timeline{
+    grid-template-columns:1fr;
+    padding:28px 20px;
+  }
+}
