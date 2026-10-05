@@ -45,7 +45,9 @@
           "value": "2500 mm",
           "label": "Largura de passagem"
         }
-      ]
+      ],
+      "full_image": false,
+      "show_text": true
     },
     "side": {
       "eyebrow": "DEPÓSITO GASÓLEO 200L",
@@ -60,7 +62,9 @@
       "image_id": 0,
       "image_url": "theme://assets/images/deposito-stilker-campanha-side.webp",
       "fallback_category_slug": "tanques-depositos-de-combustivel",
-      "image_only": true
+      "image_only": true,
+      "full_image": true,
+      "show_text": false
     }
   },
   "highlights": [
@@ -74,7 +78,9 @@
       "text_color": "#ffffff",
       "image_id": 0,
       "image_url": "",
-      "fallback_category_slug": "oficina-automovel"
+      "fallback_category_slug": "oficina-automovel",
+      "full_image": false,
+      "show_text": true
     },
     {
       "eyebrow": "AR COMPRIMIDO",
@@ -86,7 +92,9 @@
       "text_color": "#ffffff",
       "image_id": 0,
       "image_url": "",
-      "fallback_category_slug": "ar-comprimido"
+      "fallback_category_slug": "ar-comprimido",
+      "full_image": false,
+      "show_text": true
     },
     {
       "eyebrow": "MOVIMENTAÇÃO",
@@ -98,7 +106,9 @@
       "text_color": "#182129",
       "image_id": 0,
       "image_url": "",
-      "fallback_category_slug": "elevacao-e-carga"
+      "fallback_category_slug": "elevacao-e-carga",
+      "full_image": false,
+      "show_text": true
     },
     {
       "eyebrow": "NÃO ENCONTRA?",
@@ -110,7 +120,9 @@
       "text_color": "#ffffff",
       "image_id": 0,
       "image_url": "",
-      "fallback_category_slug": ""
+      "fallback_category_slug": "",
+      "full_image": false,
+      "show_text": true
     }
   ]
 }
