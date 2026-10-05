@@ -433,7 +433,7 @@ final class CVR2_Admin {
                 continue;
             }
 
-            $imported = CVR2_Product_Importer::import_source_product( $source_product );
+            $imported = CVR2_Product_Importer::import_source_product( $source_product, 'create_only' === $import_mode );
 
             if ( is_wp_error( $imported ) ) {
                 if ( str_starts_with( (string) $imported->get_error_code(), 'cvr2_slug_' ) ) {
@@ -442,6 +442,29 @@ final class CVR2_Admin {
                 $state['errors'][] = '#' . $source_id . ': ' . $imported->get_error_message();
                 $state['errors']   = array_slice( $state['errors'], -20 );
                 self::push_recent_result( $state, $source_product, 'error', $imported->get_error_message() );
+            } elseif ( ! empty( $imported['ignored_existing'] ) ) {
+                $state['ignored'] = absint( $state['ignored'] ?? 0 ) + 1;
+
+                $match_labels = array(
+                    'source_id'   => 'ID de origem',
+                    'source_slug' => 'slug de origem guardado',
+                    'sku'         => 'SKU',
+                    'slug'        => 'slug',
+                    'title'       => 'título exato único',
+                );
+                $matched_by = (string) ( $imported['matched_by'] ?? '' );
+                $reason     = $match_labels[ $matched_by ] ?? 'correspondência existente';
+
+                self::push_recent_result(
+                    $state,
+                    $source_product,
+                    'ignored',
+                    sprintf(
+                        'Ignorado pela proteção interna: já existe como produto #%1$d (%2$s).',
+                        absint( $imported['id'] ?? 0 ),
+                        $reason
+                    )
+                );
             } elseif ( $was_existing ) {
                 $state['updated']++;
                 self::push_recent_result( $state, $source_product, 'updated', 'Produto atualizado.' );
