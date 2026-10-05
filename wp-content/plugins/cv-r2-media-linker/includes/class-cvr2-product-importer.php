@@ -141,7 +141,7 @@ final class CVR2_Product_Importer {
         return is_wp_error( $terms ) || ! $terms ? 0 : absint( $terms[0] );
     }
 
-    private static function ensure_term( string $taxonomy, array $item, int $parent = 0 ): int {
+    private static function ensure_term( string $taxonomy, array $item, ?int $parent = null ): int {
         if ( ! taxonomy_exists( $taxonomy ) ) {
             return 0;
         }
@@ -161,9 +161,12 @@ final class CVR2_Product_Importer {
         }
 
         $args = array(
-            'slug'   => $slug,
-            'parent' => max( 0, $parent ),
+            'slug' => $slug,
         );
+
+        if ( null !== $parent ) {
+            $args['parent'] = max( 0, $parent );
+        }
 
         if ( isset( $item['description'] ) ) {
             $args['description'] = wp_kses_post( (string) $item['description'] );
@@ -172,6 +175,9 @@ final class CVR2_Product_Importer {
         if ( $term_id ) {
             wp_update_term( $term_id, $taxonomy, array_merge( $args, array( 'name' => $name ) ) );
         } else {
+            if ( ! isset( $args['parent'] ) ) {
+                $args['parent'] = 0;
+            }
             $created = wp_insert_term( $name, $taxonomy, $args );
             if ( is_wp_error( $created ) ) {
                 return 0;
@@ -277,7 +283,9 @@ final class CVR2_Product_Importer {
             }
         }
 
-        wp_set_object_terms( $target_id, $type, 'product_type' );
+        if ( $target_id ) {
+            wp_set_object_terms( $target_id, $type, 'product_type' );
+        }
         $product = self::product_instance( $type, $target_id );
 
         if ( ! $product ) {
@@ -440,6 +448,16 @@ final class CVR2_Product_Importer {
         $product->set_purchase_note( wp_kses_post( (string) ( $source['purchase_note'] ?? '' ) ) );
         $product->set_menu_order( (int) ( $source['menu_order'] ?? 0 ) );
 
+        if ( ! empty( $source['date_created_gmt'] ) && function_exists( 'wc_string_to_datetime' ) ) {
+            $product->set_date_created( wc_string_to_datetime( (string) $source['date_created_gmt'] . 'Z' ) );
+        }
+        if ( ! empty( $source['date_modified_gmt'] ) && function_exists( 'wc_string_to_datetime' ) ) {
+            $product->set_date_modified( wc_string_to_datetime( (string) $source['date_modified_gmt'] . 'Z' ) );
+        }
+        if ( method_exists( $product, 'set_low_stock_amount' ) && array_key_exists( 'low_stock_amount', $source ) ) {
+            $product->set_low_stock_amount( '' === (string) $source['low_stock_amount'] ? '' : (int) $source['low_stock_amount'] );
+        }
+
         if ( $product instanceof WC_Product_External ) {
             $product->set_product_url( esc_url_raw( (string) ( $source['external_url'] ?? '' ) ) );
             $product->set_button_text( sanitize_text_field( (string) ( $source['button_text'] ?? '' ) ) );
@@ -591,9 +609,13 @@ final class CVR2_Product_Importer {
 
         foreach ( $meta_data as $meta ) {
             $meta = (array) $meta;
-            $key  = sanitize_key( (string) ( $meta['key'] ?? '' ) );
+            $key  = (string) ( $meta['key'] ?? '' );
 
-            if ( ! $key || in_array( $key, $blocked, true ) ) {
+            if (
+                ! $key
+                || ! preg_match( '/^[A-Za-z0-9_:\-]+$/', $key )
+                || in_array( $key, $blocked, true )
+            ) {
                 continue;
             }
 
