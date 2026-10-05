@@ -118,7 +118,7 @@ final class CVR2_Admin {
         self::guard_ajax();
 
         $import_mode = sanitize_key( (string) wp_unslash( $_POST['import_mode'] ?? 'update_existing' ) );
-        if ( ! in_array( $import_mode, array( 'update_existing', 'create_only' ), true ) ) {
+        if ( ! in_array( $import_mode, array( 'update_existing', 'create_only', 'images_only' ), true ) ) {
             $import_mode = 'update_existing';
         }
 
@@ -131,6 +131,7 @@ final class CVR2_Admin {
             'processed'   => 0,
             'created'     => 0,
             'updated'     => 0,
+            'images_updated' => 0,
             'ignored'     => 0,
             'slug_errors' => 0,
             'import_mode' => $import_mode,
@@ -241,9 +242,31 @@ final class CVR2_Admin {
 
         foreach ( (array) $result['data'] as $source_product ) {
             $was_existing = self::target_exists_for_source( (array) $source_product );
+            $import_mode  = (string) ( $state['import_mode'] ?? 'update_existing' );
 
-            if ( $was_existing && 'create_only' === ( $state['import_mode'] ?? 'update_existing' ) ) {
+            if ( $was_existing && 'create_only' === $import_mode ) {
                 $state['ignored'] = absint( $state['ignored'] ?? 0 ) + 1;
+                $state['processed']++;
+                continue;
+            }
+
+            if ( 'images_only' === $import_mode ) {
+                if ( ! $was_existing ) {
+                    $state['ignored'] = absint( $state['ignored'] ?? 0 ) + 1;
+                    $state['processed']++;
+                    continue;
+                }
+
+                $imported = CVR2_Product_Importer::update_source_product_images( (array) $source_product );
+
+                if ( is_wp_error( $imported ) ) {
+                    $source_id = absint( $source_product['id'] ?? 0 );
+                    $state['errors'][] = '#' . $source_id . ': ' . $imported->get_error_message();
+                    $state['errors']   = array_slice( $state['errors'], -20 );
+                } else {
+                    $state['images_updated'] = absint( $state['images_updated'] ?? 0 ) + 1;
+                }
+
                 $state['processed']++;
                 continue;
             }
@@ -275,8 +298,14 @@ final class CVR2_Admin {
         $state['updated_at'] = time();
 
         if ( $page >= (int) $state['total_pages'] || empty( $result['data'] ) ) {
-            $state['phase'] = 'relations';
-            $state['page']  = 1;
+            if ( 'images_only' === ( $state['import_mode'] ?? 'update_existing' ) ) {
+                $state['status']      = 'done';
+                $state['phase']       = 'done';
+                $state['finished_at'] = time();
+            } else {
+                $state['phase'] = 'relations';
+                $state['page']  = 1;
+            }
         } else {
             $state['page'] = $page + 1;
         }
@@ -285,7 +314,7 @@ final class CVR2_Admin {
 
         wp_send_json_success(
             array(
-                'done'    => false,
+                'done'    => 'done' === ( $state['status'] ?? '' ),
                 'state'   => $state,
                 'message' => sprintf(
                     'Produtos processados: %s / %s.',
@@ -350,7 +379,7 @@ final class CVR2_Admin {
                 .cvr2-log{min-height:72px;padding:12px;border:1px solid #dcdcde;background:#f6f7f7;white-space:pre-wrap}
                 .cvr2-progress{height:14px;margin:12px 0;overflow:hidden;border-radius:999px;background:#e5e5e5}
                 .cvr2-progress>span{height:100%;display:block;width:0;background:#00a32a;transition:width .2s}
-                .cvr2-stats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}.cvr2-stat{padding:10px;background:#f6f7f7;border-radius:7px}
+                .cvr2-stats{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}.cvr2-stat{padding:10px;background:#f6f7f7;border-radius:7px}
                 .cvr2-mode{margin:0 0 16px;padding:14px;border:1px solid #dcdcde;border-radius:8px;background:#f6f7f7}
                 .cvr2-mode label{display:block;margin:8px 0}
                 .cvr2-stat strong{display:block;font-size:18px}
@@ -403,7 +432,8 @@ final class CVR2_Admin {
                         <strong>Produtos já existentes</strong>
                         <label><input type="radio" name="cvr2_import_mode" value="update_existing" checked> Atualizar produtos existentes e criar produtos novos</label>
                         <label><input type="radio" name="cvr2_import_mode" value="create_only"> Ignorar produtos existentes e criar apenas produtos novos</label>
-                        <small>No modo de ignorar, um produto encontrado por ID de origem, SKU ou slug não é alterado, nem nas imagens, metadados ou relações.</small>
+                        <label><input type="radio" name="cvr2_import_mode" value="images_only"> Apenas atualizar imagens dos produtos existentes</label>
+                        <small>No modo de imagens, só são atualizadas a imagem principal, galeria e imagens das variações existentes. Não altera título, SKU, preço, stock, categorias, atributos, metadados ou relações. Produtos inexistentes são ignorados.</small>
                     </div>
                     <div class="cvr2-actions">
                         <button class="button" type="button" data-cvr2-action="test">1. Testar REST</button>
@@ -420,6 +450,7 @@ final class CVR2_Admin {
                         <div class="cvr2-stat"><span>Total</span><strong data-stat="total">0</strong></div>
                         <div class="cvr2-stat"><span>Criados</span><strong data-stat="created">0</strong></div>
                         <div class="cvr2-stat"><span>Atualizados</span><strong data-stat="updated">0</strong></div>
+                        <div class="cvr2-stat"><span>Imagens</span><strong data-stat="images_updated">0</strong></div>
                         <div class="cvr2-stat"><span>Ignorados</span><strong data-stat="ignored">0</strong></div>
                         <div class="cvr2-stat"><span>Erros de slug</span><strong data-stat="slug_errors">0</strong></div>
                     </div>
@@ -453,7 +484,7 @@ final class CVR2_Admin {
 
             function renderState(state) {
                 state = state || {};
-                ['processed','total','created','updated','ignored','slug_errors'].forEach((key) => {
+                ['processed','total','created','updated','images_updated','ignored','slug_errors'].forEach((key) => {
                     const el = document.querySelector('[data-stat="' + key + '"]');
                     if (el) el.textContent = Number(state[key] || 0).toLocaleString('pt-PT');
                 });
