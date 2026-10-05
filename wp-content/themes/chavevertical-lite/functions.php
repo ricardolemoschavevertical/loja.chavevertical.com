@@ -651,9 +651,7 @@ function cvl_loop_view_button() {
         return;
     }
 
-    $eye_icon = '<svg class="cvl-view-product-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12Z"></path><circle cx="12" cy="12" r="2.7"></circle></svg>';
-
-    echo '<a class="button cvl-view-product" href="' . esc_url( $product->get_permalink() ) . '" aria-label="' . esc_attr( sprintf( __( 'Ver %s', 'chavevertical-lite' ), $product->get_name() ) ) . '">' . $eye_icon . '<span>' . esc_html__( 'VER', 'chavevertical-lite' ) . '</span></a>';
+    echo '<button type="button" class="button cvl-view-product" data-cvl-quick-view data-product-slug="' . esc_attr( $product->get_slug() ) . '" aria-label="' . esc_attr( sprintf( __( 'Ver rapidamente %s', 'chavevertical-lite' ), $product->get_name() ) ) . '" title="' . esc_attr__( 'Ver rápido', 'chavevertical-lite' ) . '"><span aria-hidden="true">👁</span></button>';
 }
 add_action( 'woocommerce_after_shop_loop_item', 'cvl_loop_view_button', 15 );
 
@@ -661,6 +659,25 @@ function cvl_loop_actions_close() {
     echo '</div>';
 }
 add_action( 'woocommerce_after_shop_loop_item', 'cvl_loop_actions_close', 20 );
+
+/**
+ * Modal único de vista rápida para todos os cards do catálogo.
+ * Os dados são carregados do endpoint do CV Astro Bridge apenas ao abrir.
+ */
+function cvl_product_quick_view_modal() {
+    ?>
+    <div class="cvl-quick-view-modal" data-cvl-quick-view-modal hidden>
+        <div class="cvl-quick-view-backdrop" data-cvl-quick-view-close></div>
+        <section class="cvl-quick-view-dialog" role="dialog" aria-modal="true" aria-labelledby="cvl-quick-view-title">
+            <button type="button" class="cvl-quick-view-close" data-cvl-quick-view-close aria-label="<?php esc_attr_e( 'Fechar', 'chavevertical-lite' ); ?>">×</button>
+            <div class="cvl-quick-view-content" data-cvl-quick-view-content>
+                <div class="cvl-quick-view-loading"><?php esc_html_e( 'A carregar produto…', 'chavevertical-lite' ); ?></div>
+            </div>
+        </section>
+    </div>
+    <?php
+}
+add_action( 'wp_footer', 'cvl_product_quick_view_modal', 80 );
 
 add_filter( 'woocommerce_product_add_to_cart_text', function ( $text, $product ) {
     if ( class_exists( 'WC_Product' ) && $product instanceof WC_Product && $product->is_type( 'simple' ) && $product->is_purchasable() && $product->is_in_stock() ) {
