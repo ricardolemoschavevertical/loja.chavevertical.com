@@ -51,7 +51,7 @@ final class CVR2_Media {
             }
         }
 
-        return self::import_source_as_webp( $source_url, $source_id, $title, $alt );
+        return self::import_source_original( $source_url, $source_id, $title, $alt );
     }
 
     private static function find_by_meta( string $key, string $value ): int {
@@ -135,20 +135,64 @@ final class CVR2_Media {
         $info      = pathinfo( $path );
         $directory = ! empty( $info['dirname'] ) && '.' !== $info['dirname'] ? trailingslashit( $info['dirname'] ) : '';
         $filename  = (string) ( $info['filename'] ?? '' );
+        $extension = strtolower( (string) ( $info['extension'] ?? '' ) );
 
         if ( '' === $filename ) {
             return array();
         }
 
-        $key = $directory . $filename . '.webp';
-        $url = self::build_r2_url( $key );
+        $keys = array();
 
-        return array(
-            array(
-                'key' => $key,
-                'url' => $url,
-            ),
+        // Se já existir uma versão WEBP convertida no R2, continua a ter prioridade.
+        $keys[] = $directory . $filename . '.webp';
+
+        // Caso contrário, aceita o formato original: JPG/JPEG/PNG/GIF/AVIF/etc.
+        if ( $extension ) {
+            $keys[] = $directory . $filename . '.' . $extension;
+        }
+
+        $keys = array_values( array_unique( $keys ) );
+        $out  = array();
+
+        foreach ( $keys as $key ) {
+            $mime = self::mime_for_key( $key );
+
+            if ( ! $mime ) {
+                continue;
+            }
+
+            $out[] = array(
+                'key'  => $key,
+                'url'  => self::build_r2_url( $key ),
+                'mime' => $mime,
+            );
+        }
+
+        return $out;
+    }
+
+    private static function mime_for_key( string $key ): string {
+        $filetype = wp_check_filetype( basename( $key ), null );
+        $mime     = (string) ( $filetype['type'] ?? '' );
+
+        if ( $mime && str_starts_with( $mime, 'image/' ) ) {
+            return $mime;
+        }
+
+        $extension = strtolower( (string) pathinfo( $key, PATHINFO_EXTENSION ) );
+        $fallbacks = array(
+            'jpg'  => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png'  => 'image/png',
+            'gif'  => 'image/gif',
+            'webp' => 'image/webp',
+            'avif' => 'image/avif',
+            'bmp'  => 'image/bmp',
+            'tif'  => 'image/tiff',
+            'tiff' => 'image/tiff',
         );
+
+        return (string) ( $fallbacks[ $extension ] ?? '' );
     }
 
     private static function build_r2_url( string $key ): string {
@@ -208,9 +252,15 @@ final class CVR2_Media {
         string $title,
         string $alt
     ) {
+        $mime = self::mime_for_key( $key );
+
+        if ( ! $mime ) {
+            return new WP_Error( 'cvr2_image_type', 'Formato de imagem não reconhecido: ' . basename( $key ) );
+        }
+
         $attachment_id = wp_insert_attachment(
             array(
-                'post_mime_type' => 'image/webp',
+                'post_mime_type' => $mime,
                 'post_title'     => $title ?: pathinfo( $key, PATHINFO_FILENAME ),
                 'post_status'    => 'inherit',
                 'guid'           => $url,
@@ -250,7 +300,7 @@ final class CVR2_Media {
         return (int) $attachment_id;
     }
 
-    private static function import_source_as_webp(
+    private static function import_source_original(
         string $source_url,
         int $source_id,
         string $title,
@@ -265,9 +315,37 @@ final class CVR2_Media {
             return $tmp;
         }
 
-        $candidates = self::r2_candidates( $source_url );
-        $key        = $candidates ? (string) $candidates[0]['key'] : wp_unique_filename( wp_upload_dir()['path'], 'cvr2-image.webp' );
-        $uploads    = wp_upload_dir();
+        $path = (string) wp_parse_url( $source_url, PHP_URL_PATH );
+        $path = rawurldecode( $path );
+        $path = preg_replace( '#^.*?/wp-content/uploads/#i', '', $path );
+        $path = ltrim( (string) $path, '/' );
+
+        $info      = pathinfo( $path );
+        $directory = ! empty( $info['dirname'] ) && '.' !== $info['dirname'] ? trailingslashit( $info['dirname'] ) : '';
+        $filename  = sanitize_file_name( (string) ( $info['filename'] ?? 'cvr2-image' ) );
+        $extension = strtolower( (string) ( $info['extension'] ?? '' ) );
+
+        if ( ! $extension ) {
+            $detected_mime = function_exists( 'wp_get_image_mime' ) ? (string) wp_get_image_mime( $tmp ) : '';
+            $extension = match ( $detected_mime ) {
+                'image/jpeg' => 'jpg',
+                'image/png'  => 'png',
+                'image/gif'  => 'gif',
+                'image/webp' => 'webp',
+                'image/avif' => 'avif',
+                default      => '',
+            };
+        }
+
+        $key  = $directory . $filename . ( $extension ? '.' . $extension : '' );
+        $mime = self::mime_for_key( $key );
+
+        if ( ! $mime ) {
+            @unlink( $tmp );
+            return new WP_Error( 'cvr2_image_type', 'A imagem de origem não tem um formato suportado pela Media Library.' );
+        }
+
+        $uploads = wp_upload_dir();
 
         if ( ! empty( $uploads['error'] ) ) {
             @unlink( $tmp );
@@ -281,17 +359,18 @@ final class CVR2_Media {
             return new WP_Error( 'cvr2_mkdir', 'Não foi possível criar a pasta de destino da imagem.' );
         }
 
-        $converted = self::convert_to_webp( $tmp, $destination );
-        @unlink( $tmp );
-
-        if ( is_wp_error( $converted ) ) {
-            return $converted;
+        if ( ! @rename( $tmp, $destination ) ) {
+            if ( ! @copy( $tmp, $destination ) ) {
+                @unlink( $tmp );
+                return new WP_Error( 'cvr2_image_copy', 'Não foi possível guardar a imagem original.' );
+            }
+            @unlink( $tmp );
         }
 
         $attachment_id = wp_insert_attachment(
             array(
-                'post_mime_type' => 'image/webp',
-                'post_title'     => $title ?: pathinfo( $key, PATHINFO_FILENAME ),
+                'post_mime_type' => $mime,
+                'post_title'     => $title ?: $filename,
                 'post_status'    => 'inherit',
             ),
             $destination,
@@ -317,6 +396,7 @@ final class CVR2_Media {
         }
 
         $metadata = wp_generate_attachment_metadata( $attachment_id, $destination );
+
         if ( is_array( $metadata ) ) {
             wp_update_attachment_metadata( $attachment_id, $metadata );
         }
