@@ -182,13 +182,13 @@ final class CVLOA_Customer_Archive {
             foreach ( $customers as $customer ) {
                 $customer = (array) $customer;
                 $id       = absint( $customer['id'] ?? 0 );
+                $key      = sanitize_key( (string) ( $customer['_cvloa_archive_key'] ?? '' ) );
 
-                if ( ! $id ) {
-                    $result['errors'][] = 'Cliente sem ID na origem.';
+                if ( ! $id && '' === $key ) {
+                    $result['errors'][] = 'Cliente sem ID nem chave de arquivo.';
                     continue;
                 }
 
-                $key = sanitize_key( (string) ( $customer['_cvloa_archive_key'] ?? '' ) );
                 if ( '' === $key ) {
                     $key = (string) $id;
                 }
@@ -242,8 +242,19 @@ final class CVLOA_Customer_Archive {
                     unset( $index['email_map'][ $previous_email ] );
                 }
 
-                if ( '' !== $new_email ) {
-                    $index['email_map'][ $new_email ] = $key;
+                $mapped_emails = array_values(
+                    array_unique(
+                        array_filter(
+                            array_merge(
+                                array( $new_email ),
+                                (array) ( $summary['email_aliases'] ?? array() )
+                            )
+                        )
+                    )
+                );
+
+                foreach ( $mapped_emails as $mapped_email ) {
+                    $index['email_map'][ strtolower( sanitize_email( (string) $mapped_email ) ) ] = $key;
                 }
 
                 if ( $existing ) {
@@ -264,6 +275,10 @@ final class CVLOA_Customer_Archive {
             return $written;
         }
 
+        if ( class_exists( 'CVLOA_Customer_Identities' ) && empty( $GLOBALS['cvloa_rebuilding_identities'] ) ) {
+            CVLOA_Customer_Identities::mark_dirty();
+        }
+
         return $result;
     }
 
@@ -277,6 +292,16 @@ final class CVLOA_Customer_Archive {
         $email      = sanitize_email( (string) ( $customer['email'] ?? $billing['email'] ?? '' ) );
         $company    = sanitize_text_field( (string) ( $billing['company'] ?? '' ) );
         $phone      = sanitize_text_field( (string) ( $billing['phone'] ?? '' ) );
+        $email_aliases = array_values(
+            array_unique(
+                array_filter(
+                    array_map(
+                        static fn( $value ): string => strtolower( sanitize_email( (string) $value ) ),
+                        (array) ( $customer['_cvloa_alias_emails'] ?? array() )
+                    )
+                )
+            )
+        );
 
         $search = implode(
             ' ',
@@ -285,6 +310,7 @@ final class CVLOA_Customer_Archive {
                 $name,
                 (string) ( $customer['username'] ?? '' ),
                 $email,
+                implode( ' ', $email_aliases ),
                 $company,
                 $phone,
                 (string) ( $billing['address_1'] ?? '' ),
@@ -304,6 +330,7 @@ final class CVLOA_Customer_Archive {
             'last_name'         => $last_name,
             'username'          => sanitize_text_field( (string) ( $customer['username'] ?? '' ) ),
             'email'             => $email,
+            'email_aliases'     => $email_aliases,
             'company'           => $company,
             'phone'             => $phone,
             'role'              => sanitize_key( (string) ( $customer['role'] ?? '' ) ),
@@ -319,6 +346,104 @@ final class CVLOA_Customer_Archive {
             'archived_at'       => gmdate( 'c' ),
             'search'            => strtolower( remove_accents( wp_strip_all_tags( $search ) ) ),
         );
+    }
+
+    public static function replace_guest_profiles( array $profiles ) {
+        $index = self::load_index();
+
+        if ( ! empty( $index['_error'] ) ) {
+            return new WP_Error( 'cvloa_customer_guest_index_error', (string) $index['_error'] );
+        }
+
+        foreach ( (array) ( $index['customers'] ?? array() ) as $key => $summary ) {
+            $summary = (array) $summary;
+
+            if ( 'guest-orders' !== sanitize_key( (string) ( $summary['origin'] ?? '' ) ) ) {
+                continue;
+            }
+
+            unset( $index['customers'][ $key ] );
+
+            foreach ( (array) ( $summary['email_aliases'] ?? array() ) as $email ) {
+                $email = strtolower( sanitize_email( (string) $email ) );
+                if ( ( $index['email_map'][ $email ] ?? '' ) === $key ) {
+                    unset( $index['email_map'][ $email ] );
+                }
+            }
+
+            $primary = strtolower( sanitize_email( (string) ( $summary['email'] ?? '' ) ) );
+            if ( '' !== $primary && ( $index['email_map'][ $primary ] ?? '' ) === $key ) {
+                unset( $index['email_map'][ $primary ] );
+            }
+        }
+
+        $written = self::write_index( $index );
+        if ( is_wp_error( $written ) ) {
+            return $written;
+        }
+
+        $records = array();
+
+        foreach ( $profiles as $identity_key => $profile ) {
+            $profile = (array) $profile;
+
+            if ( empty( $profile['guest_order_keys'] ) || ! empty( $profile['registered_customer_keys'] ) ) {
+                continue;
+            }
+
+            $billing  = (array) ( $profile['billing'] ?? array() );
+            $shipping = (array) ( $profile['shipping'] ?? array() );
+            $emails   = array_values( array_filter( (array) ( $profile['emails'] ?? array() ) ) );
+            $nifs     = array_values( array_filter( (array) ( $profile['nifs'] ?? array() ) ) );
+            $phones   = array_values( array_filter( (array) ( $profile['phones'] ?? array() ) ) );
+
+            $primary_email = sanitize_email( (string) ( $profile['primary_email'] ?? $emails[0] ?? '' ) );
+            $primary_phone = sanitize_text_field( (string) ( $profile['primary_phone'] ?? $phones[0] ?? '' ) );
+
+            if ( '' !== $primary_email ) {
+                $billing['email'] = $primary_email;
+            }
+            if ( '' !== $primary_phone && empty( $billing['phone'] ) ) {
+                $billing['phone'] = $primary_phone;
+            }
+
+            $records[] = array(
+                'id'                    => 0,
+                'first_name'            => sanitize_text_field( (string) ( $profile['first_name'] ?? $billing['first_name'] ?? '' ) ),
+                'last_name'             => sanitize_text_field( (string) ( $profile['last_name'] ?? $billing['last_name'] ?? '' ) ),
+                'email'                 => $primary_email,
+                'username'              => '',
+                'role'                  => 'guest',
+                'billing'               => $billing,
+                'shipping'              => $shipping,
+                'date_created'          => sanitize_text_field( (string) ( $profile['latest_at'] ?? '' ) ),
+                'date_modified'         => sanitize_text_field( (string) ( $profile['latest_at'] ?? '' ) ),
+                'orders_count'          => absint( $profile['orders_count'] ?? 0 ),
+                'total_spent'           => (string) (float) ( $profile['total_spent'] ?? 0 ),
+                'is_paying_customer'    => ! empty( $profile['order_keys'] ),
+                'meta_data'             => array(
+                    array( 'key' => '_cvloa_identity_key', 'value' => sanitize_key( (string) $identity_key ) ),
+                    array( 'key' => '_cvloa_nifs', 'value' => $nifs ),
+                    array( 'key' => '_cvloa_phones', 'value' => $phones ),
+                    array( 'key' => '_cvloa_order_keys', 'value' => array_values( (array) ( $profile['order_keys'] ?? array() ) ) ),
+                ),
+                '_cvloa_archive_key'     => 'guest-' . substr( sha1( (string) $identity_key ), 0, 20 ),
+                '_cvloa_origin'          => 'guest-orders',
+                '_cvloa_alias_emails'    => $emails,
+                '_cvloa_identity_key'    => sanitize_key( (string) $identity_key ),
+            );
+        }
+
+        if ( ! $records ) {
+            return array(
+                'archived' => 0,
+                'updated'  => 0,
+                'ignored'  => 0,
+                'errors'   => array(),
+            );
+        }
+
+        return self::archive_batch( $records, true );
     }
 
     public static function email_map(): array {
