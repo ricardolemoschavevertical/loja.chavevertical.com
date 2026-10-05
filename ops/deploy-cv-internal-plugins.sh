@@ -14,7 +14,7 @@ test -w "$PLUGINS"
 
 while IFS= read -r entry; do
   case "$entry" in
-    chavevertical-core/|chavevertical-core/*|cv-astro-bridge/|cv-astro-bridge/*|cv-pdf-reader/|cv-pdf-reader/*|cv-r2-media-linker/|cv-r2-media-linker/*) ;;
+    chavevertical-core/|chavevertical-core/*|cv-astro-bridge/|cv-astro-bridge/*|cv-pdf-reader/|cv-pdf-reader/*|cv-r2-media-linker/|cv-r2-media-linker/*|cv-legacy-orders-archive/|cv-legacy-orders-archive/*) ;;
     *) echo "Unexpected archive entry: $entry" >&2; exit 1 ;;
   esac
   case "/$entry/" in
@@ -34,7 +34,7 @@ trap cleanup EXIT
 
 unzip -q "$PACKAGE" -d "$STAGE"
 
-for slug in chavevertical-core cv-astro-bridge cv-pdf-reader cv-r2-media-linker; do
+for slug in chavevertical-core cv-astro-bridge cv-pdf-reader cv-r2-media-linker cv-legacy-orders-archive; do
   SRC="$STAGE/$slug"
   DEST="$PLUGINS/$slug"
 
@@ -72,14 +72,18 @@ wp --path="$WP_ROOT" plugin activate chavevertical-core
 wp --path="$WP_ROOT" plugin activate cv-astro-bridge
 wp --path="$WP_ROOT" plugin activate cv-pdf-reader
 wp --path="$WP_ROOT" plugin activate cv-r2-media-linker
+wp --path="$WP_ROOT" plugin activate cv-legacy-orders-archive
 wp --path="$WP_ROOT" plugin is-active chavevertical-core
 wp --path="$WP_ROOT" plugin is-active cv-astro-bridge
 wp --path="$WP_ROOT" plugin is-active cv-pdf-reader
 wp --path="$WP_ROOT" plugin is-active cv-r2-media-linker
+wp --path="$WP_ROOT" plugin is-active cv-legacy-orders-archive
 wp --path="$WP_ROOT" eval 'echo defined("CV_CORE_VERSION") ? CV_CORE_VERSION : "missing";'
 echo
 wp --path="$WP_ROOT" eval 'echo defined("CVAB_VERSION") ? CVAB_VERSION : "missing";'
 echo
 wp --path="$WP_ROOT" eval 'echo defined("CVR2_VERSION") ? CVR2_VERSION : "missing";'
+echo
+wp --path="$WP_ROOT" eval 'echo defined("CVLOA_VERSION") ? CVLOA_VERSION : "missing";'
 echo
 echo "Chave Vertical internal plugins deployed and active."
