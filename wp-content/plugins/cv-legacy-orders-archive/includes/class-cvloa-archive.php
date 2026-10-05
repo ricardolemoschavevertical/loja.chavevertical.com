@@ -402,6 +402,34 @@ final class CVLOA_Archive {
         );
     }
 
+    public static function summaries_by_keys( array $order_keys ): array {
+        $index = self::load_index();
+        if ( ! empty( $index['_error'] ) ) {
+            return array();
+        }
+
+        $orders = array();
+
+        foreach ( array_unique( array_map( 'sanitize_key', $order_keys ) ) as $key ) {
+            if ( '' === $key || empty( $index['orders'][ $key ] ) ) {
+                continue;
+            }
+
+            $orders[] = (array) $index['orders'][ $key ];
+        }
+
+        usort(
+            $orders,
+            static function ( array $a, array $b ): int {
+                $ad = strtotime( (string) ( $a['date_created'] ?? '' ) ) ?: 0;
+                $bd = strtotime( (string) ( $b['date_created'] ?? '' ) ) ?: 0;
+                return $bd <=> $ad;
+            }
+        );
+
+        return $orders;
+    }
+
     public static function find_by_billing_email( string $email ): array {
         $email = strtolower( sanitize_email( $email ) );
         if ( '' === $email ) {
