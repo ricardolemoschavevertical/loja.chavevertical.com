@@ -2194,7 +2194,7 @@ body.cvl-quick-view-open{overflow:hidden}
 }
 
 
-/* Product cards — single ADICIONAR action on hover */
+/* Product cards — single commercial action on hover */
 :is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category){
   transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease!important;
   transform-origin:center center;
@@ -2239,17 +2239,26 @@ body.cvl-quick-view-open{overflow:hidden}
   pointer-events:auto!important;
   transform:none!important;
 }
-:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-actions .cvl-cart-icon-button{
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-actions .cvl-cart-icon-button,
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-actions .cvl-view-product{
   margin:0 auto!important;
+  display:inline-flex!important;
+  gap:5px!important;
   border:1px solid var(--cvl-commercial-green)!important;
   background:var(--cvl-commercial-green)!important;
   color:#fff!important;
   font-size:10px!important;
   font-weight:900!important;
   letter-spacing:.04em!important;
+  white-space:nowrap!important;
 }
-:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-actions .cvl-view-product{
-  display:none!important;
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-actions .cvl-cart-icon-button:hover,
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-actions .cvl-cart-icon-button:focus,
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-actions .cvl-view-product:hover,
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-actions .cvl-view-product:focus{
+  border-color:var(--cvl-commercial-green-dark)!important;
+  background:var(--cvl-commercial-green-dark)!important;
+  color:#fff!important;
 }
 :is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .price{
   width:auto!important;
