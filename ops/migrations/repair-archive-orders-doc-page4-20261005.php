@@ -6,7 +6,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-$data_file = __DIR__ . '/data/archive-doc-page4-20261005.json';
+$data_file = __DIR__ . '/data/archive-doc-page5-20261005.json';
 
 if ( ! is_readable( $data_file ) ) {
     fwrite( STDERR, "archive-doc-page4=data-file-missing\n" );
