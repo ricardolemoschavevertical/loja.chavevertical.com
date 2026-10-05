@@ -84,16 +84,17 @@ ARCHIVE_ROOT="$ACCOUNT_ROOT/private-data/chavevertical/legacy-orders"
 OLD_ARCHIVE_ROOT="$WP_ROOT/wp-content/cv-private-data/legacy-orders"
 
 mkdir -p "$ARCHIVE_ROOT"
-chgrp -R --reference="$WP_ROOT/wp-content" "$ACCOUNT_ROOT/private-data"
-find "$ACCOUNT_ROOT/private-data" -type d -exec chmod 0770 {} +
-find "$ACCOUNT_ROOT/private-data" -type f -exec chmod 0660 {} +
+# O arquivo pode ter sido criado pelo PHP/FPM com ownership diferente do runner.
+# Não falhar o deploy ao tentar mudar grupo/permissões de ficheiros que o runner
+# não possui. A escrita real é validada abaixo pelo próprio WordPress.
+chmod 0770 "$ACCOUNT_ROOT/private-data" "$ACCOUNT_ROOT/private-data/chavevertical" "$ARCHIVE_ROOT" 2>/dev/null || true
+find "$ACCOUNT_ROOT/private-data" -type f -exec chmod 0660 {} + 2>/dev/null || true
 
 if [[ -d "$OLD_ARCHIVE_ROOT" ]]; then
   for file in orders.ndjson.php orders-index.json.php; do
     if [[ -f "$OLD_ARCHIVE_ROOT/$file" && ! -f "$ARCHIVE_ROOT/$file" ]]; then
       cp "$OLD_ARCHIVE_ROOT/$file" "$ARCHIVE_ROOT/$file"
-      chgrp --reference="$WP_ROOT/wp-content" "$ARCHIVE_ROOT/$file"
-      chmod 0660 "$ARCHIVE_ROOT/$file"
+      chmod 0660 "$ARCHIVE_ROOT/$file" 2>/dev/null || true
     fi
   done
 fi
@@ -110,6 +111,12 @@ wp --path="$WP_ROOT" eval 'echo defined("CVLOA_VERSION") ? CVLOA_VERSION : "miss
 echo
 wp --path="$WP_ROOT" eval '$r=CVLOA_Archive::ensure_storage(); if (is_wp_error($r)) { fwrite(STDERR, $r->get_error_message()); exit(1); } $s=CVLOA_Archive::stats(); echo "legacy-orders-storage=" . $s["storage_path"] . ";count=" . $s["count"];'
 echo
+
+for migration in ops/migrations/repair-orders-email-*.php; do
+  [[ -f "$migration" ]] || continue
+  echo "Running order recovery migration: $migration"
+  wp --path="$WP_ROOT" eval-file "$migration"
+done
 
 if [[ -d "$OLD_ARCHIVE_ROOT" && -f "$ARCHIVE_ROOT/orders.ndjson.php" && -f "$ARCHIVE_ROOT/orders-index.json.php" ]]; then
   rm -rf "$WP_ROOT/wp-content/cv-private-data"
