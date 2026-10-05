@@ -9,6 +9,7 @@ final class CVR2_Admin {
         add_action( 'wp_ajax_cvr2_sync_structure', array( __CLASS__, 'ajax_sync_structure' ) );
         add_action( 'wp_ajax_cvr2_start_import', array( __CLASS__, 'ajax_start_import' ) );
         add_action( 'wp_ajax_cvr2_import_batch', array( __CLASS__, 'ajax_import_batch' ) );
+        add_action( 'wp_ajax_cvr2_import_status', array( __CLASS__, 'ajax_import_status' ) );
         add_action( 'wp_ajax_cvr2_reset_import', array( __CLASS__, 'ajax_reset_import' ) );
     }
 
@@ -151,7 +152,27 @@ final class CVR2_Admin {
         );
 
         update_option( CVR2_STATE_OPTION, $state, false );
-        wp_send_json_success( array( 'state' => $state, 'message' => 'Importação iniciada.' ) );
+        wp_send_json_success(
+            array(
+                'state'   => $state,
+                'message' => 'images_only' === $import_mode
+                    ? sprintf( 'Importação de imagens iniciada — lote de %d produto(s).', $batch_size )
+                    : 'Importação iniciada.',
+            )
+        );
+    }
+
+    public static function ajax_import_status(): void {
+        self::guard_ajax();
+
+        $state = (array) get_option( CVR2_STATE_OPTION, array() );
+
+        wp_send_json_success(
+            array(
+                'state' => $state,
+                'done'  => ! empty( $state ) && 'done' === ( $state['status'] ?? '' ),
+            )
+        );
     }
 
     public static function ajax_reset_import(): void {
@@ -463,17 +484,17 @@ final class CVR2_Admin {
             <?php endif; ?>
 
             <style>
-                .cvr2-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr);gap:18px;max-width:1200px}
+                .cvr2-grid{display:grid;grid-template-columns:minmax(360px,.9fr) minmax(620px,1.35fr);gap:18px;max-width:1600px;align-items:start}
                 .cvr2-card{padding:20px;border:1px solid #dcdcde;border-radius:10px;background:#fff}
                 .cvr2-card h2{margin-top:0}.cvr2-row{display:grid;grid-template-columns:180px minmax(0,1fr);gap:14px;align-items:center;margin:12px 0}
                 .cvr2-row input{width:100%}.cvr2-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
                 .cvr2-log{min-height:72px;padding:12px;border:1px solid #dcdcde;background:#f6f7f7;white-space:pre-wrap}
                 .cvr2-progress{height:14px;margin:12px 0;overflow:hidden;border-radius:999px;background:#e5e5e5}
                 .cvr2-progress>span{height:100%;display:block;width:0;background:#00a32a;transition:width .2s}
-                .cvr2-stats{display:grid;grid-template-columns:repeat(8,1fr);gap:8px}.cvr2-stat{padding:10px;background:#f6f7f7;border-radius:7px}
+                .cvr2-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:8px}.cvr2-stat{min-width:0;padding:10px;background:#f6f7f7;border-radius:7px}
                 .cvr2-current{margin:12px 0;padding:10px 12px;border-left:4px solid #2271b1;background:#f0f6fc}
                 .cvr2-results-wrap{margin-top:14px;max-height:360px;overflow:auto;border:1px solid #dcdcde;border-radius:8px;background:#fff}
-                .cvr2-results{width:100%;border-collapse:collapse;font-size:12px}
+                .cvr2-results{width:100%;min-width:760px;border-collapse:collapse;font-size:12px}
                 .cvr2-results th,.cvr2-results td{padding:8px 10px;border-bottom:1px solid #f0f0f1;text-align:left;vertical-align:top}
                 .cvr2-results th{position:sticky;top:0;background:#f6f7f7;z-index:1}
                 .cvr2-status{display:inline-block;padding:3px 7px;border-radius:999px;font-size:10px;font-weight:800;text-transform:uppercase}
@@ -483,11 +504,12 @@ final class CVR2_Admin {
                 .cvr2-status--error{background:#fcf0f1;color:#8a2424}
                 .cvr2-mode{margin:0 0 16px;padding:14px;border:1px solid #dcdcde;border-radius:8px;background:#f6f7f7}
                 .cvr2-mode label{display:block;margin:8px 0}
-                .cvr2-batch-size{margin-top:14px;padding-top:12px;border-top:1px solid #dcdcde;display:grid;grid-template-columns:180px 100px minmax(0,1fr);gap:10px;align-items:center}
+                .cvr2-batch-size{margin-top:14px;padding-top:12px;border-top:1px solid #dcdcde;display:grid;grid-template-columns:170px 90px minmax(220px,1fr);gap:10px;align-items:center}
                 .cvr2-batch-size label{margin:0}
                 .cvr2-batch-size input{width:90px}
                 .cvr2-stat strong{display:block;font-size:18px}
-                @media(max-width:900px){.cvr2-grid{grid-template-columns:1fr}.cvr2-row{grid-template-columns:1fr}.cvr2-stats{grid-template-columns:1fr 1fr}.cvr2-batch-size{grid-template-columns:1fr}}
+                @media(max-width:1180px){.cvr2-grid{grid-template-columns:1fr}.cvr2-row{grid-template-columns:1fr}.cvr2-batch-size{grid-template-columns:160px 90px 1fr}}
+                @media(max-width:700px){.cvr2-stats{grid-template-columns:1fr 1fr}.cvr2-batch-size{grid-template-columns:1fr}.cvr2-results-wrap{max-width:100%}}
             </style>
 
             <div class="cvr2-grid">
@@ -603,6 +625,8 @@ final class CVR2_Admin {
             const results = document.querySelector('[data-cvr2-results]');
             const buttons = document.querySelectorAll('[data-cvr2-action]');
             let running = false;
+            let statusTimer = null;
+            let statusRequestActive = false;
 
             const write = (message) => { if (log) log.textContent = String(message || ''); };
             const setBusy = (busy) => buttons.forEach((button) => {
@@ -700,10 +724,40 @@ final class CVR2_Admin {
                 return json.data || {};
             }
 
+            async function refreshLiveStatus() {
+                if (!running || statusRequestActive) return;
+                statusRequestActive = true;
+
+                try {
+                    const data = await call('cvr2_import_status');
+                    renderState(data.state);
+                } catch (error) {
+                    // O pedido principal pode continuar a trabalhar mesmo que
+                    // uma leitura de estado falhe momentaneamente.
+                } finally {
+                    statusRequestActive = false;
+                }
+            }
+
+            function startStatusPolling() {
+                stopStatusPolling();
+                statusTimer = window.setInterval(refreshLiveStatus, 1000);
+                refreshLiveStatus();
+            }
+
+            function stopStatusPolling() {
+                if (statusTimer) {
+                    window.clearInterval(statusTimer);
+                    statusTimer = null;
+                }
+                statusRequestActive = false;
+            }
+
             async function loop() {
                 if (running) return;
                 running = true;
                 setBusy(true);
+                startStatusPolling();
 
                 try {
                     while (running) {
@@ -724,6 +778,8 @@ final class CVR2_Admin {
                     running = false;
                     write(error.message || error);
                 } finally {
+                    stopStatusPolling();
+                    await refreshLiveStatus();
                     setBusy(false);
                 }
             }
@@ -765,13 +821,17 @@ final class CVR2_Admin {
 
             document.querySelector('[data-cvr2-action="pause"]')?.addEventListener('click', () => {
                 running = false;
+                stopStatusPolling();
                 setBusy(false);
+                refreshLiveStatus();
                 write('Importação pausada no browser. O progresso ficou guardado e pode ser retomado.');
             });
 
             renderState(<?php echo wp_json_encode( $state, JSON_UNESCAPED_UNICODE ); ?>);
 
             document.querySelector('[data-cvr2-action="reset"]')?.addEventListener('click', async () => {
+                running = false;
+                stopStatusPolling();
                 setBusy(true);
                 try {
                     const data = await call('cvr2_reset_import');
