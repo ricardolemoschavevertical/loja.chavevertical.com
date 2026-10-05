@@ -1,4 +1,5 @@
 {
+  "$schema": "./homepage-highlights.schema.json",
   "hero": {
     "main": {
       "eyebrow": "ELEVAÇÃO PROFISSIONAL",
