@@ -60,11 +60,11 @@
       "text_color": "#ffffff",
       "accent_color": "#ffd21f",
       "image_id": 0,
-      "image_url": "theme://assets/images/deposito-stilker-campanha-side.webp",
+      "image_url": "https://imagens.chavevertical.com/2019/11/deposito-para-gasoleo-stilker-200l-12v-40l-min-polietileno-125162-1.webp",
       "fallback_category_slug": "tanques-depositos-de-combustivel",
-      "image_only": true,
+      "image_only": false,
       "full_image": true,
-      "show_text": false
+      "show_text": true
     }
   },
   "highlights": [
