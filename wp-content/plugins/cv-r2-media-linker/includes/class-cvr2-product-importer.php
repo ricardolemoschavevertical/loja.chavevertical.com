@@ -3,6 +3,29 @@ defined( 'ABSPATH' ) || exit;
 
 final class CVR2_Product_Importer {
     private const SOURCE_META = '_cvr2_source_product_id';
+    private static bool $writing_source_slug = false;
+
+    public static function init(): void {
+        add_filter( 'wp_insert_post_data', array( __CLASS__, 'lock_imported_product_slug' ), 100, 4 );
+    }
+
+    public static function lock_imported_product_slug( array $data, array $postarr, array $unsanitized_postarr, bool $update ): array {
+        if ( self::$writing_source_slug || ! $update || 'product' !== ( $data['post_type'] ?? '' ) ) {
+            return $data;
+        }
+
+        $product_id = absint( $postarr['ID'] ?? 0 );
+        if ( ! $product_id || ! get_post_meta( $product_id, self::SOURCE_META, true ) ) {
+            return $data;
+        }
+
+        $locked_slug = (string) get_post_field( 'post_name', $product_id );
+        if ( $locked_slug ) {
+            $data['post_name'] = $locked_slug;
+        }
+
+        return $data;
+    }
 
     public static function sync_structure(): array {
         $result = array(
@@ -275,17 +298,36 @@ final class CVR2_Product_Importer {
     }
 
     public static function import_source_product( array $source ) {
-        $source_id = absint( $source['id'] ?? 0 );
-        $type      = sanitize_key( (string) ( $source['type'] ?? 'simple' ) );
-        $sku       = wc_clean( (string) ( $source['sku'] ?? '' ) );
-        $slug      = sanitize_title( (string) ( $source['slug'] ?? '' ) );
-        $target_id = self::find_product( $source_id, $sku, $slug );
+        $source_id      = absint( $source['id'] ?? 0 );
+        $type           = sanitize_key( (string) ( $source['type'] ?? 'simple' ) );
+        $sku            = wc_clean( (string) ( $source['sku'] ?? '' ) );
+        $source_slug    = trim( (string) ( $source['slug'] ?? '' ) );
+        $slug           = sanitize_title( $source_slug );
 
-        if ( $target_id && $slug ) {
-            $old_slug = (string) get_post_field( 'post_name', $target_id );
-            if ( $old_slug && $old_slug !== $slug ) {
-                add_post_meta( $target_id, '_wp_old_slug', $old_slug );
-            }
+        if ( '' === $source_slug || '' === $slug ) {
+            return new WP_Error( 'cvr2_slug_missing', 'Produto sem slug na origem. A importação foi bloqueada.' );
+        }
+
+        if ( $source_slug !== $slug ) {
+            return new WP_Error(
+                'cvr2_slug_not_exact',
+                sprintf( 'O slug recebido "%1$s" seria alterado pelo WordPress para "%2$s". Produto não importado.', $source_slug, $slug )
+            );
+        }
+
+        $target_id = self::find_product( $source_id, $sku, $slug );
+        $old_slug  = $target_id ? (string) get_post_field( 'post_name', $target_id ) : '';
+
+        $slug_owner = get_page_by_path( $slug, OBJECT, 'product' );
+        if ( $slug_owner instanceof WP_Post && (int) $slug_owner->ID !== (int) $target_id ) {
+            return new WP_Error(
+                'cvr2_slug_collision',
+                sprintf(
+                    'Slug obrigatório "%1$s" já pertence ao produto #%2$d. O importador não criou "%1$s-2".',
+                    $slug,
+                    (int) $slug_owner->ID
+                )
+            );
         }
 
         if ( $target_id ) {
@@ -321,16 +363,52 @@ final class CVR2_Product_Importer {
         self::apply_default_attributes( $product, (array) ( $source['default_attributes'] ?? array() ) );
         self::apply_images( $product, (array) ( $source['images'] ?? array() ) );
 
-        $target_id = $product->save();
+        self::$writing_source_slug = true;
+        try {
+            $target_id = $product->save();
+
+            if ( $target_id ) {
+                wp_update_post(
+                    array(
+                        'ID'        => $target_id,
+                        'post_name' => $slug,
+                    )
+                );
+                clean_post_cache( $target_id );
+            }
+        } finally {
+            self::$writing_source_slug = false;
+        }
 
         if ( ! $target_id ) {
             return new WP_Error( 'cvr2_product_save', 'WooCommerce não guardou o produto.' );
         }
 
+        $saved_slug = (string) get_post_field( 'post_name', $target_id );
+        if ( $saved_slug !== $slug ) {
+            update_post_meta( $target_id, '_cvr2_slug_error', $saved_slug );
+            return new WP_Error(
+                'cvr2_slug_verify_failed',
+                sprintf(
+                    'Slug não ficou idêntico à origem. Esperado "%1$s"; gravado "%2$s". Produto #%3$d requer correção antes de continuar.',
+                    $slug,
+                    $saved_slug,
+                    $target_id
+                )
+            );
+        }
+
+        delete_post_meta( $target_id, '_cvr2_slug_error' );
+
+        if ( $old_slug && $old_slug !== $slug ) {
+            add_post_meta( $target_id, '_wp_old_slug', $old_slug );
+        }
+
         if ( $source_id ) {
             update_post_meta( $target_id, self::SOURCE_META, $source_id );
         }
-        update_post_meta( $target_id, '_cvr2_source_slug', $slug );
+        update_post_meta( $target_id, '_cvr2_source_slug', $source_slug );
+        update_post_meta( $target_id, '_cvr2_slug_locked', 1 );
         update_post_meta( $target_id, '_cvr2_imported_at', gmdate( 'c' ) );
 
         self::apply_brand_terms( $target_id, (array) ( $source['brands'] ?? array() ) );
