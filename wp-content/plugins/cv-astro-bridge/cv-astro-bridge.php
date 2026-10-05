@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CV Astro Bridge
  * Description: Ponte entre WooCommerce, Astro e Cloudflare Worker da Chave Vertical.
- * Version: 0.3.8
+ * Version: 0.3.9
  * Author: Chave Vertical
  * Requires at least: 6.5
  * Requires PHP: 8.0
@@ -12,7 +12,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVAB_VERSION', '0.3.8' );
+define( 'CVAB_VERSION', '0.3.9' );
 define( 'CVAB_EXPECTED_WORKER_RELEASE', '2026.10.05.10' );
 define( 'CVAB_STATUS_OPTION', 'cvab_worker_status' );
 define( 'CVAB_FILE', __FILE__ );
@@ -517,7 +517,7 @@ final class CV_Astro_Bridge {
         }
     }
 
-    public function catalog_post_meta_changed( int $meta_id, int $object_id, string $meta_key, $meta_value ): void {
+    public function catalog_post_meta_changed( $meta_id, int $object_id, string $meta_key, $meta_value ): void {
         if ( in_array( $meta_key, array( '_edit_lock', '_edit_last' ), true ) ) {
             return;
         }
@@ -559,7 +559,7 @@ final class CV_Astro_Bridge {
         }
     }
 
-    public function catalog_term_meta_changed( int $meta_id, int $term_id, string $meta_key, $meta_value ): void {
+    public function catalog_term_meta_changed( $meta_id, int $term_id, string $meta_key, $meta_value ): void {
         $term = get_term( $term_id );
         if ( ! $term instanceof WP_Term ) {
             return;
