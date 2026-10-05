@@ -48,18 +48,18 @@
       ]
     },
     "side": {
-      "eyebrow": "CATÁLOGO PROFISSIONAL",
-      "title": "Tudo num só lugar.",
-      "title_accent": "Pronto a trabalhar.",
-      "description": "Mais de 30.000 referências para oficina, indústria e construção.",
-      "cta": "EXPLORAR",
-      "url": "",
-      "background": "#f1f2f2",
-      "text_color": "#182129",
-      "accent_color": "#d62828",
+      "eyebrow": "DEPÓSITO GASÓLEO 200L",
+      "title": "STILKER 200L",
+      "title_accent": "Kit bomba 12V",
+      "description": "Apenas 380 € com IVA. Disponível para entrega imediata. Entrega gratuita.",
+      "cta": "VER PRODUTO",
+      "url": "https://loja.chavevertical.com/produto/deposito-gasoleo-stilker-200l-12v/",
+      "background": "#111111",
+      "text_color": "#ffffff",
+      "accent_color": "#ffd21f",
       "image_id": 0,
-      "image_url": "",
-      "fallback_category_slug": "ferramentas-electricas"
+      "image_url": "theme://assets/images/deposito-stilker-campanha-side.webp",
+      "fallback_category_slug": "tanques-depositos-de-combustivel"
     }
   },
   "highlights": [
