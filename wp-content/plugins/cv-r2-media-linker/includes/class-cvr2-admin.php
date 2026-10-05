@@ -541,7 +541,7 @@ final class CVR2_Admin {
 
                         <div class="cvr2-batch-size">
                             <label for="cvr2-batch-size"><strong>Quantidade por lote</strong></label>
-                            <input id="cvr2-batch-size" type="number" min="1" max="50" step="1" value="10" inputmode="numeric">
+                            <input id="cvr2-batch-size" type="number" min="1" max="50" step="1" value="<?php echo esc_attr( (string) max( 1, min( 50, absint( $state['batch_size'] ?? 10 ) ) ) ); ?>" inputmode="numeric">
                             <small>Usado no modo “apenas imagens”. Recomendado: 10 a 20. Máximo: 50.</small>
                         </div>
                     </div>
