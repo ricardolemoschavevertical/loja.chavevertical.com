@@ -6,7 +6,7 @@ final class CVR2_REST_Client {
         $defaults = array(
             'source_url'  => 'https://chavevertical.com',
             'r2_base_url' => 'https://imagens.chavevertical.com',
-            'batch_size'  => 10,
+            'batch_size'  => 1,
             'source_ck'   => '',
             'source_cs'   => '',
         );
