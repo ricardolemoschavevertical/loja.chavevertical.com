@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CV Astro Bridge
  * Description: Ponte entre WooCommerce, Astro e Cloudflare Worker da Chave Vertical.
- * Version: 0.3.6
+ * Version: 0.3.7
  * Author: Chave Vertical
  * Requires at least: 6.5
  * Requires PHP: 8.0
@@ -12,8 +12,8 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVAB_VERSION', '0.3.6' );
-define( 'CVAB_EXPECTED_WORKER_RELEASE', '2026.10.05.09' );
+define( 'CVAB_VERSION', '0.3.7' );
+define( 'CVAB_EXPECTED_WORKER_RELEASE', '2026.10.05.10' );
 define( 'CVAB_STATUS_OPTION', 'cvab_worker_status' );
 define( 'CVAB_FILE', __FILE__ );
 define( 'CVAB_OPTION', 'cvab_settings' );
@@ -59,6 +59,21 @@ final class CV_Astro_Bridge {
         add_action( 'post_updated', array( $this, 'product_post_updated' ), 30, 3 );
         add_action( 'before_delete_post', array( $this, 'product_before_delete' ), 30, 2 );
         add_action( 'wp_trash_post', array( $this, 'product_before_trash' ), 30, 1 );
+
+        // Cobertura de alterações de catálogo fora do CRUD WooCommerce normal:
+        // metadados, taxonomias e media usados pelo produto/termos.
+        add_action( 'added_post_meta', array( $this, 'catalog_post_meta_changed' ), 30, 4 );
+        add_action( 'updated_post_meta', array( $this, 'catalog_post_meta_changed' ), 30, 4 );
+        add_action( 'deleted_post_meta', array( $this, 'catalog_post_meta_changed' ), 30, 4 );
+        add_action( 'set_object_terms', array( $this, 'catalog_terms_changed' ), 30, 6 );
+
+        add_action( 'added_term_meta', array( $this, 'catalog_term_meta_changed' ), 30, 4 );
+        add_action( 'updated_term_meta', array( $this, 'catalog_term_meta_changed' ), 30, 4 );
+        add_action( 'deleted_term_meta', array( $this, 'catalog_term_meta_changed' ), 30, 4 );
+
+        add_action( 'add_attachment', array( $this, 'catalog_media_changed' ), 30, 1 );
+        add_action( 'edit_attachment', array( $this, 'catalog_media_changed' ), 30, 1 );
+        add_action( 'delete_attachment', array( $this, 'catalog_media_changed' ), 30, 1 );
     }
 
     public static function activate(): void {
@@ -443,6 +458,7 @@ final class CV_Astro_Bridge {
 
         $this->notify_worker_brands();
         $this->notify_worker_content( 'catalog' );
+        $this->notify_worker_content( 'product-context' );
     }
 
     public function category_changed( int $term_id ): void {
@@ -451,6 +467,7 @@ final class CV_Astro_Bridge {
 
         $this->notify_worker_content( 'catalog', $slug );
         $this->notify_worker_content( 'homepage' );
+        $this->notify_worker_content( 'product-context' );
     }
 
     public function option_changed( string $option, $old_value, $value ): void {
@@ -494,6 +511,124 @@ final class CV_Astro_Bridge {
         if ( $post instanceof WP_Post ) {
             $this->product_before_delete( $post_id, $post );
         }
+    }
+
+    public function catalog_post_meta_changed( int $meta_id, int $object_id, string $meta_key, $meta_value ): void {
+        if ( in_array( $meta_key, array( '_edit_lock', '_edit_last' ), true ) ) {
+            return;
+        }
+
+        $post_type = get_post_type( $object_id );
+        if ( 'product_variation' === $post_type ) {
+            $variation = wc_get_product( $object_id );
+            if ( $variation && $variation->get_parent_id() ) {
+                $this->queue_catalog_product_refresh( (int) $variation->get_parent_id() );
+            }
+            return;
+        }
+
+        if ( 'product' !== $post_type ) {
+            return;
+        }
+
+        $this->queue_catalog_product_refresh( $object_id );
+    }
+
+    public function catalog_terms_changed( int $object_id, $terms, $tt_ids, string $taxonomy, bool $append, $old_tt_ids ): void {
+        if ( 'product' !== get_post_type( $object_id ) ) {
+            return;
+        }
+
+        if ( ! in_array( $taxonomy, array( 'product_cat', 'product_brand', 'product_tag' ), true )
+            && 0 !== strpos( $taxonomy, 'pa_' ) ) {
+            return;
+        }
+
+        $this->queue_catalog_product_refresh( $object_id );
+
+        if ( 'product_brand' === $taxonomy ) {
+            $this->queue_worker_event( 'brands' );
+            $this->queue_worker_event( 'product-context' );
+        } elseif ( 'product_cat' === $taxonomy ) {
+            $this->queue_worker_event( 'homepage' );
+            $this->queue_worker_event( 'product-context' );
+        }
+    }
+
+    public function catalog_term_meta_changed( int $meta_id, int $term_id, string $meta_key, $meta_value ): void {
+        $term = get_term( $term_id );
+        if ( ! $term instanceof WP_Term ) {
+            return;
+        }
+
+        if ( 'product_brand' === $term->taxonomy ) {
+            $this->queue_worker_event( 'brands' );
+            $this->queue_worker_event( 'catalog' );
+            $this->queue_worker_event( 'product-context' );
+            return;
+        }
+
+        if ( 'product_cat' === $term->taxonomy ) {
+            $this->queue_worker_event( 'catalog' );
+            $this->queue_worker_event( 'homepage' );
+            $this->queue_worker_event( 'product-context' );
+        }
+    }
+
+    public function catalog_media_changed( int $attachment_id ): void {
+        if ( 'attachment' !== get_post_type( $attachment_id ) ) {
+            return;
+        }
+
+        // Imagens podem ser usadas em produto, galeria, marca, categoria ou homepage.
+        // Uma alteração no ficheiro/metadata visual invalida o contexto visual global.
+        $this->queue_worker_event( 'brands' );
+        $this->queue_worker_event( 'catalog' );
+        $this->queue_worker_event( 'homepage' );
+        $this->queue_worker_event( 'product-context' );
+    }
+
+    private function queue_catalog_product_refresh( int $product_id ): void {
+        static $queued_products = array();
+
+        $product_id = absint( $product_id );
+        if ( ! $product_id || isset( $queued_products[ $product_id ] ) ) {
+            return;
+        }
+        $queued_products[ $product_id ] = true;
+
+        add_action(
+            'shutdown',
+            function () use ( $product_id ) {
+                $settings = $this->settings();
+                $this->notify_worker_product( $product_id, 'yes' === $settings['auto_warm'] );
+                $this->notify_worker_content( 'catalog' );
+                $this->notify_worker_content( 'homepage' );
+            },
+            999
+        );
+    }
+
+    private function queue_worker_event( string $scope ): void {
+        static $queued_scopes = array();
+
+        $scope = sanitize_key( $scope );
+        if ( '' === $scope || isset( $queued_scopes[ $scope ] ) ) {
+            return;
+        }
+        $queued_scopes[ $scope ] = true;
+
+        add_action(
+            'shutdown',
+            function () use ( $scope ) {
+                if ( 'brands' === $scope ) {
+                    $this->notify_worker_brands();
+                    return;
+                }
+                $this->notify_worker_content( $scope );
+            },
+            999
+        );
     }
 
     private function notify_worker_brands() {
