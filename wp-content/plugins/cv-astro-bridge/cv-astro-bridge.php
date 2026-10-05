@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CV Astro Bridge
  * Description: Ponte entre WooCommerce, Astro e Cloudflare Worker da Chave Vertical.
- * Version: 0.3.0
+ * Version: 0.3.1
  * Author: Chave Vertical
  * Requires at least: 6.5
  * Requires PHP: 8.0
@@ -12,8 +12,8 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVAB_VERSION', '0.3.0' );
-define( 'CVAB_EXPECTED_WORKER_RELEASE', '2026.10.05.03' );
+define( 'CVAB_VERSION', '0.3.1' );
+define( 'CVAB_EXPECTED_WORKER_RELEASE', '2026.10.05.04' );
 define( 'CVAB_STATUS_OPTION', 'cvab_worker_status' );
 define( 'CVAB_FILE', __FILE__ );
 define( 'CVAB_OPTION', 'cvab_settings' );
@@ -487,6 +487,16 @@ final class CV_Astro_Bridge {
 
         register_rest_route(
             'cv-astro/v1',
+            '/shop-catalog',
+            array(
+                'methods'             => WP_REST_Server::READABLE,
+                'permission_callback' => '__return_true',
+                'callback'            => array( $this, 'rest_shop_catalog' ),
+            )
+        );
+
+        register_rest_route(
+            'cv-astro/v1',
             '/category-catalog/(?P<slug>[a-zA-Z0-9\-_]+)',
             array(
                 'methods'             => WP_REST_Server::READABLE,
@@ -650,6 +660,63 @@ final class CV_Astro_Bridge {
                     array( 'icon' => 'headset', 'title' => 'Apoio especializado', 'subtitle' => 'Comercial, técnico e pós-venda' ),
                     array( 'icon' => 'cart', 'title' => 'Mais de 30.000 referências', 'subtitle' => 'Máquinas, ferramentas e consumíveis' ),
                 ),
+            )
+        );
+    }
+
+    public function rest_shop_catalog() {
+        if ( ! taxonomy_exists( 'product_cat' ) ) {
+            return new WP_Error( 'cvab_categories_unavailable', 'Categorias indisponíveis.', array( 'status' => 503 ) );
+        }
+
+        $exclude = array();
+        $uncategorized = get_term_by( 'slug', 'uncategorized', 'product_cat' );
+
+        if ( $uncategorized instanceof WP_Term ) {
+            $exclude[] = (int) $uncategorized->term_id;
+        }
+
+        $terms = get_terms(
+            array(
+                'taxonomy'   => 'product_cat',
+                'parent'     => 0,
+                'hide_empty' => false,
+                'exclude'    => $exclude,
+                'number'     => 0,
+                'orderby'    => 'name',
+                'order'      => 'ASC',
+            )
+        );
+
+        if ( is_wp_error( $terms ) ) {
+            return $terms;
+        }
+
+        $categories = array();
+
+        foreach ( $terms as $term ) {
+            if ( ! $term instanceof WP_Term ) {
+                continue;
+            }
+
+            $thumbnail_id = absint( get_term_meta( $term->term_id, 'thumbnail_id', true ) );
+
+            $categories[] = array(
+                'id'     => (int) $term->term_id,
+                'name'   => $term->name,
+                'slug'   => $term->slug,
+                'parent' => (int) $term->parent,
+                'count'  => (int) $term->count,
+                'image'  => $thumbnail_id ? ( wp_get_attachment_image_url( $thumbnail_id, 'medium' ) ?: '' ) : '',
+            );
+        }
+
+        return rest_ensure_response(
+            array(
+                'ok'         => true,
+                'source'     => 'woocommerce-shop-root',
+                'updated_at' => current_time( DATE_ATOM, true ),
+                'categories' => $categories,
             )
         );
     }
