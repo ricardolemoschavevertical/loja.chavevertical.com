@@ -364,7 +364,7 @@ final class CVR2_Admin {
                         <p><button class="button button-primary" type="submit">Guardar configuração</button></p>
                     </form>
 
-                    <p><strong>Prioridade de imagem:</strong> WEBP existente no R2 → formato original existente no R2 (JPG/JPEG/PNG/GIF/AVIF/etc.) → imagem original. Todos estes formatos podem ser associados como imagem principal ou galeria. A conversão para WEBP pode ser feita posteriormente.</p>
+                    <p><strong>Prioridade de imagem:</strong> WEBP existente no R2 → formato original existente no R2 (JPG/JPEG/PNG/GIF/AVIF/etc.) → imagem original. Se a origem estiver em disco local, S3 ou outro URL externo, a imagem entra pela Media Library com <code>media_handle_sideload()</code> e o offload para R2 é feito pelos hooks normais do WordPress/plugin de storage. Não existe escrita direta no bucket fora do WordPress.</p>
                     <p><strong>Slug obrigatório:</strong> o slug recebido da origem tem de ficar exatamente igual. Se o WordPress tentar criar <code>-2</code>, <code>-3</code> ou qualquer outra alteração, esse produto é marcado com erro e não é considerado importado.</p>
                     <p><strong>Identidade do produto:</strong> ID original → SKU → slug. Depois da importação o slug fica bloqueado contra alterações acidentais.</p>
                 </section>
