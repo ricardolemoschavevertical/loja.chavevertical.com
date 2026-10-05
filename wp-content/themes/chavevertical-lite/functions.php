@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.84' );
+define( 'CVL_VERSION', '0.16.85' );
 
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
@@ -638,8 +638,9 @@ add_action( 'woocommerce_after_shop_loop_item_title', 'cvl_loop_product_stock', 
 
 /**
  * Ações do card: uma única ação comercial.
- * - compra direta: 🛒 ADICIONAR
- * - restantes produtos: 👁️ VER
+ * Usa ícones SVG para manter escala, alinhamento e aparência consistentes.
+ * - compra direta: ícone de carrinho + ADICIONAR
+ * - restantes produtos: ícone de visualizar + VER
  */
 function cvl_loop_actions_open() {
     echo '<div class="cvl-product-actions">';
@@ -653,10 +654,10 @@ add_action( 'woocommerce_after_shop_loop_item', 'cvl_loop_actions_close', 11 );
 
 add_filter( 'woocommerce_product_add_to_cart_text', function ( $text, $product ) {
     if ( class_exists( 'WC_Product' ) && $product instanceof WC_Product && $product->is_type( 'simple' ) && $product->is_purchasable() && $product->is_in_stock() ) {
-        return __( '🛒 ADICIONAR', 'chavevertical-lite' );
+        return __( 'ADICIONAR', 'chavevertical-lite' );
     }
 
-    return __( '👁️ VER', 'chavevertical-lite' );
+    return __( 'VER', 'chavevertical-lite' );
 }, 10, 2 );
 
 add_filter( 'woocommerce_loop_add_to_cart_link', function ( $html, $product ) {
@@ -668,18 +669,20 @@ add_filter( 'woocommerce_loop_add_to_cart_link', function ( $html, $product ) {
         && $product->is_purchasable()
         && $product->is_in_stock();
 
+    $cart_icon = '<svg class="cvl-product-action-icon cvl-cart-button-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 8H7"></path><circle cx="10" cy="20" r="1.2"></circle><circle cx="18" cy="20" r="1.2"></circle></svg>';
+    $view_icon = '<svg class="cvl-product-action-icon cvl-view-product-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2.5 12s3.4-6 9.5-6 9.5 6 9.5 6-3.4 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.8"></circle></svg>';
+
     if ( ! $can_add_directly ) {
         return sprintf(
-            '<a href="%1$s" class="button cvl-view-product" aria-label="%2$s"><span class="cvl-view-product-label">%3$s</span></a>',
+            '<a href="%1$s" class="button cvl-view-product" aria-label="%2$s">%3$s<span class="cvl-view-product-label">%4$s</span></a>',
             esc_url( $product->get_permalink() ),
             esc_attr( sprintf( __( 'Ver %s', 'chavevertical-lite' ), $product->get_name() ) ),
-            esc_html__( '👁️ VER', 'chavevertical-lite' )
+            $view_icon,
+            esc_html__( 'VER', 'chavevertical-lite' )
         );
     }
 
-    $label = esc_html__( '🛒 ADICIONAR', 'chavevertical-lite' );
-    $replacement = '><span class="cvl-cart-button-label">' . $label . '</span></a>';
-
+    $replacement = '>' . $cart_icon . '<span class="cvl-cart-button-label">' . esc_html__( 'ADICIONAR', 'chavevertical-lite' ) . '</span></a>';
     $html = preg_replace( '/>[^<]*<\/a>$/', $replacement, $html, 1 );
 
     if ( is_string( $html ) ) {
