@@ -7,6 +7,7 @@ final class CVLOA_Admin {
         add_action( 'admin_post_cvloa_save_settings', array( __CLASS__, 'save_settings' ) );
 
         add_action( 'wp_ajax_cvloa_test_source', array( __CLASS__, 'ajax_test_source' ) );
+        add_action( 'wp_ajax_cvloa_pull_statuses', array( __CLASS__, 'ajax_pull_statuses' ) );
         add_action( 'wp_ajax_cvloa_start_import', array( __CLASS__, 'ajax_start_import' ) );
         add_action( 'wp_ajax_cvloa_import_batch', array( __CLASS__, 'ajax_import_batch' ) );
         add_action( 'wp_ajax_cvloa_import_status', array( __CLASS__, 'ajax_import_status' ) );
@@ -95,6 +96,55 @@ final class CVLOA_Admin {
         );
     }
 
+    private static function refresh_source_statuses() {
+        $statuses = CVLOA_REST_Client::order_statuses();
+
+        if ( is_wp_error( $statuses ) ) {
+            return $statuses;
+        }
+
+        $cache = array(
+            'source_url' => CVLOA_REST_Client::source_url(),
+            'fetched_at' => time(),
+            'statuses'   => $statuses,
+        );
+
+        update_option( CVLOA_STATUSES_OPTION, $cache, false );
+
+        return $cache;
+    }
+
+    private static function cached_source_statuses(): array {
+        $cache = (array) get_option( CVLOA_STATUSES_OPTION, array() );
+
+        return isset( $cache['statuses'] ) && is_array( $cache['statuses'] )
+            ? $cache['statuses']
+            : array();
+    }
+
+    public static function ajax_pull_statuses(): void {
+        self::guard_ajax();
+
+        $cache = self::refresh_source_statuses();
+
+        if ( is_wp_error( $cache ) ) {
+            wp_send_json_error( array( 'message' => $cache->get_error_message() ) );
+        }
+
+        $statuses = (array) ( $cache['statuses'] ?? array() );
+
+        wp_send_json_success(
+            array(
+                'statuses'   => $statuses,
+                'fetched_at' => wp_date( 'd/m/Y H:i:s', absint( $cache['fetched_at'] ?? time() ) ),
+                'message'    => sprintf(
+                    'Foram puxados %d estado(s) da loja de origem.',
+                    count( $statuses )
+                ),
+            )
+        );
+    }
+
     public static function ajax_start_import(): void {
         self::guard_ajax();
 
@@ -105,6 +155,14 @@ final class CVLOA_Admin {
 
         $batch_size = absint( wp_unslash( $_POST['batch_size'] ?? 20 ) );
         $batch_size = max( 1, min( 100, $batch_size ) );
+
+        $status_cache = (array) get_option( CVLOA_STATUSES_OPTION, array() );
+        if (
+            empty( $status_cache['statuses'] )
+            || (string) ( $status_cache['source_url'] ?? '' ) !== CVLOA_REST_Client::source_url()
+        ) {
+            self::refresh_source_statuses();
+        }
 
         $state = array(
             'status'        => 'running',
@@ -436,14 +494,48 @@ final class CVLOA_Admin {
     }
 
     private static function render_import(): void {
-        $stats = CVLOA_Archive::stats();
-        $state = (array) get_option( CVLOA_STATE_OPTION, array() );
-        $nonce = wp_create_nonce( 'cvloa_import' );
+        $stats        = CVLOA_Archive::stats();
+        $state        = (array) get_option( CVLOA_STATE_OPTION, array() );
+        $status_cache = (array) get_option( CVLOA_STATUSES_OPTION, array() );
+        $statuses     = isset( $status_cache['statuses'] ) && is_array( $status_cache['statuses'] )
+            ? $status_cache['statuses']
+            : array();
+        $nonce        = wp_create_nonce( 'cvloa_import' );
         ?>
         <div class="cvloa-grid">
             <div class="cvloa-stat"><span>Encomendas no arquivo</span><strong><?php echo esc_html( number_format_i18n( $stats['count'] ) ); ?></strong></div>
             <div class="cvloa-stat"><span>Ficheiro de dados</span><strong><?php echo esc_html( size_format( $stats['data_bytes'], 1 ) ); ?></strong></div>
             <div class="cvloa-stat"><span>Índice local</span><strong><?php echo esc_html( size_format( $stats['index_bytes'], 1 ) ); ?></strong></div>
+        </div>
+
+        <div class="cvloa-card">
+            <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+                <div>
+                    <h2 style="margin:0 0 5px">Estados das encomendas na origem</h2>
+                    <p style="margin:0">Puxa os estados reais do WooCommerce de origem, incluindo estados personalizados. O estado de cada encomenda continua também guardado dentro do respetivo registo arquivado.</p>
+                </div>
+                <button class="button" type="button" data-cvloa-action="pull-statuses">Puxar estados da origem</button>
+            </div>
+
+            <div data-cvloa-source-statuses style="margin-top:14px">
+                <?php if ( $statuses ) : ?>
+                    <table class="cvloa-table">
+                        <thead><tr><th>Estado</th><th>Slug</th><th>Encomendas na origem</th></tr></thead>
+                        <tbody>
+                        <?php foreach ( $statuses as $status_row ) : $status_row = (array) $status_row; ?>
+                            <tr>
+                                <td><span class="cvloa-status"><?php echo esc_html( (string) ( $status_row['name'] ?? '' ) ); ?></span></td>
+                                <td><code><?php echo esc_html( (string) ( $status_row['slug'] ?? '' ) ); ?></code></td>
+                                <td><?php echo esc_html( number_format_i18n( absint( $status_row['total'] ?? 0 ) ) ); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <p class="description">Última sincronização: <?php echo esc_html( ! empty( $status_cache['fetched_at'] ) ? wp_date( 'd/m/Y H:i:s', absint( $status_cache['fetched_at'] ) ) : '—' ); ?></p>
+                <?php else : ?>
+                    <p class="cvloa-muted">Ainda não foram puxados os estados da loja de origem.</p>
+                <?php endif; ?>
+            </div>
         </div>
 
         <div class="cvloa-card">
@@ -505,6 +597,7 @@ final class CVLOA_Admin {
             const progress = document.querySelector('[data-cvloa-progress]');
             const progressText = document.querySelector('[data-cvloa-progress-text]');
             const progressPercent = document.querySelector('[data-cvloa-progress-percent]');
+            const sourceStatuses = document.querySelector('[data-cvloa-source-statuses]');
             let running = false;
             let activeRunId = '';
             let statusTimer = null;
@@ -545,6 +638,72 @@ final class CVLOA_Admin {
                 }
                 if (batchInput && state.batch_size) batchInput.value = String(state.batch_size);
                 if (notesInput) notesInput.checked = Boolean(state.include_notes);
+            }
+
+            function renderSourceStatuses(statuses, fetchedAt = '') {
+                if (!sourceStatuses) return;
+
+                const rows = statuses && typeof statuses === 'object'
+                    ? Object.values(statuses)
+                    : [];
+
+                sourceStatuses.replaceChildren();
+
+                if (!rows.length) {
+                    const p = document.createElement('p');
+                    p.className = 'cvloa-muted';
+                    p.textContent = 'A origem não devolveu estados de encomenda.';
+                    sourceStatuses.appendChild(p);
+                    return;
+                }
+
+                const table = document.createElement('table');
+                table.className = 'cvloa-table';
+
+                const thead = document.createElement('thead');
+                const headRow = document.createElement('tr');
+                ['Estado','Slug','Encomendas na origem'].forEach((label) => {
+                    const th = document.createElement('th');
+                    th.textContent = label;
+                    headRow.appendChild(th);
+                });
+                thead.appendChild(headRow);
+                table.appendChild(thead);
+
+                const tbody = document.createElement('tbody');
+
+                rows.forEach((row) => {
+                    const tr = document.createElement('tr');
+
+                    const nameTd = document.createElement('td');
+                    const badge = document.createElement('span');
+                    badge.className = 'cvloa-status';
+                    badge.textContent = String(row.name || row.slug || '');
+                    nameTd.appendChild(badge);
+                    tr.appendChild(nameTd);
+
+                    const slugTd = document.createElement('td');
+                    const code = document.createElement('code');
+                    code.textContent = String(row.slug || '');
+                    slugTd.appendChild(code);
+                    tr.appendChild(slugTd);
+
+                    const totalTd = document.createElement('td');
+                    totalTd.textContent = Number(row.total || 0).toLocaleString('pt-PT');
+                    tr.appendChild(totalTd);
+
+                    tbody.appendChild(tr);
+                });
+
+                table.appendChild(tbody);
+                sourceStatuses.appendChild(table);
+
+                if (fetchedAt) {
+                    const p = document.createElement('p');
+                    p.className = 'description';
+                    p.textContent = 'Última sincronização: ' + fetchedAt;
+                    sourceStatuses.appendChild(p);
+                }
             }
 
             async function call(action, params = {}) {
@@ -616,6 +775,19 @@ final class CVLOA_Admin {
                 setBusy(true);
                 try {
                     const data = await call('cvloa_test_source');
+                    write(data.message);
+                } catch (error) {
+                    write(error.message || error);
+                } finally {
+                    setBusy(false);
+                }
+            });
+
+            document.querySelector('[data-cvloa-action="pull-statuses"]')?.addEventListener('click', async () => {
+                setBusy(true);
+                try {
+                    const data = await call('cvloa_pull_statuses');
+                    renderSourceStatuses(data.statuses, data.fetched_at || '');
                     write(data.message);
                 } catch (error) {
                     write(error.message || error);
@@ -742,9 +914,9 @@ final class CVLOA_Admin {
             }
         );
 
-        $all_statuses = array();
+        $all_statuses = array_fill_keys( array_keys( self::cached_source_statuses() ), true );
         foreach ( (array) ( $index['orders'] ?? array() ) as $row ) {
-            $row_status = sanitize_key( (string) ( $row['status'] ?? '' ) );
+            $row_status = sanitize_key( preg_replace( '/^wc-/', '', (string) ( $row['status'] ?? '' ) ) );
             if ( $row_status ) {
                 $all_statuses[ $row_status ] = true;
             }
@@ -994,8 +1166,16 @@ final class CVLOA_Admin {
     }
 
     private static function status_label( string $status ): string {
+        $status = sanitize_key( preg_replace( '/^wc-/', '', $status ) );
+
         if ( '' === $status ) {
             return '—';
+        }
+
+        $source_statuses = self::cached_source_statuses();
+
+        if ( ! empty( $source_statuses[ $status ]['name'] ) ) {
+            return (string) $source_statuses[ $status ]['name'];
         }
 
         $label = wc_get_order_status_name( $status );
