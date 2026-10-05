@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CV Astro Bridge
  * Description: Ponte entre WooCommerce, Astro e Cloudflare Worker da Chave Vertical.
- * Version: 0.3.4
+ * Version: 0.3.5
  * Author: Chave Vertical
  * Requires at least: 6.5
  * Requires PHP: 8.0
