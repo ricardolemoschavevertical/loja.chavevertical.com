@@ -274,3 +274,30 @@ jobs:
             echo "Unexpected Shop/Categorias heading still present."
             exit 1
           fi
+
+      - name: Verify approved product card
+        if: steps.latest.outputs.should_deploy == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          curl -L --connect-timeout 10 --max-time 60 -sS \
+            'https://loja.chavevertical.com/categoria-produto/ar-comprimido/?cvlcardverify=1' \
+            -o /tmp/cvl-product-card.html
+
+          grep -q 'cvl-product-brand-sku-row' /tmp/cvl-product-card.html
+          grep -q 'cvl-product-status-row' /tmp/cvl-product-card.html
+          grep -q 'cvl-product-price-row' /tmp/cvl-product-card.html
+          grep -q 'cvl-product-price-net' /tmp/cvl-product-card.html
+          grep -q 'cvl-card-eye-button' /tmp/cvl-product-card.html
+          grep -q 'ADICIONAR AO CARRINHO' /tmp/cvl-product-card.html
+          grep -q 'sem IVA' /tmp/cvl-product-card.html
+
+          CSS_URL=$(grep -oE 'https://loja\.chavevertical\.com/wp-content/themes/chavevertical-lite/assets/css/v13\.css[^" ]*' /tmp/cvl-product-card.html | head -n 1 | sed 's/&#038;/\&/g')
+          test -n "$CSS_URL"
+          curl -L --connect-timeout 10 --max-time 60 -sS "$CSS_URL" -o /tmp/cvl-v13.css
+          grep -q 'v0.16.93 — Product card approved reference' /tmp/cvl-v13.css
+          grep -q 'color:#e10d0d!important' /tmp/cvl-v13.css
+          grep -q 'cvl-card-wishlist' /tmp/cvl-v13.css
+
+          echo "Approved product card is present in production markup and CSS."
