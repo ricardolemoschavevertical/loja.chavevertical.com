@@ -4613,3 +4613,26 @@ body.cvl-quick-view-open{overflow:hidden}
   }
 }
 
+/* =========================================================
+   v0.16.96 — Homepage product rows
+   Desktop: Novidades 1x8 / Promoções 2x8
+   ========================================================= */
+@media(min-width:1200px){
+  .cvl-home-product-strip.cvl-v4-products ul.products{
+    grid-template-columns:repeat(8,minmax(0,1fr))!important;
+    gap:10px!important;
+  }
+}
+
+@media(max-width:1199.98px) and (min-width:768px){
+  .cvl-home-product-strip.cvl-v4-products ul.products{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  }
+}
+
+@media(max-width:767.98px){
+  .cvl-home-product-strip.cvl-v4-products ul.products{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
+

@@ -95,24 +95,28 @@ if ( taxonomy_exists( 'product_brand' ) ) {
 }
 
 if ( function_exists( 'wc_get_products' ) ) {
-    $recent_products = wc_get_products( array(
+    $recent_candidates = wc_get_products( array(
         'status'  => 'publish',
-        'limit'   => 8,
+        'limit'   => 16,
         'orderby' => 'date',
         'order'   => 'DESC',
         'return'  => 'objects',
     ) );
 
-    $recent_product_ids = array_values(
-        array_filter(
-            array_map(
-                static function ( $product ) {
-                    return $product instanceof WC_Product ? absint( $product->get_id() ) : 0;
-                },
-                $recent_products
-            )
-        )
-    );
+    foreach ( $recent_candidates as $recent_product ) {
+        if (
+            ! $recent_product instanceof WC_Product
+            || ! $recent_product->is_visible()
+        ) {
+            continue;
+        }
+
+        $recent_products[] = $recent_product;
+
+        if ( count( $recent_products ) >= 8 ) {
+            break;
+        }
+    }
 
     /*
      * A secção PROMOÇÕES mostra exclusivamente produtos com uma promoção
@@ -132,7 +136,7 @@ if ( function_exists( 'wc_get_products' ) ) {
             $sale_products = wc_get_products( array(
                 'status'  => 'publish',
                 'include' => $sale_product_ids,
-                'limit'   => 16,
+                'limit'   => 32,
                 'orderby' => 'date',
                 'order'   => 'DESC',
                 'return'  => 'objects',
@@ -148,6 +152,10 @@ if ( function_exists( 'wc_get_products' ) ) {
                 }
 
                 $promo_products[] = $sale_product;
+
+                if ( count( $promo_products ) >= 16 ) {
+                    break;
+                }
             }
         }
     }

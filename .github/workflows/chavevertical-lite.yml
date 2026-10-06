@@ -301,3 +301,41 @@ jobs:
           grep -q 'cvl-card-wishlist' /tmp/cvl-v13.css
 
           echo "Approved product card is present in production markup and CSS."
+
+      - name: Verify homepage product rows
+        if: steps.latest.outputs.should_deploy == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          curl -L --connect-timeout 10 --max-time 60 -sS             "https://loja.chavevertical.com/?cvlhomegridverify=${GITHUB_SHA}"             -o /tmp/cvl-home-grid.html
+
+          php -r '
+            $html = file_get_contents("/tmp/cvl-home-grid.html");
+            $count = static function (string $class) use ($html): int {
+                $pattern = "~<section[^>]*class="[^"]*" . preg_quote($class, "~") . "[^"]*"[^>]*>(.*?)</section>~s";
+                if (!preg_match($pattern, $html, $section)) {
+                    fwrite(STDERR, "Missing section: {$class}
+");
+                    exit(2);
+                }
+                preg_match_all("~<li[^>]*class="[^"]*\bproduct\b[^"]*"[^>]*>~", $section[1], $cards);
+                return count($cards[0]);
+            };
+            $promos = $count("cvl-home-promo-products");
+            $recent = $count("cvl-home-recent-products");
+            echo "promo_products={$promos}
+recent_products={$recent}
+";
+            if ($promos !== 16 || $recent !== 8) {
+                exit(1);
+            }
+          '
+
+          curl -L --connect-timeout 10 --max-time 60 -sS             "https://loja.chavevertical.com/wp-content/themes/chavevertical-lite/assets/css/v13.css?cvlhomegridverify=${GITHUB_SHA}"             -o /tmp/cvl-home-v13.css
+
+          grep -q 'v0.16.96 — Homepage product rows' /tmp/cvl-home-v13.css
+          grep -q 'grid-template-columns:repeat(8,minmax(0,1fr))!important' /tmp/cvl-home-v13.css
+
+          echo "Homepage rows verified: Novidades 8 products, Promoções 16 products, 8 columns on desktop."
+
