@@ -640,9 +640,9 @@ function cvl_render_homepage_highlights_admin() {
         <div class="cvl-highlight-size-guide">
             <strong><?php esc_html_e( 'Dimensões reais do layout (desktop 1920 px)', 'chavevertical-lite' ); ?></strong>
             <div class="cvl-highlight-size-guide-grid">
-                <span><b>Hero principal</b><small>Área ≈ 1257×470 px</small><em>Pedir: 1920×720 px</em></span>
-                <span><b>Caixa lateral</b><small>Área ≈ 457×470 px</small><em>Pedir: 800×820 px</em></span>
-                <span><b>Destaques</b><small>Área ≈ 420×420 px</small><em>Pedir: 800×800 px</em></span>
+                <span><b>Hero principal</b><small>Área real: 1244×470 px</small><em>Imagem: 1244×470 px (ou 2488×940 px a 2×)</em></span>
+                <span><b>Caixa lateral</b><small>Área real: 470×470 px</small><em>Imagem: 800×800 px</em></span>
+                <span><b>Destaques</b><small>Área real: ≈422×422 px</small><em>Imagem: 800×800 px</em></span>
             </div>
             <p><?php esc_html_e( 'Preferir WEBP. As dimensões reais variam ligeiramente com a largura do ecrã, mas estas proporções correspondem ao layout desktop atual. Em «Imagem completa (sem corte)» a imagem é sempre mostrada integralmente.', 'chavevertical-lite' ); ?></p>
         </div>
@@ -686,13 +686,13 @@ function cvl_render_homepage_highlights_admin() {
                             <img class="cvl-highlight-preview" src="<?php echo esc_url( $hero_preview ); ?>" alt="" <?php echo $hero_preview ? '' : 'style="display:none"'; ?>>
                             <span class="cvl-highlight-preview-empty" <?php echo $hero_preview ? 'style="display:none"' : ''; ?>>
                                 <strong><?php esc_html_e( 'Carregar imagem', 'chavevertical-lite' ); ?></strong>
-                                <small><?php echo 'main' === $hero_key ? esc_html__( 'PEDIR 1920×720 px', 'chavevertical-lite' ) : esc_html__( 'PEDIR 800×820 px', 'chavevertical-lite' ); ?></small>
+                                <small><?php echo 'main' === $hero_key ? esc_html__( '1244×470 px', 'chavevertical-lite' ) : esc_html__( '800×800 px', 'chavevertical-lite' ); ?></small>
                             </span>
                         </button>
                         <p class="description cvl-highlight-ratio-note">
                             <?php echo 'main' === $hero_key
-                                ? esc_html__( 'Área real aproximada no desktop 1920 px: 1257×470 px. Tamanho recomendado para criar/pedir: 1920×720 px.', 'chavevertical-lite' )
-                                : esc_html__( 'Área real aproximada no desktop 1920 px: 457×470 px. Tamanho recomendado para criar/pedir: 800×820 px.', 'chavevertical-lite' ); ?>
+                                ? esc_html__( 'Área real no desktop 1920 px: 1244×470 px. Imagem com proporção exata: 1244×470 px; para maior definição pode usar 2488×940 px.', 'chavevertical-lite' )
+                                : esc_html__( 'Área real no desktop: 470×470 px, exatamente quadrada. Criar a imagem em formato 1:1, recomendado 800×800 px.', 'chavevertical-lite' ); ?>
                         </p>
 
                         <input class="cvl-highlight-image-id" type="hidden" name="hero[<?php echo esc_attr( $hero_key ); ?>][image_id]" value="<?php echo esc_attr( $hero_panel['image_id'] ); ?>">
@@ -926,8 +926,8 @@ function cvl_render_homepage_highlights_admin() {
         .cvl-highlight-admin-card{padding:18px;background:#fff;border:1px solid #dcdcde;border-radius:8px}
         .cvl-highlight-admin-card h2{margin-top:0}
         .cvl-highlight-admin-preview{width:100%;height:auto;margin:0 0 8px;padding:0;display:grid;place-items:center;overflow:hidden;background:#f3f5f5;border:1px dashed #aeb8bc;border-radius:8px;cursor:pointer;appearance:none}
-        .cvl-highlight-admin-preview-main{aspect-ratio:1257/470}
-        .cvl-highlight-admin-preview-side{aspect-ratio:457/470}
+        .cvl-highlight-admin-preview-main{aspect-ratio:1244/470}
+        .cvl-highlight-admin-preview-side{aspect-ratio:1/1}
         .cvl-highlight-admin-preview-highlight{aspect-ratio:1/1}
         .cvl-highlight-admin-preview:hover,.cvl-highlight-admin-preview:focus{border-color:#2271b1;box-shadow:0 0 0 1px #2271b1;outline:none}
         .cvl-highlight-admin-preview img{width:100%;height:100%;display:block;object-fit:cover}
