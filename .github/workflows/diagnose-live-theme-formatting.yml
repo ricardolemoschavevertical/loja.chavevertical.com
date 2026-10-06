@@ -1,0 +1,85 @@
+name: Diagnose Live Theme Formatting
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/diagnose-live-theme-formatting.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Compare repository theme with live theme
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_ROOT=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          LIVE="$WP_ROOT/wp-content/themes/chavevertical-lite"
+          REPO="$GITHUB_WORKSPACE/wp-content/themes/chavevertical-lite"
+
+          test -d "$LIVE"
+          test -d "$REPO"
+
+          echo "=== THEME VERSION ==="
+          wp --path="$WP_ROOT" eval 'echo defined("CVL_VERSION") ? CVL_VERSION : "missing";'
+          echo
+
+          echo "=== LIVE/REPO DIFF ==="
+          DIFF=$(rsync -rcn --delete --out-format='%i %n' "$REPO/" "$LIVE/" || true)
+          if [[ -n "$DIFF" ]]; then
+            printf '%s\n' "$DIFF"
+          else
+            echo "NO_DIFF"
+          fi
+
+          echo "=== KEY FILE CHECKSUMS ==="
+          for file in functions.php assets/css/main.css assets/css/v09.css assets/css/v13.css front-page.php header.php footer.php; do
+            echo "-- $file"
+            sha256sum "$REPO/$file" "$LIVE/$file"
+          done
+
+      - name: Verify live homepage styles
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_ROOT=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          VERSION=$(wp --path="$WP_ROOT" eval 'echo defined("CVL_VERSION") ? CVL_VERSION : "";')
+          echo "CVL_VERSION=$VERSION"
+
+          curl -L --connect-timeout 10 --max-time 60 -sS             'https://loja.chavevertical.com/?cvlformatdiag=1'             -o /tmp/cvl-home-live.html
+
+          echo "=== ENQUEUED CSS ==="
+          grep -oE 'https?://[^"[:space:]]+/wp-content/themes/chavevertical-lite/assets/css/[^"?]+\.css[^"[:space:]]*' /tmp/cvl-home-live.html | head -n 30 || true
+
+          grep -q 'assets/css/main.css' /tmp/cvl-home-live.html
+          grep -q 'assets/css/v13.css' /tmp/cvl-home-live.html
+
+          MAIN_URL="https://loja.chavevertical.com/wp-content/themes/chavevertical-lite/assets/css/main.css?ver=$VERSION"
+          V13_URL="https://loja.chavevertical.com/wp-content/themes/chavevertical-lite/assets/css/v13.css?ver=$VERSION"
+
+          MAIN_CODE=$(curl -L --connect-timeout 10 --max-time 30 -sS -o /tmp/cvl-main-live.css -w '%{http_code}' "$MAIN_URL")
+          V13_CODE=$(curl -L --connect-timeout 10 --max-time 30 -sS -o /tmp/cvl-v13-live.css -w '%{http_code}' "$V13_URL")
+
+          echo "main.css HTTP=$MAIN_CODE bytes=$(wc -c </tmp/cvl-main-live.css)"
+          echo "v13.css HTTP=$V13_CODE bytes=$(wc -c </tmp/cvl-v13-live.css)"
+
+          test "$MAIN_CODE" = "200"
+          test "$V13_CODE" = "200"
+          test -s /tmp/cvl-main-live.css
+          test -s /tmp/cvl-v13-live.css
+
+          grep -q 'Product cards — design aprovado 0.16.89' /tmp/cvl-v13-live.css
+          grep -q 'flat, high-contrast product action icons' /tmp/cvl-v13-live.css
+
+          echo "LIVE_THEME_FORMATTING_ASSETS_OK"
