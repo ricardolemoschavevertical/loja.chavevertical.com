@@ -4689,3 +4689,19 @@ body.cvl-quick-view-open{overflow:hidden}
   opacity:.78!important;
 }
 
+/* v0.16.99 — Cart icon visually integrated with the action button */
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-actions .cvl-cart-icon-button{
+  gap:4px!important;
+}
+
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-cart-button-icon{
+  width:14px!important;
+  height:14px!important;
+  min-width:0!important;
+  min-height:0!important;
+  flex:none!important;
+  margin:0!important;
+  stroke-width:1.7!important;
+  transform:translateY(-.5px)!important;
+}
+
