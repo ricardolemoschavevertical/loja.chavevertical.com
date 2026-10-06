@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CV R2 Media Linker
  * Description: Importação REST WooCommerce + Rank Math e associação inteligente de media no Cloudflare R2.
- * Version: 2.2.1
+ * Version: 2.3.0
  * Author: Chave Vertical
  * Requires at least: 6.5
  * Requires PHP: 8.0
@@ -12,7 +12,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVR2_VERSION', '2.2.1' );
+define( 'CVR2_VERSION', '2.3.0' );
 define( 'CVR2_FILE', __FILE__ );
 define( 'CVR2_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CVR2_OPTION', 'cvr2_settings' );
@@ -21,6 +21,7 @@ define( 'CVR2_STATE_OPTION', 'cvr2_import_state' );
 require_once CVR2_DIR . 'includes/class-cvr2-rest-client.php';
 require_once CVR2_DIR . 'includes/class-cvr2-media.php';
 require_once CVR2_DIR . 'includes/class-cvr2-product-importer.php';
+require_once CVR2_DIR . 'includes/class-cvr2-r2-tools.php';
 require_once CVR2_DIR . 'includes/class-cvr2-slug-audit.php';
 require_once CVR2_DIR . 'includes/class-cvr2-backend-seo.php';
 require_once CVR2_DIR . 'includes/class-cvr2-admin.php';
@@ -43,6 +44,7 @@ add_action(
 
         CVR2_Media::init();
         CVR2_Product_Importer::init();
+        CVR2_R2_Tools::init();
         CVR2_Slug_Audit::init();
         CVR2_Backend_SEO::init();
         CVR2_Admin::init();
