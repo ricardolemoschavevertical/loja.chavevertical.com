@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.92' );
+define( 'CVL_VERSION', '0.16.93' );
 
 function cvl_asset_version( $relative_path = '' ) {
     $relative_path = ltrim( (string) $relative_path, '/' );
@@ -761,6 +761,14 @@ function cvl_loop_actions_open() {
 add_action( 'woocommerce_after_shop_loop_item', 'cvl_loop_actions_open', 9 );
 
 function cvl_loop_actions_close() {
+    global $product;
+
+    if ( class_exists( 'WC_Product' ) && $product instanceof WC_Product ) {
+        $eye_icon = '<svg class="cvl-card-eye-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M1.8 12s3.5-6 10.2-6 10.2 6 10.2 6-3.5 6-10.2 6S1.8 12 1.8 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+
+        echo '<a class="cvl-card-eye-button" href="' . esc_url( $product->get_permalink() ) . '" aria-label="' . esc_attr( sprintf( __( 'Ver %s', 'chavevertical-lite' ), $product->get_name() ) ) . '">' . $eye_icon . '</a>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+    }
+
     echo '</div>';
 }
 add_action( 'woocommerce_after_shop_loop_item', 'cvl_loop_actions_close', 11 );
@@ -796,10 +804,10 @@ add_action( 'woocommerce_after_shop_loop_item', 'cvl_loop_product_wishlist_butto
 
 add_filter( 'woocommerce_product_add_to_cart_text', function ( $text, $product ) {
     if ( class_exists( 'WC_Product' ) && $product instanceof WC_Product && $product->is_type( 'simple' ) && $product->is_purchasable() && $product->is_in_stock() ) {
-        return __( 'ADICIONAR', 'chavevertical-lite' );
+        return __( 'ADICIONAR AO CARRINHO', 'chavevertical-lite' );
     }
 
-    return __( 'VER', 'chavevertical-lite' );
+    return __( 'VER PRODUTO', 'chavevertical-lite' );
 }, 10, 2 );
 
 add_filter( 'woocommerce_loop_add_to_cart_link', function ( $html, $product ) {
@@ -820,11 +828,11 @@ add_filter( 'woocommerce_loop_add_to_cart_link', function ( $html, $product ) {
             esc_url( $product->get_permalink() ),
             esc_attr( sprintf( __( 'Ver %s', 'chavevertical-lite' ), $product->get_name() ) ),
             $view_icon,
-            esc_html__( 'VER', 'chavevertical-lite' )
+            esc_html__( 'VER PRODUTO', 'chavevertical-lite' )
         );
     }
 
-    $replacement = '>' . $cart_icon . '<span class="cvl-cart-button-label">' . esc_html__( 'ADICIONAR', 'chavevertical-lite' ) . '</span></a>';
+    $replacement = '>' . $cart_icon . '<span class="cvl-cart-button-label">' . esc_html__( 'ADICIONAR AO CARRINHO', 'chavevertical-lite' ) . '</span></a>';
     $html = preg_replace( '/>[^<]*<\/a>$/', $replacement, $html, 1 );
 
     if ( is_string( $html ) ) {
