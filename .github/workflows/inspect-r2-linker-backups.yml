@@ -1,0 +1,45 @@
+name: Inspect R2 Linker Backups
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/inspect-r2-linker-backups.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Inspect R2 linker backup history
+        shell: bash
+        run: |
+          set -euo pipefail
+          REPO="$GITHUB_WORKSPACE/wp-content/plugins/cv-r2-media-linker"
+          echo "=== BACKUPS ==="
+          ls -1tr /home/codex1/backups/github-plugins/cv-r2-media-linker-*.tar.gz 2>/dev/null || true
+
+          echo "=== BACKUP SUMMARY ==="
+          for backup in $(ls -1tr /home/codex1/backups/github-plugins/cv-r2-media-linker-*.tar.gz 2>/dev/null | head -n 20); do
+            TMP=$(mktemp -d)
+            tar -xzf "$backup" -C "$TMP"
+            OLD="$TMP/cv-r2-media-linker"
+            echo "--- $backup"
+            if [[ -f "$OLD/cv-r2-media-linker.php" ]]; then
+              grep -E "Version:|CVR2_VERSION" "$OLD/cv-r2-media-linker.php" | head -n 4 || true
+            fi
+            echo "files=$(find "$OLD" -type f | wc -l)"
+            echo "repo-diff-files:"
+            diff -qr "$OLD" "$REPO" 2>/dev/null | head -n 60 || true
+            echo "feature-hints:"
+            grep -RniE "converter|sincronizar estrutura|R2|S3|local|galeria|webp|import|slug|rank.math|filtro|filter|media library|biblioteca" "$OLD" 2>/dev/null | head -n 100 || true
+            rm -rf "$TMP"
+          done
