@@ -7,6 +7,11 @@ final class CVR2_Media {
         add_filter( 'image_downsize', array( __CLASS__, 'filter_image_downsize' ), 20, 3 );
         add_filter( 'wp_prepare_attachment_for_js', array( __CLASS__, 'filter_attachment_js' ), 20, 3 );
         add_filter( 'wp_update_attachment_metadata', array( __CLASS__, 'capture_r2_after_metadata' ), 999, 2 );
+        add_filter( 'wp_get_attachment_thumb_url', array( __CLASS__, 'filter_attachment_thumb_url' ), 99, 2 );
+        add_filter( 'wp_calculate_image_srcset', array( __CLASS__, 'filter_remote_srcset' ), 99, 5 );
+        add_filter( 'rest_prepare_attachment', array( __CLASS__, 'filter_rest_attachment' ), 99, 3 );
+        add_filter( 'attachment_fields_to_edit', array( __CLASS__, 'remote_attachment_fields' ), 20, 2 );
+        add_action( 'wp_ajax_image-editor', array( __CLASS__, 'guard_remote_pixel_editor' ), 0 );
 
         // Filtro R2 na Biblioteca Multimédia em modo lista.
         add_action( 'restrict_manage_posts', array( __CLASS__, 'render_r2_list_filter' ) );
@@ -733,6 +738,73 @@ JS;
             }
         }
         return esc_url_raw( $r2 );
+    }
+
+    public static function filter_attachment_thumb_url( $url, int $post_id ) {
+        $r2 = self::attachment_r2_url( $post_id );
+        return $r2 ?: $url;
+    }
+
+    public static function filter_remote_srcset( $sources, $size_array, $image_src, $image_meta, int $attachment_id ) {
+        return self::attachment_r2_url( $attachment_id ) ? false : $sources;
+    }
+
+    public static function filter_rest_attachment( $response, WP_Post $attachment, $request ) {
+        $r2 = self::attachment_r2_url( (int) $attachment->ID );
+        if ( ! $r2 || ! is_object( $response ) || ! method_exists( $response, 'get_data' ) ) {
+            return $response;
+        }
+
+        $data = $response->get_data();
+        if ( ! is_array( $data ) ) {
+            return $response;
+        }
+
+        if ( array_key_exists( 'source_url', $data ) ) {
+            $data['source_url'] = $r2;
+        }
+
+        if ( isset( $data['media_details'] ) && is_array( $data['media_details'] ) ) {
+            $data['media_details']['sizes']['full']['source_url'] = $r2;
+        }
+
+        $response->set_data( $data );
+        return $response;
+    }
+
+    public static function remote_attachment_fields( array $fields, WP_Post $post ): array {
+        $r2 = self::attachment_r2_url( (int) $post->ID );
+        if ( ! $r2 ) {
+            return $fields;
+        }
+
+        $fields['cvr2_remote_info'] = array(
+            'label' => 'Imagem R2',
+            'input' => 'html',
+            'html'  => '<p>Ficheiro remoto no R2. ALT, título, legenda e descrição continuam editáveis.</p><p><a target="_blank" rel="noopener noreferrer" href="' . esc_url( $r2 ) . '">Abrir imagem original no R2</a></p>',
+        );
+
+        return $fields;
+    }
+
+    public static function guard_remote_pixel_editor(): void {
+        $id = isset( $_POST['postid'] ) ? absint( $_POST['postid'] ) : 0;
+        if ( ! $id || ! self::attachment_r2_url( $id ) ) {
+            return;
+        }
+
+        if ( ! current_user_can( 'edit_post', $id ) ) {
+            wp_send_json_error( array( 'message' => 'Sem permissões para editar esta imagem.' ), 403 );
+        }
+
+        check_ajax_referer( 'image_editor-' . $id );
+        wp_send_json_error(
+            array(
+                'message' => array(
+                    'error' => 'Imagem R2 remota. A edição de píxeis/corte/rotação exige primeiro uma cópia local pelo fluxo normal da Media Library.',
+                ),
+            )
+        );
     }
 
     public static function filter_attachment_url( $url, int $post_id ) {
