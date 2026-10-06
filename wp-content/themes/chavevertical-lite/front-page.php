@@ -119,8 +119,9 @@ if ( function_exists( 'wc_get_products' ) ) {
     }
 
     /*
-     * A secção PROMOÇÕES mostra exclusivamente produtos com uma promoção
-     * realmente ativa no WooCommerce. Não existem produtos de preenchimento.
+     * A secção PROMOÇÕES ocupa até duas linhas de 8 produtos.
+     * Primeiro entram promoções reais (sale price ativo). Se existirem menos
+     * de 16, completa com produtos destacados "MELHOR PREÇO!", sem duplicados.
      */
     if ( function_exists( 'wc_get_product_ids_on_sale' ) ) {
         $sale_product_ids = array_values(
@@ -152,6 +153,60 @@ if ( function_exists( 'wc_get_products' ) ) {
                 }
 
                 $promo_products[] = $sale_product;
+
+                if ( count( $promo_products ) >= 16 ) {
+                    break;
+                }
+            }
+        }
+    }
+
+    if (
+        count( $promo_products ) < 16
+        && function_exists( 'wc_get_featured_product_ids' )
+    ) {
+        $promo_ids = array_values(
+            array_filter(
+                array_map(
+                    static function ( $product ) {
+                        return $product instanceof WC_Product ? absint( $product->get_id() ) : 0;
+                    },
+                    $promo_products
+                )
+            )
+        );
+
+        $featured_ids = array_values(
+            array_diff(
+                array_filter(
+                    array_map( 'absint', wc_get_featured_product_ids() ),
+                    static function ( $product_id ) {
+                        return $product_id > 0 && 'product' === get_post_type( $product_id );
+                    }
+                ),
+                $promo_ids
+            )
+        );
+
+        if ( ! empty( $featured_ids ) ) {
+            $featured_products = wc_get_products( array(
+                'status'  => 'publish',
+                'include' => $featured_ids,
+                'limit'   => 32,
+                'orderby' => 'date',
+                'order'   => 'DESC',
+                'return'  => 'objects',
+            ) );
+
+            foreach ( $featured_products as $featured_product ) {
+                if (
+                    ! $featured_product instanceof WC_Product
+                    || ! $featured_product->is_visible()
+                ) {
+                    continue;
+                }
+
+                $promo_products[] = $featured_product;
 
                 if ( count( $promo_products ) >= 16 ) {
                     break;
@@ -409,7 +464,7 @@ $hero_side_style = sprintf(
         <header class="cvl-v4-section-head">
             <div>
                 <span>PROMOÇÕES</span>
-                <p>Produtos com preço promocional atualmente disponível na loja.</p>
+                <p>Promoções e oportunidades selecionadas com Melhor Preço.</p>
             </div>
             <a href="<?php echo esc_url( add_query_arg( 'on_sale', '1', $shop_url ) ); ?>">VER PROMOÇÕES →</a>
         </header>
