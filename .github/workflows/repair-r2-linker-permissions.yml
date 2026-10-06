@@ -1,0 +1,41 @@
+name: Repair R2 Linker Permissions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/repair-r2-linker-permissions.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 3
+    steps:
+      - name: Repair plugin readability and verify site
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLUGIN=/home/chavevertical-loja/htdocs/loja.chavevertical.com/wp-content/plugins/cv-r2-media-linker
+
+          test -d "$PLUGIN"
+
+          find "$PLUGIN" -type d -user "$(id -un)" -exec chmod 0755 {} + 2>/dev/null || true
+          find "$PLUGIN" -type f -user "$(id -un)" -exec chmod 0644 {} + 2>/dev/null || true
+
+          # Os novos includes são os ficheiros que provocaram o fatal.
+          for file in             "$PLUGIN/includes/class-cvr2-slug-audit.php"             "$PLUGIN/includes/class-cvr2-backend-seo.php"
+          do
+            test -f "$file"
+            chmod a+r "$file"
+          done
+
+          code=$(curl --connect-timeout 10 --max-time 30 -sS -o /tmp/loja-home-after-repair.html -w '%{http_code}' https://loja.chavevertical.com/)
+          echo "home-http=$code"
+          test "$code" = "200"
+
+          grep -q "Erro crítico" /tmp/loja-home-after-repair.html && exit 1 || true
+          echo "loja-home=ok"
