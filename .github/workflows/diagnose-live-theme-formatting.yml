@@ -84,3 +84,28 @@ jobs:
           grep -q 'flat, high-contrast product action icons' /tmp/cvl-v13-live.css
 
           echo "LIVE_THEME_FORMATTING_ASSETS_OK"
+
+          echo "=== NORMAL HOMEPAGE VS CACHE-BUSTED ==="
+          curl -L --connect-timeout 10 --max-time 60 -sS -D /tmp/cvl-home-normal.headers \
+            'https://loja.chavevertical.com/' -o /tmp/cvl-home-normal.html
+          curl -L --connect-timeout 10 --max-time 60 -sS -D /tmp/cvl-home-bust.headers \
+            "https://loja.chavevertical.com/?cvlcachebust=$(date +%s)" -o /tmp/cvl-home-bust.html
+
+          echo "-- normal headers"
+          grep -Ei '^(cf-cache-status|age|cache-control|server|cf-ray|x-cache|x-litespeed-cache|x-wp-cf-super-cache):' /tmp/cvl-home-normal.headers || true
+          echo "-- cache-busted headers"
+          grep -Ei '^(cf-cache-status|age|cache-control|server|cf-ray|x-cache|x-litespeed-cache|x-wp-cf-super-cache):' /tmp/cvl-home-bust.headers || true
+
+          echo "-- normal v13"
+          grep -oE 'assets/css/v13\.css\?ver=[^"\047& ]+' /tmp/cvl-home-normal.html | head -n 1 || true
+          echo "-- cache-busted v13"
+          grep -oE 'assets/css/v13\.css\?ver=[^"\047& ]+' /tmp/cvl-home-bust.html | head -n 1 || true
+
+          NORMAL_V13=$(grep -oE 'assets/css/v13\.css\?ver=[^"\047& ]+' /tmp/cvl-home-normal.html | head -n 1 || true)
+          BUST_V13=$(grep -oE 'assets/css/v13\.css\?ver=[^"\047& ]+' /tmp/cvl-home-bust.html | head -n 1 || true)
+
+          if [[ "$NORMAL_V13" != "$BUST_V13" ]]; then
+            echo "CACHE_MISMATCH normal=$NORMAL_V13 busted=$BUST_V13"
+          else
+            echo "CACHE_MATCH $NORMAL_V13"
+          fi
