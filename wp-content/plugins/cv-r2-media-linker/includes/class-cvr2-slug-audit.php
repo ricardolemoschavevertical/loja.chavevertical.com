@@ -15,6 +15,7 @@ final class CVR2_Slug_Audit {
         add_action( 'wp_ajax_cvr2_slug_audit_correct_batch', array( __CLASS__, 'ajax_correct_batch' ) );
         add_action( 'wp_ajax_cvr2_slug_audit_reset', array( __CLASS__, 'ajax_reset' ) );
         add_action( 'admin_post_cvr2_slug_audit_export', array( __CLASS__, 'export_redirects' ) );
+        add_action( 'admin_post_cvr2_slug_audit_export_sku_slug', array( __CLASS__, 'export_sku_slug' ) );
     }
 
     private static function table(): string {
@@ -467,6 +468,48 @@ final class CVR2_Slug_Audit {
         exit;
     }
 
+    public static function export_sku_slug(): void {
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_die( 'Sem permissões.' );
+        }
+
+        check_admin_referer( 'cvr2_slug_audit_export_sku_slug' );
+
+        global $wpdb;
+
+        $rows = $wpdb->get_results(
+            'SELECT sku, source_slug
+             FROM ' . self::table() . "
+             WHERE source_slug <> ''
+             ORDER BY source_product_id ASC",
+            ARRAY_A
+        );
+
+        nocache_headers();
+        header( 'Content-Type: text/csv; charset=utf-8' );
+        header( 'Content-Disposition: attachment; filename="cvr2-sku-slug-origem-' . gmdate( 'Y-m-d-His' ) . '.csv"' );
+
+        $out = fopen( 'php://output', 'w' );
+
+        // BOM UTF-8 para Excel/LibreOffice reconhecerem corretamente caracteres especiais.
+        fwrite( $out, "\xEF\xBB\xBF" );
+        fputcsv( $out, array( 'SKU', 'slug' ), ';' );
+
+        foreach ( (array) $rows as $row ) {
+            fputcsv(
+                $out,
+                array(
+                    (string) $row['sku'],
+                    (string) $row['source_slug'],
+                ),
+                ';'
+            );
+        }
+
+        fclose( $out );
+        exit;
+    }
+
     private static function summary(): array {
         global $wpdb;
         $table = self::table();
@@ -499,11 +542,16 @@ final class CVR2_Slug_Audit {
             admin_url( 'admin-post.php?action=cvr2_slug_audit_export' ),
             'cvr2_slug_audit_export'
         );
+        $export_sku_slug = wp_nonce_url(
+            admin_url( 'admin-post.php?action=cvr2_slug_audit_export_sku_slug' ),
+            'cvr2_slug_audit_export_sku_slug'
+        );
         ?>
         <div class="cvr2-slug-audit">
             <div class="cvr2-card">
                 <h2>Comparar slugs — origem vs destino</h2>
                 <p>Compara os slugs dos produtos do <strong>chavevertical.com</strong> com os produtos correspondentes no <strong>loja.chavevertical.com</strong>. A correspondência usa os mesmos critérios do importador: ID de origem, slug de origem já registado, SKU, slug e título exato como último recurso.</p>
+                <p class="description">O botão <strong>Exportar SKU + slug (CSV)</strong> cria um ficheiro mínimo com apenas duas colunas: <code>SKU</code> e <code>slug</code>. O slug exportado é sempre o slug da origem, que nesta migração é a referência oficial.</p>
 
                 <div class="cvr2-actions">
                     <button type="button" class="button button-primary" data-slug-action="start">Comparar todos</button>
@@ -511,6 +559,7 @@ final class CVR2_Slug_Audit {
                     <button type="button" class="button" data-slug-action="pause">Pausar</button>
                     <button type="button" class="button" data-slug-action="correct">Corrigir todos os possíveis</button>
                     <a class="button" href="<?php echo esc_url( $export ); ?>">Exportar casos para 301 (CSV)</a>
+                    <a class="button" href="<?php echo esc_url( $export_sku_slug ); ?>">Exportar SKU + slug (CSV)</a>
                     <button type="button" class="button" data-slug-action="reset">Limpar estado</button>
                 </div>
 
