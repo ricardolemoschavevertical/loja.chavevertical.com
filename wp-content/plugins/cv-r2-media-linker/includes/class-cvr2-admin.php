@@ -619,9 +619,51 @@ final class CVR2_Admin {
         $settings = CVR2_REST_Client::settings();
         $state    = (array) get_option( CVR2_STATE_OPTION, array() );
         $nonce    = wp_create_nonce( 'cvr2_import' );
+        $tab      = sanitize_key( (string) wp_unslash( $_GET['tab'] ?? 'import' ) );
+        if ( ! in_array( $tab, array( 'import', 'slugs', 'seo' ), true ) ) {
+            $tab = 'import';
+        }
+
+        $base_url = add_query_arg( 'page', 'cv-r2-rest-import', admin_url( 'admin.php' ) );
         ?>
         <div class="wrap cvr2-admin">
             <h1>CHAVE VERTICAL — Importação REST + R2</h1>
+
+            <nav class="nav-tab-wrapper" style="margin-bottom:18px">
+                <a class="nav-tab <?php echo 'import' === $tab ? 'nav-tab-active' : ''; ?>" href="<?php echo esc_url( add_query_arg( 'tab', 'import', $base_url ) ); ?>">Importação</a>
+                <a class="nav-tab <?php echo 'slugs' === $tab ? 'nav-tab-active' : ''; ?>" href="<?php echo esc_url( add_query_arg( 'tab', 'slugs', $base_url ) ); ?>">Comparar slugs</a>
+                <a class="nav-tab <?php echo 'seo' === $tab ? 'nav-tab-active' : ''; ?>" href="<?php echo esc_url( add_query_arg( 'tab', 'seo', $base_url ) ); ?>">SEO Backend</a>
+            </nav>
+
+            <style>
+                .cvr2-card{padding:20px;border:1px solid #dcdcde;border-radius:10px;background:#fff}
+                .cvr2-row{display:grid;grid-template-columns:180px minmax(0,1fr);gap:14px;align-items:center;margin:12px 0}
+                .cvr2-row input{width:100%}
+                .cvr2-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+                .cvr2-log{min-height:56px;margin-top:14px;padding:12px;border:1px solid #dcdcde;background:#f6f7f7;white-space:pre-wrap}
+                .cvr2-progress-meta{margin:12px 0 5px;display:flex;justify-content:space-between;gap:12px;color:#50575e;font-size:12px;font-weight:600}
+                .cvr2-progress{height:14px;margin:0 0 12px;overflow:hidden;border-radius:999px;background:#e5e5e5}
+                .cvr2-progress>span{height:100%;display:block;width:0;background:#00a32a;transition:width .2s}
+                .cvr2-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:8px}
+                .cvr2-stat{min-width:0;padding:10px;background:#f6f7f7;border-radius:7px}
+                .cvr2-stat strong{display:block;font-size:18px}
+                .cvr2-results-wrap{margin-top:14px;overflow:auto;border:1px solid #dcdcde;border-radius:8px;background:#fff}
+                .cvr2-results{width:100%;border-collapse:collapse;font-size:12px}
+                .cvr2-results th,.cvr2-results td{padding:8px 10px;border-bottom:1px solid #f0f0f1;text-align:left;vertical-align:top}
+                .cvr2-results th{position:sticky;top:0;background:#f6f7f7;z-index:1}
+                @media(max-width:900px){.cvr2-row{grid-template-columns:1fr}}
+            </style>
+
+            <?php if ( 'slugs' === $tab ) : ?>
+                <?php CVR2_Slug_Audit::render(); ?>
+            </div>
+                <?php return; ?>
+            <?php elseif ( 'seo' === $tab ) : ?>
+                <?php CVR2_Backend_SEO::render(); ?>
+            </div>
+                <?php return; ?>
+            <?php endif; ?>
+
             <p>Importa produtos do site original por WooCommerce REST API, preservando slugs, dados WooCommerce, variações, metadados Rank Math e associações de imagens.</p>
 
             <?php if ( isset( $_GET['cvr2_saved'] ) ) : ?>
