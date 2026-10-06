@@ -620,7 +620,7 @@ final class CVR2_Admin {
         $state    = (array) get_option( CVR2_STATE_OPTION, array() );
         $nonce    = wp_create_nonce( 'cvr2_import' );
         $tab      = sanitize_key( (string) wp_unslash( $_GET['tab'] ?? 'import' ) );
-        if ( ! in_array( $tab, array( 'import', 'slugs', 'seo' ), true ) ) {
+        if ( ! in_array( $tab, array( 'import', 'r2', 'slugs', 'seo' ), true ) ) {
             $tab = 'import';
         }
 
@@ -631,6 +631,7 @@ final class CVR2_Admin {
 
             <nav class="nav-tab-wrapper" style="margin-bottom:18px">
                 <a class="nav-tab <?php echo 'import' === $tab ? 'nav-tab-active' : ''; ?>" href="<?php echo esc_url( add_query_arg( 'tab', 'import', $base_url ) ); ?>">Importação</a>
+                <a class="nav-tab <?php echo 'r2' === $tab ? 'nav-tab-active' : ''; ?>" href="<?php echo esc_url( add_query_arg( 'tab', 'r2', $base_url ) ); ?>">Ferramentas R2</a>
                 <a class="nav-tab <?php echo 'slugs' === $tab ? 'nav-tab-active' : ''; ?>" href="<?php echo esc_url( add_query_arg( 'tab', 'slugs', $base_url ) ); ?>">Comparar slugs</a>
                 <a class="nav-tab <?php echo 'seo' === $tab ? 'nav-tab-active' : ''; ?>" href="<?php echo esc_url( add_query_arg( 'tab', 'seo', $base_url ) ); ?>">SEO Backend</a>
             </nav>
@@ -654,7 +655,11 @@ final class CVR2_Admin {
                 @media(max-width:900px){.cvr2-row{grid-template-columns:1fr}}
             </style>
 
-            <?php if ( 'slugs' === $tab ) : ?>
+            <?php if ( 'r2' === $tab ) : ?>
+                <?php CVR2_R2_Tools::render(); ?>
+            </div>
+                <?php return; ?>
+            <?php elseif ( 'slugs' === $tab ) : ?>
                 <?php CVR2_Slug_Audit::render(); ?>
             </div>
                 <?php return; ?>
