@@ -1,0 +1,30 @@
+name: Export R2 Linker Legacy Backup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/export-r2-linker-legacy-backup.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 5
+    steps:
+      - name: Copy original R2 linker backup
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC=/home/codex1/backups/github-plugins/cv-r2-media-linker-20261005T105324Z.368LnrXj.tar.gz
+          test -f "$SRC"
+          cp "$SRC" "$RUNNER_TEMP/cv-r2-media-linker-legacy-1.3.1.tar.gz"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cv-r2-media-linker-legacy-1.3.1
+          path: ${{ runner.temp }}/cv-r2-media-linker-legacy-1.3.1.tar.gz
+          if-no-files-found: error
+          retention-days: 30
