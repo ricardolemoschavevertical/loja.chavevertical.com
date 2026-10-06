@@ -720,13 +720,28 @@ JS;
         return $data;
     }
 
-    public static function filter_attachment_url( $url, int $post_id ) {
+    private static function attachment_r2_url( int $post_id ): string {
         $r2 = (string) get_post_meta( $post_id, '_cvr2_r2_url', true );
+        if ( ! $r2 ) {
+            $r2 = (string) get_post_meta( $post_id, '_cv_r2_url', true );
+            if ( $r2 ) {
+                update_post_meta( $post_id, '_cvr2_r2_url', $r2 );
+                $legacy_key = (string) get_post_meta( $post_id, '_cv_r2_key', true );
+                if ( $legacy_key && ! get_post_meta( $post_id, '_cvr2_r2_key', true ) ) {
+                    update_post_meta( $post_id, '_cvr2_r2_key', $legacy_key );
+                }
+            }
+        }
+        return esc_url_raw( $r2 );
+    }
+
+    public static function filter_attachment_url( $url, int $post_id ) {
+        $r2 = self::attachment_r2_url( $post_id );
         return $r2 ?: $url;
     }
 
     public static function filter_image_downsize( $downsize, int $id, $size ) {
-        $r2 = (string) get_post_meta( $id, '_cvr2_r2_url', true );
+        $r2 = self::attachment_r2_url( $id );
 
         if ( ! $r2 ) {
             return $downsize;
@@ -740,7 +755,7 @@ JS;
     }
 
     public static function filter_attachment_js( array $response, WP_Post $attachment, array $meta ): array {
-        $r2 = (string) get_post_meta( $attachment->ID, '_cvr2_r2_url', true );
+        $r2 = self::attachment_r2_url( (int) $attachment->ID );
 
         if ( ! $r2 ) {
             return $response;
