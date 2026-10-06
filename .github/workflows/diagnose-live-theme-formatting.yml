@@ -109,3 +109,11 @@ jobs:
           else
             echo "CACHE_MATCH $NORMAL_V13"
           fi
+
+          echo "=== HOMEPAGE HTML DIAGNOSTIC ==="
+          echo "normal_bytes=$(wc -c </tmp/cvl-home-normal.html)"
+          echo "busted_bytes=$(wc -c </tmp/cvl-home-bust.html)"
+          echo "-- normal title/status markers"
+          grep -ioE '<title>[^<]*</title>|assets/css/[^" ]+\.css[^" ]*|chavevertical-lite|cf-error|cloudflare|captcha|challenge' /tmp/cvl-home-normal.html | head -n 60 || true
+          echo "-- busted title/status markers"
+          grep -ioE '<title>[^<]*</title>|assets/css/[^" ]+\.css[^" ]*|chavevertical-lite|cf-error|cloudflare|captcha|challenge' /tmp/cvl-home-bust.html | head -n 60 || true
