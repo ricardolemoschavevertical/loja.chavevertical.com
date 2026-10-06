@@ -5,11 +5,8 @@ on:
   push:
     branches: [main]
     paths:
-      - ".github/workflows/cv-opensearch-diagnose.yml"
       - "wp-content/plugins/cv-opensearch/**"
       - "wp-content/themes/chavevertical-lite/search.php"
-      - "wp-content/themes/chavevertical-lite/functions.php"
-      - "wp-content/themes/chavevertical-lite/assets/css/v13.css"
 
 permissions:
   contents: write
