@@ -543,12 +543,13 @@ final class CVR2_Slug_Audit {
                                 <th>Slug destino</th>
                                 <th>Estado</th>
                                 <th>Motivo</th>
+                                <th>Redirecionamento</th>
                                 <th>Ação</th>
                             </tr>
                         </thead>
                         <tbody data-slug-rows>
                             <?php if ( ! $rows ) : ?>
-                                <tr><td colspan="7">Ainda sem comparação.</td></tr>
+                                <tr><td colspan="8">Ainda sem comparação.</td></tr>
                             <?php else : ?>
                                 <?php foreach ( $rows as $row ) : ?>
                                     <tr>
@@ -558,6 +559,19 @@ final class CVR2_Slug_Audit {
                                         <td><code><?php echo esc_html( (string) $row['destination_slug'] ); ?></code></td>
                                         <td><?php echo esc_html( (string) $row['status'] ); ?></td>
                                         <td><?php echo esc_html( (string) $row['reason'] ); ?></td>
+                                        <td>
+                                            <?php if ( ! empty( $row['redirect_from'] ) ) : ?>
+                                                <a href="<?php echo esc_url( (string) $row['redirect_from'] ); ?>" target="_blank" rel="noopener"><?php echo esc_html( (string) $row['redirect_from'] ); ?></a>
+                                                <br>→<br>
+                                                <?php if ( ! empty( $row['redirect_to'] ) ) : ?>
+                                                    <a href="<?php echo esc_url( (string) $row['redirect_to'] ); ?>" target="_blank" rel="noopener"><?php echo esc_html( (string) $row['redirect_to'] ); ?></a>
+                                                <?php else : ?>
+                                                    <em>Destino por definir</em>
+                                                <?php endif; ?>
+                                            <?php else : ?>
+                                                —
+                                            <?php endif; ?>
+                                        </td>
                                         <td>
                                             <?php if ( 'correctable' === $row['status'] ) : ?>
                                                 <button type="button" class="button button-small" data-slug-correct-id="<?php echo esc_attr( (string) $row['id'] ); ?>">Corrigir</button>
