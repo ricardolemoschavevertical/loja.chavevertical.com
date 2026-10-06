@@ -4705,3 +4705,31 @@ body.cvl-quick-view-open{overflow:hidden}
   transform:translateY(-.5px)!important;
 }
 
+/* =========================================================
+   v0.16.100 — Full image = no crop
+   ========================================================= */
+.cvl-ref-hero-main.is-full-image .cvl-ref-hero-main-media,
+.cvl-ref-hero-side.is-full-image .cvl-ref-hero-side-media,
+.cvl-homepage-highlight.is-full-image .cvl-homepage-highlight-media{
+  overflow:hidden!important;
+}
+
+.cvl-ref-hero-main.is-full-image .cvl-ref-hero-main-media img{
+  object-fit:contain!important;
+  object-position:center center!important;
+  background:var(--cvl-hero-main-bg,#fff)!important;
+}
+
+.cvl-ref-hero-side.is-full-image .cvl-ref-hero-side-media img{
+  object-fit:contain!important;
+  object-position:center center!important;
+  background:var(--cvl-hero-side-bg,#fff)!important;
+}
+
+.cvl-homepage-highlight.is-full-image .cvl-homepage-highlight-media img,
+.cvl-homepage-highlight.is-full-image .cvl-homepage-highlight-slide{
+  object-fit:contain!important;
+  object-position:center center!important;
+  background:var(--cvl-highlight-bg,#fff)!important;
+}
+

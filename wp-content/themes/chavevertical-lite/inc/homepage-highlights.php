@@ -637,7 +637,7 @@ function cvl_render_homepage_highlights_admin() {
         <?php endif; ?>
 
         <p><?php esc_html_e( 'Personalize o Hero principal, a caixa lateral e os quatro destaques da homepage. Cada bloco pode usar a imagem em toda a área e, opcionalmente, mostrar texto sobre a imagem. Selecione "Usar valores do Admin" para aplicar estas alterações no site.', 'chavevertical-lite' ); ?></p>
-        <p><strong><?php esc_html_e( 'Formatos recomendados sem corte:', 'chavevertical-lite' ); ?></strong> Hero principal 1400×720 px · Destaque lateral 600×840 px · Destaques 800×800 px. Preferir WEBP. As molduras abaixo reproduzem a proporção recomendada do espaço final.</p>
+        <p><strong><?php esc_html_e( 'Formatos recomendados:', 'chavevertical-lite' ); ?></strong> Hero principal 1400×720 px · Destaque lateral 600×840 px · Destaques 800×800 px. Preferir WEBP. As molduras abaixo reproduzem a proporção recomendada do espaço final. Com «Imagem completa (sem corte)» a imagem é sempre mostrada integralmente; se a proporção diferir, podem existir margens laterais ou verticais.</p>
 
         <div class="cvl-highlights-source-help">
             <strong><?php esc_html_e( 'Edição pelo GitHub:', 'chavevertical-lite' ); ?></strong>
@@ -683,8 +683,8 @@ function cvl_render_homepage_highlights_admin() {
                         </button>
                         <p class="description cvl-highlight-ratio-note">
                             <?php echo 'main' === $hero_key
-                                ? esc_html__( 'Moldura proporcional ao Hero principal. Use 1400×720 px para preencher o espaço sem cortes no formato desktop.', 'chavevertical-lite' )
-                                : esc_html__( 'Moldura proporcional à caixa lateral. Use 600×840 px para preencher o espaço sem cortes no formato desktop.', 'chavevertical-lite' ); ?>
+                                ? esc_html__( 'Moldura proporcional ao Hero principal. Use 1400×720 px como formato recomendado; em «Imagem completa (sem corte)» a imagem é mostrada integralmente.', 'chavevertical-lite' )
+                                : esc_html__( 'Moldura proporcional à caixa lateral. Use 600×840 px como formato recomendado; em «Imagem completa (sem corte)» a imagem é mostrada integralmente.', 'chavevertical-lite' ); ?>
                         </p>
 
                         <input class="cvl-highlight-image-id" type="hidden" name="hero[<?php echo esc_attr( $hero_key ); ?>][image_id]" value="<?php echo esc_attr( $hero_panel['image_id'] ); ?>">
@@ -702,7 +702,7 @@ function cvl_render_homepage_highlights_admin() {
                             <label class="cvl-highlight-check">
                                 <input type="hidden" name="hero[<?php echo esc_attr( $hero_key ); ?>][full_image]" value="0">
                                 <input type="checkbox" name="hero[<?php echo esc_attr( $hero_key ); ?>][full_image]" value="1" <?php checked( ! empty( $hero_panel['full_image'] ) ); ?>>
-                                <span><?php esc_html_e( 'Imagem a ocupar todo o espaço', 'chavevertical-lite' ); ?></span>
+                                <span><?php esc_html_e( 'Imagem completa (sem corte)', 'chavevertical-lite' ); ?></span>
                             </label>
                             <label class="cvl-highlight-check">
                                 <input type="hidden" name="hero[<?php echo esc_attr( $hero_key ); ?>][show_text]" value="0">
@@ -790,7 +790,7 @@ function cvl_render_homepage_highlights_admin() {
                                 <small><?php esc_html_e( '800×800 px', 'chavevertical-lite' ); ?></small>
                             </span>
                         </button>
-                        <p class="description cvl-highlight-ratio-note"><?php esc_html_e( 'Moldura quadrada igual ao Destaque. Use 800×800 px para preencher todo o espaço sem cortes.', 'chavevertical-lite' ); ?></p>
+                        <p class="description cvl-highlight-ratio-note"><?php esc_html_e( 'Moldura quadrada igual ao Destaque. Use 800×800 px como formato recomendado; em «Imagem completa (sem corte)» a imagem é mostrada integralmente.', 'chavevertical-lite' ); ?></p>
 
                         <input class="cvl-highlight-image-id" type="hidden" name="cards[<?php echo esc_attr( $index ); ?>][image_id]" value="<?php echo esc_attr( $card['image_id'] ); ?>">
                         <label>
@@ -808,7 +808,7 @@ function cvl_render_homepage_highlights_admin() {
                             <label class="cvl-highlight-check">
                                 <input type="hidden" name="cards[<?php echo esc_attr( $index ); ?>][full_image]" value="0">
                                 <input type="checkbox" name="cards[<?php echo esc_attr( $index ); ?>][full_image]" value="1" <?php checked( ! empty( $card['full_image'] ) ); ?>>
-                                <span><?php esc_html_e( 'Imagem a ocupar todo o espaço', 'chavevertical-lite' ); ?></span>
+                                <span><?php esc_html_e( 'Imagem completa (sem corte)', 'chavevertical-lite' ); ?></span>
                             </label>
                             <label class="cvl-highlight-check">
                                 <input type="hidden" name="cards[<?php echo esc_attr( $index ); ?>][show_text]" value="0">
