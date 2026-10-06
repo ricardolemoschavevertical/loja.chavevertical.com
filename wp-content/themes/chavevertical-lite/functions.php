@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.97' );
+define( 'CVL_VERSION', '0.16.98' );
 
 function cvl_asset_version( $relative_path = '' ) {
     $relative_path = ltrim( (string) $relative_path, '/' );
@@ -523,7 +523,7 @@ function cvl_loop_product_meta() {
     echo '</span>';
 
     if ( $sku ) {
-        echo '<span class="cvl-product-sku" title="' . esc_attr( $sku ) . '">' . esc_html( $sku ) . '</span>';
+        echo '<span class="cvl-product-sku" title="' . esc_attr( $sku ) . '"><i class="cvl-product-barcode-icon" aria-hidden="true"></i>' . esc_html( $sku ) . '</span>';
     }
 
     echo '</div>';
