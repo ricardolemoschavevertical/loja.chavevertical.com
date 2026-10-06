@@ -128,7 +128,10 @@ echo
 for migration in ops/migrations/repair-*.php; do
   [[ -f "$migration" ]] || continue
   echo "Running order recovery migration: $migration"
-  wp --path="$WP_ROOT" eval-file "$migration"
+  if ! wp --path="$WP_ROOT" eval-file "$migration"; then
+    echo "WARNING: historical recovery migration failed: $migration" >&2
+    echo "Plugin deployment continues because recovery migrations are not part of plugin activation." >&2
+  fi
 done
 
 if [[ -d "$OLD_ARCHIVE_ROOT" && -f "$ARCHIVE_ROOT/orders.ndjson.php" && -f "$ARCHIVE_ROOT/orders-index.json.php" ]]; then
