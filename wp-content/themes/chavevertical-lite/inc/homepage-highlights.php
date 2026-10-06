@@ -637,7 +637,15 @@ function cvl_render_homepage_highlights_admin() {
         <?php endif; ?>
 
         <p><?php esc_html_e( 'Personalize o Hero principal, a caixa lateral e os quatro destaques da homepage. Cada bloco pode usar a imagem em toda a área e, opcionalmente, mostrar texto sobre a imagem. Selecione "Usar valores do Admin" para aplicar estas alterações no site.', 'chavevertical-lite' ); ?></p>
-        <p><strong><?php esc_html_e( 'Formatos recomendados:', 'chavevertical-lite' ); ?></strong> Hero principal 1400×720 px · Destaque lateral 600×840 px · Destaques 800×800 px. Preferir WEBP. As molduras abaixo reproduzem a proporção recomendada do espaço final. Com «Imagem completa (sem corte)» a imagem é sempre mostrada integralmente; se a proporção diferir, podem existir margens laterais ou verticais.</p>
+        <div class="cvl-highlight-size-guide">
+            <strong><?php esc_html_e( 'Dimensões reais do layout (desktop 1920 px)', 'chavevertical-lite' ); ?></strong>
+            <div class="cvl-highlight-size-guide-grid">
+                <span><b>Hero principal</b><small>Área ≈ 1257×470 px</small><em>Pedir: 1920×720 px</em></span>
+                <span><b>Caixa lateral</b><small>Área ≈ 457×470 px</small><em>Pedir: 800×820 px</em></span>
+                <span><b>Destaques</b><small>Área ≈ 420×420 px</small><em>Pedir: 800×800 px</em></span>
+            </div>
+            <p><?php esc_html_e( 'Preferir WEBP. As dimensões reais variam ligeiramente com a largura do ecrã, mas estas proporções correspondem ao layout desktop atual. Em «Imagem completa (sem corte)» a imagem é sempre mostrada integralmente.', 'chavevertical-lite' ); ?></p>
+        </div>
 
         <div class="cvl-highlights-source-help">
             <strong><?php esc_html_e( 'Edição pelo GitHub:', 'chavevertical-lite' ); ?></strong>
@@ -672,19 +680,19 @@ function cvl_render_homepage_highlights_admin() {
 
                         <button
                             type="button"
-                            class="cvl-highlight-admin-preview cvl-highlight-select-image cvl-highlight-admin-preview-<?php echo esc_attr( $hero_key ); ?>"
+                            class="cvl-highlight-admin-preview cvl-highlight-select-image cvl-highlight-admin-preview-<?php echo esc_attr( $hero_key ); ?><?php echo ! empty( $hero_panel['full_image'] ) ? ' is-full-image-preview' : ''; ?>"
                             aria-label="<?php echo esc_attr( sprintf( __( 'Carregar imagem para %s', 'chavevertical-lite' ), $hero_admin_labels[ $hero_key ] ) ); ?>"
                         >
                             <img class="cvl-highlight-preview" src="<?php echo esc_url( $hero_preview ); ?>" alt="" <?php echo $hero_preview ? '' : 'style="display:none"'; ?>>
                             <span class="cvl-highlight-preview-empty" <?php echo $hero_preview ? 'style="display:none"' : ''; ?>>
                                 <strong><?php esc_html_e( 'Carregar imagem', 'chavevertical-lite' ); ?></strong>
-                                <small><?php echo 'main' === $hero_key ? esc_html__( '1400×720 px', 'chavevertical-lite' ) : esc_html__( '600×840 px', 'chavevertical-lite' ); ?></small>
+                                <small><?php echo 'main' === $hero_key ? esc_html__( 'PEDIR 1920×720 px', 'chavevertical-lite' ) : esc_html__( 'PEDIR 800×820 px', 'chavevertical-lite' ); ?></small>
                             </span>
                         </button>
                         <p class="description cvl-highlight-ratio-note">
                             <?php echo 'main' === $hero_key
-                                ? esc_html__( 'Moldura proporcional ao Hero principal. Use 1400×720 px como formato recomendado; em «Imagem completa (sem corte)» a imagem é mostrada integralmente.', 'chavevertical-lite' )
-                                : esc_html__( 'Moldura proporcional à caixa lateral. Use 600×840 px como formato recomendado; em «Imagem completa (sem corte)» a imagem é mostrada integralmente.', 'chavevertical-lite' ); ?>
+                                ? esc_html__( 'Área real aproximada no desktop 1920 px: 1257×470 px. Tamanho recomendado para criar/pedir: 1920×720 px.', 'chavevertical-lite' )
+                                : esc_html__( 'Área real aproximada no desktop 1920 px: 457×470 px. Tamanho recomendado para criar/pedir: 800×820 px.', 'chavevertical-lite' ); ?>
                         </p>
 
                         <input class="cvl-highlight-image-id" type="hidden" name="hero[<?php echo esc_attr( $hero_key ); ?>][image_id]" value="<?php echo esc_attr( $hero_panel['image_id'] ); ?>">
@@ -781,16 +789,16 @@ function cvl_render_homepage_highlights_admin() {
 
                         <button
                             type="button"
-                            class="cvl-highlight-admin-preview cvl-highlight-select-image cvl-highlight-admin-preview-highlight"
+                            class="cvl-highlight-admin-preview cvl-highlight-select-image cvl-highlight-admin-preview-highlight<?php echo ! empty( $card['full_image'] ) ? ' is-full-image-preview' : ''; ?>"
                             aria-label="<?php echo esc_attr( sprintf( __( 'Carregar imagem para Destaque %d', 'chavevertical-lite' ), $index + 1 ) ); ?>"
                         >
                             <img class="cvl-highlight-preview" src="<?php echo esc_url( $preview ); ?>" alt="" <?php echo $preview ? '' : 'style="display:none"'; ?>>
                             <span class="cvl-highlight-preview-empty" <?php echo $preview ? 'style="display:none"' : ''; ?>>
                                 <strong><?php esc_html_e( 'Carregar imagem', 'chavevertical-lite' ); ?></strong>
-                                <small><?php esc_html_e( '800×800 px', 'chavevertical-lite' ); ?></small>
+                                <small><?php esc_html_e( 'PEDIR 800×800 px', 'chavevertical-lite' ); ?></small>
                             </span>
                         </button>
-                        <p class="description cvl-highlight-ratio-note"><?php esc_html_e( 'Moldura quadrada igual ao Destaque. Use 800×800 px como formato recomendado; em «Imagem completa (sem corte)» a imagem é mostrada integralmente.', 'chavevertical-lite' ); ?></p>
+                        <p class="description cvl-highlight-ratio-note"><?php esc_html_e( 'Área real aproximada no desktop: 420×420 px. Tamanho recomendado para criar/pedir: 800×800 px.', 'chavevertical-lite' ); ?></p>
 
                         <input class="cvl-highlight-image-id" type="hidden" name="cards[<?php echo esc_attr( $index ); ?>][image_id]" value="<?php echo esc_attr( $card['image_id'] ); ?>">
                         <label>
@@ -902,6 +910,14 @@ function cvl_render_homepage_highlights_admin() {
     </div>
 
     <style>
+        .cvl-highlight-size-guide{max-width:1200px;margin:14px 0 18px;padding:14px 16px;background:#fff;border:1px solid #dcdcde;border-left:4px solid #2271b1;border-radius:4px}
+        .cvl-highlight-size-guide>strong{display:block;margin-bottom:10px;font-size:14px}
+        .cvl-highlight-size-guide-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+        .cvl-highlight-size-guide-grid>span{padding:11px 12px;display:grid;gap:3px;background:#f6f7f7;border:1px solid #dcdcde;border-radius:5px}
+        .cvl-highlight-size-guide-grid b{font-size:13px}
+        .cvl-highlight-size-guide-grid small{color:#646970;font-size:12px}
+        .cvl-highlight-size-guide-grid em{color:#0a6b41;font-size:13px;font-style:normal;font-weight:700}
+        .cvl-highlight-size-guide p{margin:10px 0 0;color:#646970}
         .cvl-highlights-source-help{margin:16px 0;padding:12px 14px;background:#fff;border-left:4px solid #17820f}
         .cvl-highlights-source{margin:18px 0;padding:14px;background:#fff;border:1px solid #dcdcde}
         .cvl-highlights-source label{margin-right:24px}
@@ -910,11 +926,12 @@ function cvl_render_homepage_highlights_admin() {
         .cvl-highlight-admin-card{padding:18px;background:#fff;border:1px solid #dcdcde;border-radius:8px}
         .cvl-highlight-admin-card h2{margin-top:0}
         .cvl-highlight-admin-preview{width:100%;height:auto;margin:0 0 8px;padding:0;display:grid;place-items:center;overflow:hidden;background:#f3f5f5;border:1px dashed #aeb8bc;border-radius:8px;cursor:pointer;appearance:none}
-        .cvl-highlight-admin-preview-main{aspect-ratio:35/18}
-        .cvl-highlight-admin-preview-side{aspect-ratio:5/7}
+        .cvl-highlight-admin-preview-main{aspect-ratio:1257/470}
+        .cvl-highlight-admin-preview-side{aspect-ratio:457/470}
         .cvl-highlight-admin-preview-highlight{aspect-ratio:1/1}
         .cvl-highlight-admin-preview:hover,.cvl-highlight-admin-preview:focus{border-color:#2271b1;box-shadow:0 0 0 1px #2271b1;outline:none}
         .cvl-highlight-admin-preview img{width:100%;height:100%;display:block;object-fit:cover}
+        .cvl-highlight-admin-preview.is-full-image-preview img{object-fit:contain;background:#f3f5f5}
         .cvl-highlight-preview-empty{padding:18px;display:grid;gap:5px;color:#6b7377;text-align:center}
         .cvl-highlight-preview-empty strong{color:#1d2327;font-size:14px}
         .cvl-highlight-preview-empty small{font-size:12px;font-weight:600}
@@ -934,7 +951,7 @@ function cvl_render_homepage_highlights_admin() {
         .cvl-highlight-rotation-box input[type="number"]{width:110px}
         .cvl-highlight-color-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cvl-hero-color-row{grid-template-columns:repeat(3,1fr)}
         .cvl-highlight-color-row input[type="color"]{width:100%;height:38px;padding:2px}
-        @media(max-width:800px){.cvl-highlight-admin-grid,.cvl-hero-admin-grid{grid-template-columns:1fr}.cvl-highlight-admin-preview-side{max-width:420px}}
+        @media(max-width:800px){.cvl-highlight-size-guide-grid,.cvl-highlight-admin-grid,.cvl-hero-admin-grid{grid-template-columns:1fr}.cvl-highlight-admin-preview-side{max-width:420px}}
     </style>
     <?php
 }
