@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.94' );
+define( 'CVL_VERSION', '0.16.95' );
 
 function cvl_asset_version( $relative_path = '' ) {
     $relative_path = ltrim( (string) $relative_path, '/' );
@@ -804,7 +804,7 @@ add_action( 'woocommerce_after_shop_loop_item', 'cvl_loop_product_wishlist_butto
 
 add_filter( 'woocommerce_product_add_to_cart_text', function ( $text, $product ) {
     if ( class_exists( 'WC_Product' ) && $product instanceof WC_Product && $product->is_type( 'simple' ) && $product->is_purchasable() && $product->is_in_stock() ) {
-        return __( 'ADICIONAR AO CARRINHO', 'chavevertical-lite' );
+        return __( 'ADICIONAR', 'chavevertical-lite' );
     }
 
     return __( 'VER PRODUTO', 'chavevertical-lite' );
@@ -832,7 +832,7 @@ add_filter( 'woocommerce_loop_add_to_cart_link', function ( $html, $product ) {
         );
     }
 
-    $replacement = '>' . $cart_icon . '<span class="cvl-cart-button-label">' . esc_html__( 'ADICIONAR AO CARRINHO', 'chavevertical-lite' ) . '</span></a>';
+    $replacement = '>' . $cart_icon . '<span class="cvl-cart-button-label">' . esc_html__( 'ADICIONAR', 'chavevertical-lite' ) . '</span></a>';
     $html = preg_replace( '/>[^<]*<\/a>$/', $replacement, $html, 1 );
 
     if ( is_string( $html ) ) {
