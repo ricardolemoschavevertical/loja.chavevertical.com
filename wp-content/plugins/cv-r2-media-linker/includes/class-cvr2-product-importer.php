@@ -629,6 +629,63 @@ final class CVR2_Product_Importer {
         return $variation->save() ? 'updated' : 'error';
     }
 
+    public static function set_exact_slug( int $product_id, string $slug ) {
+        $product_id = absint( $product_id );
+        $slug       = sanitize_title( $slug );
+
+        if ( ! $product_id || ! $slug || 'product' !== get_post_type( $product_id ) ) {
+            return new WP_Error( 'cvr2_slug_invalid_target', 'Produto ou slug inválido.' );
+        }
+
+        $owner = get_page_by_path( $slug, OBJECT, 'product' );
+
+        if ( $owner instanceof WP_Post && (int) $owner->ID !== $product_id ) {
+            return new WP_Error(
+                'cvr2_slug_collision',
+                sprintf( 'O slug "%1$s" já pertence ao produto #%2$d.', $slug, (int) $owner->ID )
+            );
+        }
+
+        $old_slug = (string) get_post_field( 'post_name', $product_id );
+
+        self::$writing_source_slug = true;
+        try {
+            $updated = wp_update_post(
+                array(
+                    'ID'        => $product_id,
+                    'post_name' => $slug,
+                ),
+                true
+            );
+        } finally {
+            self::$writing_source_slug = false;
+        }
+
+        if ( is_wp_error( $updated ) ) {
+            return $updated;
+        }
+
+        clean_post_cache( $product_id );
+        $saved_slug = (string) get_post_field( 'post_name', $product_id );
+
+        if ( $saved_slug !== $slug ) {
+            return new WP_Error(
+                'cvr2_slug_verify_failed',
+                sprintf( 'Esperado "%1$s"; WordPress gravou "%2$s".', $slug, $saved_slug )
+            );
+        }
+
+        if ( $old_slug && $old_slug !== $slug ) {
+            add_post_meta( $product_id, '_wp_old_slug', $old_slug );
+        }
+
+        update_post_meta( $product_id, '_cvr2_source_slug', $slug );
+        update_post_meta( $product_id, '_cvr2_slug_locked', 1 );
+        delete_post_meta( $product_id, '_cvr2_slug_error' );
+
+        return true;
+    }
+
     public static function locate_existing_product( array $source ): array {
         $source_id = absint( $source['id'] ?? 0 );
         $sku       = wc_clean( (string) ( $source['sku'] ?? '' ) );
