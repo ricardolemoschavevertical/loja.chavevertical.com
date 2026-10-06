@@ -1,0 +1,57 @@
+name: Compare R2 Linker Live
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/compare-r2-linker-live.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Compare repository live and latest backup
+        shell: bash
+        run: |
+          set -euo pipefail
+          LIVE=/home/chavevertical-loja/htdocs/loja.chavevertical.com/wp-content/plugins/cv-r2-media-linker
+          REPO="$GITHUB_WORKSPACE/wp-content/plugins/cv-r2-media-linker"
+          BACKUP=$(ls -1t /home/codex1/backups/github-plugins/cv-r2-media-linker-*.tar.gz 2>/dev/null | head -n 1 || true)
+
+          echo "=== VERSION ==="
+          grep -E "Version:|CVR2_VERSION" "$LIVE/cv-r2-media-linker.php" || true
+
+          echo "=== REPO VS LIVE ==="
+          diff -qr "$REPO" "$LIVE" || true
+
+          echo "=== LIVE KEY FEATURES ==="
+          grep -RniE "Comparar slugs|Exportar SKU \+ slug|SEO Backend|images_only|create_only|update_existing|R2|Não R2|Pausar|Retomar" "$LIVE" | head -n 160 || true
+
+          if [[ -n "$BACKUP" && -f "$BACKUP" ]]; then
+            echo "=== LATEST BACKUP ==="
+            echo "$BACKUP"
+            TMP=$(mktemp -d)
+            tar -xzf "$BACKUP" -C "$TMP"
+            OLD="$TMP/cv-r2-media-linker"
+
+            echo "=== BACKUP VS REPO ==="
+            diff -qr "$OLD" "$REPO" || true
+
+            echo "=== BACKUP ONLY FEATURE HINTS ==="
+            grep -RniE "Comparar slugs|Exportar SKU \+ slug|SEO Backend|images_only|create_only|update_existing|R2|Não R2|Pausar|Retomar|lote|ignorar|actualizar|atualizar" "$OLD" | head -n 220 || true
+
+            echo "=== DIFF ADMIN BACKUP TO REPO ==="
+            diff -u "$OLD/includes/class-cvr2-admin.php" "$REPO/includes/class-cvr2-admin.php" | head -n 500 || true
+
+            echo "=== DIFF IMPORTER BACKUP TO REPO ==="
+            diff -u "$OLD/includes/class-cvr2-product-importer.php" "$REPO/includes/class-cvr2-product-importer.php" | head -n 500 || true
+          fi
