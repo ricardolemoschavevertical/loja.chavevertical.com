@@ -55,8 +55,21 @@ for slug in chavevertical-core cv-astro-bridge cv-pdf-reader cv-r2-media-linker 
 
   if [[ "$slug" == "cv-r2-media-linker" ]]; then
     # Este plugin já existia no servidor com ownership diferente.
-    # Não tentar alterar permissões das pastas; sincronizar apenas conteúdo.
-    rsync -r --delete --no-perms --omit-dir-times "$SRC/" "$DEST/"
+    # Preservar ficheiros existentes, mas garantir que novos ficheiros PHP
+    # ficam legíveis pelo utilizador PHP-FPM. O umask global 0077 tornava
+    # novos includes 0600 e causava HTTP 500 por Permission denied.
+    (
+      umask 0022
+      rsync -r --delete --no-perms --omit-dir-times "$SRC/" "$DEST/"
+    )
+    find "$DEST" -type d -user "$(id -un)" -exec chmod 0755 {} + 2>/dev/null || true
+    find "$DEST" -type f -user "$(id -un)" -exec chmod 0644 {} + 2>/dev/null || true
+
+    if find "$DEST" -type f ! -perm -004 -print -quit | grep -q .; then
+      echo "Unreadable plugin file detected in $slug" >&2
+      find "$DEST" -type f ! -perm -004 -ls >&2 || true
+      exit 1
+    fi
   else
     rsync -rp --delete --chmod=D2770,F660 "$SRC/" "$DEST/"
   fi
