@@ -1,0 +1,47 @@
+name: Diagnose Loja Critical Error
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/diagnose-loja-critical.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Diagnose WordPress frontend
+        shell: bash
+        run: |
+          set +e
+          WP_ROOT=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+
+          echo "=== HTTP ==="
+          curl --connect-timeout 10 --max-time 20 -sS -o /tmp/loja-home.html -w 'home-http=%{http_code}\n' https://loja.chavevertical.com/
+          head -c 500 /tmp/loja-home.html | tr '\n' ' '
+          echo
+
+          echo "=== WP CLI BOOT ==="
+          wp --path="$WP_ROOT" eval 'echo "wp-boot-ok\n";'
+          echo "wp-cli-exit=$?"
+
+          echo "=== R2 PLUGIN ==="
+          wp --path="$WP_ROOT" plugin status cv-r2-media-linker
+          echo "plugin-status-exit=$?"
+
+          echo "=== RECENT PHP FATALS ==="
+          for file in             "$WP_ROOT/wp-content/debug.log"             /home/chavevertical-loja/logs/*.log             /home/chavevertical-loja/logs/*/*.log             /var/log/php*-fpm.log             /var/log/nginx/error.log
+          do
+            [ -f "$file" ] || continue
+            echo "--- $file"
+            tail -n 250 "$file" 2>/dev/null | grep -Ei 'PHP Fatal|Uncaught|cv-r2|CVR2|critical error|TypeError|ArgumentCountError|ValueError' | tail -n 80
+          done
