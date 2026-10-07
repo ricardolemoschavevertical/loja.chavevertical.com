@@ -291,7 +291,7 @@ jobs:
           grep -q 'cvl-product-price-net' /tmp/cvl-product-card.html
           grep -q 'cvl-card-eye-button' /tmp/cvl-product-card.html
           grep -q 'cvl-cart-button-label">ADICIONAR<' /tmp/cvl-product-card.html
-          grep -q 'sem IVA' /tmp/cvl-product-card.html
+          grep -q 'Preço S/ IVA' /tmp/cvl-product-card.html
 
           CSS_URL=$(grep -oE 'https://loja\.chavevertical\.com/wp-content/themes/chavevertical-lite/assets/css/v13\.css[^" ]*' /tmp/cvl-product-card.html | head -n 1 | sed 's/&#038;/\&/g')
           test -n "$CSS_URL"
