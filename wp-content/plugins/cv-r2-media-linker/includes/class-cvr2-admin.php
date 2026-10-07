@@ -237,6 +237,13 @@ final class CVR2_Admin {
             );
         }
 
+        // Uma execução em erro pode ser retomada pelo watchdog sem criar um novo run_id.
+        if ( 'error' === ( $state['status'] ?? '' ) ) {
+            $state['status']     = 'running';
+            $state['updated_at'] = time();
+            update_option( CVR2_STATE_OPTION, $state, false );
+        }
+
         $lock_key   = 'cvr2_batch_lock_' . md5( $state_run_id );
         $lock_token = wp_generate_uuid4();
 
@@ -397,8 +404,7 @@ final class CVR2_Admin {
                     self::push_recent_result(
                         $state,
                         $source_product,
-                        'updated',
-                        sprintf(
+                        'updated',                        sprintf(
                             'Imagem/galeria atualizada%s.',
                             ! empty( $imported['variation_images_updated'] )
                                 ? ' + ' . absint( $imported['variation_images_updated'] ) . ' variação(ões)'
@@ -682,6 +688,7 @@ final class CVR2_Admin {
                 .cvr2-row input{width:100%}.cvr2-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
                 .cvr2-log{min-height:72px;padding:12px;border:1px solid #dcdcde;background:#f6f7f7;white-space:pre-wrap}
                 .cvr2-active-mode{margin:14px 0 8px;padding:9px 12px;border-radius:7px;background:#f0f6fc;border:1px solid #c6d9ee;font-weight:700;color:#1d4f7a}
+                .cvr2-watchdog{margin:0 0 12px;padding:8px 11px;border-radius:7px;background:#f6f7f7;border:1px solid #dcdcde;color:#50575e;font-size:12px}
                 .cvr2-progress-meta{margin:8px 0 5px;display:flex;justify-content:space-between;gap:12px;color:#50575e;font-size:12px;font-weight:600}
                 .cvr2-progress{height:14px;margin:0 0 12px;overflow:hidden;border-radius:999px;background:#e5e5e5}
                 .cvr2-progress>span{height:100%;display:block;width:0;background:#00a32a;transition:width .2s}
@@ -771,6 +778,7 @@ final class CVR2_Admin {
                     </div>
 
                     <div class="cvr2-active-mode" data-cvr2-active-mode>Modo ativo: nenhum</div>
+                    <div class="cvr2-watchdog" data-cvr2-watchdog>Watchdog automático: sem execução ativa.</div>
 
                     <div class="cvr2-progress-meta">
                         <span data-cvr2-progress-text>0 / 0 produtos</span>
@@ -797,8 +805,7 @@ final class CVR2_Admin {
                             <thead>
                                 <tr>
                                     <th>Hora</th>
-                                    <th>Produto</th>
-                                    <th>SKU</th>
+                                    <th>Produto</th>                                    <th>SKU</th>
                                     <th>Estado Woo</th>
                                     <th>Resultado</th>
                                     <th>Detalhe</th>
@@ -832,16 +839,22 @@ final class CVR2_Admin {
             const current = document.querySelector('[data-cvr2-current]');
             const results = document.querySelector('[data-cvr2-results]');
             const activeMode = document.querySelector('[data-cvr2-active-mode]');
+            const watchdogStatus = document.querySelector('[data-cvr2-watchdog]');
             const buttons = document.querySelectorAll('[data-cvr2-action]');
             const modeInputs = document.querySelectorAll('input[name="cvr2_import_mode"]');
             const batchInput = document.querySelector('#cvr2-batch-size');
+            const WATCHDOG_DELAY_MS = 60000;
             let running = false;
             let activeRunId = '';
             let activeImportMode = '';
             let statusTimer = null;
             let statusRequestActive = false;
+            let watchdogTimer = null;
+            let manualPause = false;
+            let lastKnownState = {};
 
             const write = (message) => { if (log) log.textContent = String(message || ''); };
+            const writeWatchdog = (message) => { if (watchdogStatus) watchdogStatus.textContent = String(message || ''); };
             const setBusy = (busy) => {
                 buttons.forEach((button) => {
                     if (button.dataset.cvr2Action === 'pause') {
@@ -863,6 +876,7 @@ final class CVR2_Admin {
 
             function renderState(state) {
                 state = state || {};
+                lastKnownState = state;
 
                 if (state.run_id) activeRunId = String(state.run_id);
                 if (state.import_mode) activeImportMode = String(state.import_mode);
@@ -977,7 +991,12 @@ final class CVR2_Admin {
                     body: body.toString()
                 });
                 const json = await response.json();
-                if (!json.success) throw new Error(json.data?.message || 'Erro no pedido.');
+                if (!json.success) {
+                    const error = new Error(json.data?.message || 'Erro no pedido.');
+                    error.code = String(json.data?.code || '');
+                    error.state = json.data?.state || null;
+                    throw error;
+                }
                 return json.data || {};
             }
 
@@ -1010,10 +1029,98 @@ final class CVR2_Admin {
                 statusRequestActive = false;
             }
 
+            function cancelWatchdog() {
+                if (watchdogTimer) {
+                    window.clearTimeout(watchdogTimer);
+                    watchdogTimer = null;
+                }
+            }
+
+            function canResume(state = lastKnownState) {
+                state = state || {};
+                return Boolean(
+                    activeRunId
+                    && activeImportMode
+                    && String(state.status || '') !== 'done'
+                );
+            }
+
+            function armWatchdog() {
+                cancelWatchdog();
+
+                if (manualPause) {
+                    writeWatchdog('Watchdog automático: pausado manualmente.');
+                    return;
+                }
+
+                if (!canResume()) {
+                    writeWatchdog('Watchdog automático: sem execução pendente.');
+                    return;
+                }
+
+                const checkpoint = {
+                    runId: activeRunId,
+                    processed: Number(lastKnownState.processed || 0),
+                    updatedAt: Number(lastKnownState.updated_at || 0)
+                };
+
+                writeWatchdog('Watchdog automático: ativo — se parar, retoma após 1 minuto.');
+
+                watchdogTimer = window.setTimeout(async () => {
+                    watchdogTimer = null;
+
+                    if (manualPause || running || !canResume()) return;
+
+                    let state = lastKnownState;
+
+                    try {
+                        const data = await call('cvr2_import_status', checkpoint.runId ? {run_id: checkpoint.runId} : {});
+                        state = data.state || {};
+                        renderState(state);
+
+                        if (data.done || !canResume(state)) {
+                            writeWatchdog('Watchdog automático: execução concluída.');
+                            return;
+                        }
+                    } catch (error) {
+                        if (error.state) {
+                            state = error.state;
+                            renderState(state);
+                        }
+
+                        if (error.code === 'stale_run') {
+                            writeWatchdog('Watchdog automático: foi detetada outra execução ativa; a vigiar a nova execução.');
+                            armWatchdog();
+                            return;
+                        }
+                    }
+
+                    const sameRun = String(state.run_id || activeRunId) === checkpoint.runId;
+                    const progressed = sameRun && (
+                        Number(state.processed || 0) > checkpoint.processed
+                        || Number(state.updated_at || 0) > checkpoint.updatedAt
+                    );
+
+                    if (progressed) {
+                        writeWatchdog('Watchdog automático: houve progresso no último minuto; continua a vigiar.');
+                        armWatchdog();
+                        return;
+                    }
+
+                    write('Watchdog: a importação esteve parada durante 1 minuto. A retomar automaticamente…');
+                    writeWatchdog('Watchdog automático: a retomar agora…');
+                    loop();
+                }, WATCHDOG_DELAY_MS);
+            }
+
             async function loop() {
                 if (running) return;
+
+                cancelWatchdog();
+                manualPause = false;
                 running = true;
                 setBusy(true);
+                writeWatchdog('Watchdog automático: execução em curso; retoma se parar.');
                 startStatusPolling();
 
                 try {
@@ -1033,6 +1140,8 @@ final class CVR2_Admin {
 
                         if (data.done) {
                             running = false;
+                            cancelWatchdog();
+                            writeWatchdog('Watchdog automático: execução concluída.');
                             write(data.message || 'Importação concluída. O estado ficou guardado.');
                             break;
                         }
@@ -1042,11 +1151,20 @@ final class CVR2_Admin {
                     }
                 } catch (error) {
                     running = false;
-                    write(error.message || error);
+
+                    if (error.state) {
+                        renderState(error.state);
+                    }
+
+                    write((error.message || error) + ' — o watchdog tentará retomar em 1 minuto.');
                 } finally {
                     stopStatusPolling();
                     await refreshLiveStatus(true);
                     setBusy(false);
+
+                    if (!manualPause && !running && canResume()) {
+                        armWatchdog();
+                    }
                 }
             }
 
@@ -1066,6 +1184,8 @@ final class CVR2_Admin {
             });
 
             document.querySelector('[data-cvr2-action="start"]')?.addEventListener('click', async () => {
+                manualPause = false;
+                cancelWatchdog();
                 setBusy(true);
                 try {
                     const mode = document.querySelector('input[name="cvr2_import_mode"]:checked')?.value || 'update_existing';
@@ -1085,6 +1205,8 @@ final class CVR2_Admin {
             });
 
             document.querySelector('[data-cvr2-action="resume"]')?.addEventListener('click', async () => {
+                manualPause = false;
+                cancelWatchdog();
                 setBusy(true);
                 try {
                     const data = await call('cvr2_import_status');
@@ -1107,17 +1229,26 @@ final class CVR2_Admin {
             });
 
             document.querySelector('[data-cvr2-action="pause"]')?.addEventListener('click', () => {
+                manualPause = true;
                 running = false;
+                cancelWatchdog();
                 stopStatusPolling();
                 setBusy(false);
                 refreshLiveStatus(true);
+                writeWatchdog('Watchdog automático: pausado manualmente.');
                 write('Importação pausada no browser. O progresso ficou guardado e pode ser retomado.');
             });
 
-            renderState(<?php echo wp_json_encode( $state, JSON_UNESCAPED_UNICODE ); ?>);
+            const initialState = <?php echo wp_json_encode( $state, JSON_UNESCAPED_UNICODE ); ?>;
+            renderState(initialState);
+            if (canResume(initialState)) {
+                armWatchdog();
+            }
 
             document.querySelector('[data-cvr2-action="reset"]')?.addEventListener('click', async () => {
+                manualPause = true;
                 running = false;
+                cancelWatchdog();
                 stopStatusPolling();
                 setBusy(true);
                 try {
@@ -1126,6 +1257,7 @@ final class CVR2_Admin {
                     activeImportMode = '';
                     renderState({});
                     if (activeMode) activeMode.textContent = 'Modo ativo: nenhum';
+                    writeWatchdog('Watchdog automático: sem execução ativa.');
                     write(data.message);
                 } catch (error) {
                     write(error.message || error);
