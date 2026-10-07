@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.111' );
+define( 'CVL_VERSION', '0.16.112' );
 
 function cvl_asset_version( $relative_path = '' ) {
     $relative_path = ltrim( (string) $relative_path, '/' );
@@ -197,6 +197,15 @@ add_action( 'wp_enqueue_scripts', function () {
         $cvl_listing_style_dependencies,
         cvl_asset_version( 'assets/css/v13.css' )
     );
+
+    if ( function_exists( 'is_cart' ) && is_cart() ) {
+        wp_enqueue_style(
+            'cvl-cart',
+            get_template_directory_uri() . '/assets/css/cart.css',
+            array( 'cvl-v13' ),
+            cvl_asset_version( 'assets/css/cart.css' )
+        );
+    }
 
     if ( is_front_page() ) {
         wp_enqueue_script(
