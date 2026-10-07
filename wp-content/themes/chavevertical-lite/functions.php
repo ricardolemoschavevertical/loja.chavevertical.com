@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.106' );
+define( 'CVL_VERSION', '0.16.107' );
 
 function cvl_asset_version( $relative_path = '' ) {
     $relative_path = ltrim( (string) $relative_path, '/' );
@@ -523,7 +523,7 @@ function cvl_loop_product_meta() {
     echo '</span>';
 
     if ( $sku ) {
-        echo '<span class="cvl-product-sku" title="' . esc_attr( $sku ) . '"><i class="cvl-product-barcode-icon" aria-hidden="true"></i>' . esc_html( $sku ) . '</span>';
+        echo '<span class="cvl-product-sku" title="' . esc_attr( $sku ) . '"><i class="cvl-product-barcode-icon" aria-hidden="true"></i><span class="cvl-product-sku-text">' . esc_html( $sku ) . '</span></span>';
     }
 
     echo '</div>';
@@ -734,7 +734,7 @@ function cvl_loop_product_price_block() {
 
     echo '<div class="cvl-product-price-net">';
     echo '<strong>' . wp_kses_post( wc_price( $net_price ) ) . '</strong>';
-    echo '<span>' . esc_html__( 'sem IVA', 'chavevertical-lite' ) . '</span>';
+    echo '<span>' . esc_html__( 'Preço S/ IVA', 'chavevertical-lite' ) . '</span>';
     echo '</div>';
     echo '</div>';
 }
