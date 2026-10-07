@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.112' );
+define( 'CVL_VERSION', '0.16.113' );
 
 function cvl_asset_version( $relative_path = '' ) {
     $relative_path = ltrim( (string) $relative_path, '/' );
@@ -204,6 +204,19 @@ add_action( 'wp_enqueue_scripts', function () {
             get_template_directory_uri() . '/assets/css/cart.css',
             array( 'cvl-v13' ),
             cvl_asset_version( 'assets/css/cart.css' )
+        );
+    }
+
+    if (
+        function_exists( 'is_checkout' )
+        && is_checkout()
+        && ( ! function_exists( 'is_order_received_page' ) || ! is_order_received_page() )
+    ) {
+        wp_enqueue_style(
+            'cvl-checkout',
+            get_template_directory_uri() . '/assets/css/checkout.css',
+            array( 'cvl-v13' ),
+            cvl_asset_version( 'assets/css/checkout.css' )
         );
     }
 
