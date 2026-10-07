@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.103' );
+define( 'CVL_VERSION', '0.16.104' );
 
 function cvl_asset_version( $relative_path = '' ) {
     $relative_path = ltrim( (string) $relative_path, '/' );
@@ -752,7 +752,7 @@ add_action( 'woocommerce_after_shop_loop_item_title', 'cvl_loop_product_price_bl
 /**
  * Ações do card: uma única ação comercial.
  * Usa ícones SVG para manter escala, alinhamento e aparência consistentes.
- * - compra direta: ícone de carrinho + ADICIONAR
+ * - compra direta: botão limpo ADICIONAR
  * - restantes produtos: ícone de visualizar + VER
  */
 function cvl_loop_actions_open() {
@@ -819,7 +819,6 @@ add_filter( 'woocommerce_loop_add_to_cart_link', function ( $html, $product ) {
         && $product->is_purchasable()
         && $product->is_in_stock();
 
-    $cart_icon = '<svg class="cvl-product-action-icon cvl-cart-button-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 8h14l1 13H4L5 8Z"></path><path d="M9 8V6a3 3 0 0 1 6 0v2"></path></svg>';
     $view_icon = '<svg class="cvl-product-action-icon cvl-view-product-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.32 11.45C2.81 6.98 7.03 3.75 12 3.75s9.19 3.23 10.68 7.7c.12.36.12.75 0 1.1-1.49 4.48-5.71 7.7-10.68 7.7s-9.19-3.22-10.68-7.7a1.75 1.75 0 0 1 0-1.1ZM17.25 12a5.25 5.25 0 1 1-10.5 0 5.25 5.25 0 0 1 10.5 0Z"></path><circle cx="12" cy="12" r="2.45"></circle></svg>';
 
     if ( ! $can_add_directly ) {
@@ -832,7 +831,7 @@ add_filter( 'woocommerce_loop_add_to_cart_link', function ( $html, $product ) {
         );
     }
 
-    $replacement = '>' . $cart_icon . '<span class="cvl-cart-button-label">' . esc_html__( 'ADICIONAR', 'chavevertical-lite' ) . '</span></a>';
+    $replacement = '><span class="cvl-cart-button-label">' . esc_html__( 'ADICIONAR', 'chavevertical-lite' ) . '</span></a>';
     $html = preg_replace( '/>[^<]*<\/a>$/', $replacement, $html, 1 );
 
     if ( is_string( $html ) ) {
