@@ -2,7 +2,8 @@
 defined( 'ABSPATH' ) || exit;
 get_header();
 
-$cvl_is_cart_page = function_exists( 'is_cart' ) && is_cart();
+$cvl_is_cart_page  = function_exists( 'is_cart' ) && is_cart();
+$cvl_cart_is_empty = $cvl_is_cart_page && function_exists( 'WC' ) && WC()->cart && WC()->cart->is_empty();
 ?>
 <div class="cvl-shell cvl-content">
 <?php
@@ -21,7 +22,15 @@ while ( have_posts() ) :
                     <div>
                         <p class="cvl-cart-page-eyebrow"><?php esc_html_e( 'A SUA ENCOMENDA', 'chavevertical-lite' ); ?></p>
                         <h1><?php esc_html_e( 'Carrinho', 'chavevertical-lite' ); ?></h1>
-                        <p class="cvl-cart-page-subtitle"><?php esc_html_e( 'Revise os produtos, quantidades e valores antes de avançar para os dados de faturação e entrega.', 'chavevertical-lite' ); ?></p>
+                        <p class="cvl-cart-page-subtitle">
+                            <?php
+                            echo esc_html(
+                                $cvl_cart_is_empty
+                                    ? __( 'O seu carrinho está vazio. Veja abaixo os produtos em promoção ou continue a explorar a loja.', 'chavevertical-lite' )
+                                    : __( 'Revise os produtos, quantidades e valores antes de avançar para os dados de faturação e entrega.', 'chavevertical-lite' )
+                            );
+                            ?>
+                        </p>
                     </div>
 
                     <ol class="cvl-cart-steps" aria-label="<?php esc_attr_e( 'Etapas da compra', 'chavevertical-lite' ); ?>">
