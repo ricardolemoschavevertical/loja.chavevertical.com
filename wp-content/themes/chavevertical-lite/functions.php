@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.113' );
+define( 'CVL_VERSION', '0.16.114' );
 
 function cvl_asset_version( $relative_path = '' ) {
     $relative_path = ltrim( (string) $relative_path, '/' );
@@ -205,6 +205,14 @@ add_action( 'wp_enqueue_scripts', function () {
             array( 'cvl-v13' ),
             cvl_asset_version( 'assets/css/cart.css' )
         );
+
+        wp_enqueue_script(
+            'cvl-cart',
+            get_template_directory_uri() . '/assets/js/cart.js',
+            array(),
+            cvl_asset_version( 'assets/js/cart.js' ),
+            true
+        );
     }
 
     if (
@@ -284,6 +292,99 @@ add_filter( 'body_class', function ( $classes ) {
     $classes[] = 'cvl-site';
     return $classes;
 } );
+
+
+/**
+ * Carrinho — corrige textos do WooCommerce que podem chegar sem tradução
+ * e apresenta produtos em promoção quando o carrinho está vazio.
+ */
+add_filter( 'gettext', function ( $translated, $text, $domain ) {
+    if ( ! function_exists( 'is_cart' ) || ! is_cart() ) {
+        return $translated;
+    }
+
+    $translations = array(
+        'Save for later'                 => __( 'Guardar para mais tarde', 'chavevertical-lite' ),
+        'Saved for later'                => __( 'Guardados para mais tarde', 'chavevertical-lite' ),
+        'Move to cart'                   => __( 'Mover para o carrinho', 'chavevertical-lite' ),
+        'Move to Cart'                   => __( 'Mover para o carrinho', 'chavevertical-lite' ),
+        'Your cart is currently empty!'  => __( 'O seu carrinho está vazio.', 'chavevertical-lite' ),
+        'Your cart is currently empty.'  => __( 'O seu carrinho está vazio.', 'chavevertical-lite' ),
+        'New in store'                   => __( 'Produtos em promoção', 'chavevertical-lite' ),
+    );
+
+    return isset( $translations[ $text ] ) ? $translations[ $text ] : $translated;
+}, 20, 3 );
+
+add_filter( 'wc_empty_cart_message', function () {
+    return __( 'O seu carrinho está vazio. Aproveite as nossas promoções ou continue a explorar a loja.', 'chavevertical-lite' );
+} );
+
+/**
+ * Grelha comercial reutilizável para o estado de carrinho vazio.
+ */
+function cvl_empty_cart_promotions_markup() {
+    if ( ! shortcode_exists( 'sale_products' ) ) {
+        return '';
+    }
+
+    $products = do_shortcode( '[sale_products limit="6" columns="6" orderby="date" order="DESC"]' );
+
+    if ( '' === trim( $products ) ) {
+        return '';
+    }
+
+    return '<section class="cvl-empty-cart-promotions" aria-labelledby="cvl-empty-cart-promotions-title">'
+        . '<div class="cvl-empty-cart-promotions-head">'
+        . '<span class="cvl-empty-cart-promotions-eyebrow">' . esc_html__( 'OPORTUNIDADES', 'chavevertical-lite' ) . '</span>'
+        . '<h2 id="cvl-empty-cart-promotions-title">' . esc_html__( 'Produtos em promoção', 'chavevertical-lite' ) . '</h2>'
+        . '<p>' . esc_html__( 'Aproveite alguns dos produtos atualmente em campanha e adicione-os diretamente ao carrinho.', 'chavevertical-lite' ) . '</p>'
+        . '</div>'
+        . $products
+        . '</section>';
+}
+
+/**
+ * Compatibilidade com o carrinho clássico.
+ */
+add_action( 'woocommerce_cart_is_empty', function () {
+    $markup = cvl_empty_cart_promotions_markup();
+
+    if ( $markup ) {
+        // O conteúdo dos produtos é gerado pelos shortcodes oficiais do WooCommerce.
+        echo $markup; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+    }
+}, 20 );
+
+/**
+ * No Cart Block substitui o conteúdo padrão "New in store" por promoções reais.
+ */
+add_filter( 'render_block', function ( $block_content, $block ) {
+    if (
+        is_admin()
+        || ! function_exists( 'is_cart' )
+        || ! is_cart()
+        || empty( $block['blockName'] )
+        || 'woocommerce/empty-cart-block' !== $block['blockName']
+    ) {
+        return $block_content;
+    }
+
+    $shop_url   = function_exists( 'cvl_shop_url' ) ? cvl_shop_url() : home_url( '/shop/' );
+    $promotions = cvl_empty_cart_promotions_markup();
+
+    $html  = '<div class="wp-block-woocommerce-empty-cart-block cvl-empty-cart-state">';
+    $html .= '<div class="cvl-empty-cart-message">';
+    $html .= '<span class="cvl-empty-cart-message-icon" aria-hidden="true">🛒</span>';
+    $html .= '<h2>' . esc_html__( 'O seu carrinho está vazio', 'chavevertical-lite' ) . '</h2>';
+    $html .= '<p>' . esc_html__( 'Ainda não adicionou produtos. Veja as promoções em destaque ou continue a explorar a nossa loja.', 'chavevertical-lite' ) . '</p>';
+    $html .= '<a class="button cvl-empty-cart-shop-button" href="' . esc_url( $shop_url ) . '">' . esc_html__( 'Continuar a comprar', 'chavevertical-lite' ) . '</a>';
+    $html .= '</div>';
+    $html .= $promotions;
+    $html .= '</div>';
+
+    return $html;
+}, 20, 2 );
 
 
 /**
