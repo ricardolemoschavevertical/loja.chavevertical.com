@@ -138,4 +138,7 @@ if [[ -d "$OLD_ARCHIVE_ROOT" && -f "$ARCHIVE_ROOT/orders.ndjson.php" && -f "$ARC
   rm -rf "$WP_ROOT/wp-content/cv-private-data"
   echo "legacy-orders-public-copy=removed"
 fi
+
+php ops/verify-brand-logo-webp.php
+
 echo "Chave Vertical internal plugins deployed and active."
