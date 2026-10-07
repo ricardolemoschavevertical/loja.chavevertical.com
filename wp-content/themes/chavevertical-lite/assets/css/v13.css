@@ -4764,3 +4764,32 @@ body.cvl-quick-view-open{overflow:hidden}
   }
 }
 
+/* v0.16.105 — Brand / SKU separator as a dedicated grid column */
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-brand-sku-row{
+  grid-template-columns:minmax(0,1fr) 1px auto!important;
+  gap:8px!important;
+}
+
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-brand-sku-row::before{
+  content:""!important;
+  grid-column:2!important;
+  width:1px!important;
+  height:16px!important;
+  align-self:center!important;
+  justify-self:center!important;
+  background:#d9dfe2!important;
+}
+
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-brand-sku-row .cvl-product-brand{
+  grid-column:1!important;
+}
+
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-brand-sku-row .cvl-product-sku{
+  grid-column:3!important;
+  padding-left:0!important;
+}
+
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-brand-sku-row .cvl-product-sku::before{
+  content:none!important;
+}
+
