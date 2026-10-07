@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.109' );
+define( 'CVL_VERSION', '0.16.110' );
 
 function cvl_asset_version( $relative_path = '' ) {
     $relative_path = ltrim( (string) $relative_path, '/' );
@@ -40,6 +40,11 @@ if ( file_exists( $cvl_brand_archive_file ) ) {
 $cvl_contact_form_file = get_template_directory() . '/inc/contact-form.php';
 if ( file_exists( $cvl_contact_form_file ) ) {
     require_once $cvl_contact_form_file;
+}
+
+$cvl_availability_request_file = get_template_directory() . '/inc/availability-request.php';
+if ( file_exists( $cvl_availability_request_file ) ) {
+    require_once $cvl_availability_request_file;
 }
 
 add_action( 'after_setup_theme', function () {
@@ -209,6 +214,25 @@ add_action( 'wp_enqueue_scripts', function () {
         array(),
         cvl_asset_version( 'assets/js/main.js' ),
         true
+    );
+
+    wp_enqueue_script(
+        'cvl-availability-request',
+        get_template_directory_uri() . '/assets/js/availability-request.js',
+        array(),
+        cvl_asset_version( 'assets/js/availability-request.js' ),
+        true
+    );
+
+    wp_localize_script(
+        'cvl-availability-request',
+        'CVLAvailabilityRequest',
+        array(
+            'endpoint'            => esc_url_raw( rest_url( 'chavevertical/v1/availability-request' ) ),
+            'confirmationMessage' => function_exists( 'cvl_availability_request_confirmation_message' )
+                ? cvl_availability_request_confirmation_message()
+                : 'Agradecemos a sua consulta. O seu pedido foi encaminhado para Ricardo Lemos. Se preferir um contacto direto, pode fazê-lo através do e-mail Ricardo@chavevertical.com ou do telefone 914 580 410.',
+        )
     );
 
     if (
@@ -785,7 +809,14 @@ function cvl_loop_product_wishlist_button() {
 add_action( 'woocommerce_after_shop_loop_item', 'cvl_loop_product_wishlist_button', 12 );
 
 add_filter( 'woocommerce_product_add_to_cart_text', function ( $text, $product ) {
-    if ( class_exists( 'WC_Product' ) && $product instanceof WC_Product && $product->is_type( 'simple' ) && $product->is_purchasable() && $product->is_in_stock() ) {
+    if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product ) {
+        return $text;
+    }
+
+    if (
+        ( function_exists( 'cvl_product_requires_availability_request' ) && cvl_product_requires_availability_request( $product ) )
+        || ( $product->is_type( 'simple' ) && $product->is_purchasable() && $product->is_in_stock() )
+    ) {
         return __( 'ADICIONAR', 'chavevertical-lite' );
     }
 
@@ -795,6 +826,21 @@ add_filter( 'woocommerce_product_add_to_cart_text', function ( $text, $product )
 add_filter( 'woocommerce_loop_add_to_cart_link', function ( $html, $product ) {
     if ( ! class_exists( 'WC_Product' ) || ! $product instanceof WC_Product ) {
         return $html;
+    }
+
+    $needs_availability_request = function_exists( 'cvl_product_requires_availability_request' )
+        && cvl_product_requires_availability_request( $product );
+
+    if ( $needs_availability_request ) {
+        return sprintf(
+            '<button type="button" class="button cvl-cart-icon-button cvl-availability-request-button" data-cvl-availability-request data-product-id="%1$d" data-product-slug="%2$s" data-product-name="%3$s" data-product-url="%4$s" aria-label="%5$s"><span class="cvl-cart-button-label">%6$s</span></button>',
+            absint( $product->get_id() ),
+            esc_attr( $product->get_slug() ),
+            esc_attr( $product->get_name() ),
+            esc_url( $product->get_permalink() ),
+            esc_attr( sprintf( __( 'Consultar disponibilidade de %s', 'chavevertical-lite' ), $product->get_name() ) ),
+            esc_html__( 'ADICIONAR', 'chavevertical-lite' )
+        );
     }
 
     $can_add_directly = $product->is_type( 'simple' )
@@ -1246,9 +1292,18 @@ function cvl_single_product_quote_only_action() {
         return;
     }
 
+    echo '<div class="cvl-single-quote-only">';
+
+    if ( function_exists( 'cvl_product_requires_availability_request' ) && cvl_product_requires_availability_request( $product ) ) {
+        echo '<button type="button" class="cvl-single-proforma-button cvl-availability-request-button" data-cvl-availability-request data-product-id="' . absint( $product->get_id() ) . '" data-product-slug="' . esc_attr( $product->get_slug() ) . '" data-product-name="' . esc_attr( $product->get_name() ) . '" data-product-url="' . esc_url( $product->get_permalink() ) . '">';
+        echo '<span>' . esc_html__( 'ADICIONAR AO CARRINHO', 'chavevertical-lite' ) . '</span>';
+        echo '</button>';
+        echo '</div>';
+        return;
+    }
+
     $url = cvl_single_product_request_url( $product, 'orcamento' );
 
-    echo '<div class="cvl-single-quote-only">';
     echo '<a class="cvl-single-proforma-button cvl-single-quote-button" href="' . esc_url( $url ) . '">';
     echo '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6z"></path><path d="M9 7h6M9 11h6M9 15h4"></path></svg>';
     echo '<span>' . esc_html__( 'SOLICITAR ORÇAMENTO', 'chavevertical-lite' ) . '</span>';
