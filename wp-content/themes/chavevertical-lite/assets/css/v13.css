@@ -4891,3 +4891,26 @@ body.cvl-quick-view-open{overflow:hidden}
   align-items:center!important;
   justify-content:center!important;
 }
+
+/* v0.16.108 - centered catalog availability */
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-status-row{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  text-align:center!important;
+}
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-stock{
+  width:100%!important;
+  min-width:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:6px!important;
+  text-align:center!important;
+  white-space:normal!important;
+  line-height:1.2!important;
+}
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-card-rating,
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-card-no-rating{
+  display:none!important;
+}
