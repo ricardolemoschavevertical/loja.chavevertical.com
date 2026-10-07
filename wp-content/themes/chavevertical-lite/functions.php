@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.114' );
+define( 'CVL_VERSION', '0.16.115' );
 
 function cvl_asset_version( $relative_path = '' ) {
     $relative_path = ltrim( (string) $relative_path, '/' );
@@ -303,14 +303,16 @@ add_filter( 'gettext', function ( $translated, $text, $domain ) {
         return $translated;
     }
 
+    // Não usar __()/gettext aqui: este callback é o próprio filtro gettext.
+    // Traduzir com strings literais evita recursão infinita e erro fatal no carrinho.
     $translations = array(
-        'Save for later'                 => __( 'Guardar para mais tarde', 'chavevertical-lite' ),
-        'Saved for later'                => __( 'Guardados para mais tarde', 'chavevertical-lite' ),
-        'Move to cart'                   => __( 'Mover para o carrinho', 'chavevertical-lite' ),
-        'Move to Cart'                   => __( 'Mover para o carrinho', 'chavevertical-lite' ),
-        'Your cart is currently empty!'  => __( 'O seu carrinho está vazio.', 'chavevertical-lite' ),
-        'Your cart is currently empty.'  => __( 'O seu carrinho está vazio.', 'chavevertical-lite' ),
-        'New in store'                   => __( 'Produtos em promoção', 'chavevertical-lite' ),
+        'Save for later'                 => 'Guardar para mais tarde',
+        'Saved for later'                => 'Guardados para mais tarde',
+        'Move to cart'                   => 'Mover para o carrinho',
+        'Move to Cart'                   => 'Mover para o carrinho',
+        'Your cart is currently empty!'  => 'O seu carrinho está vazio.',
+        'Your cart is currently empty.'  => 'O seu carrinho está vazio.',
+        'New in store'                   => 'Produtos em promoção',
     );
 
     return isset( $translations[ $text ] ) ? $translations[ $text ] : $translated;
