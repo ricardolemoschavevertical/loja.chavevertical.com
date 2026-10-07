@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.108' );
+define( 'CVL_VERSION', '0.16.109' );
 
 function cvl_asset_version( $relative_path = '' ) {
     $relative_path = ltrim( (string) $relative_path, '/' );
@@ -546,57 +546,21 @@ add_action( 'woocommerce_after_shop_loop_item_title', 'cvl_loop_product_meta', 4
  * existe stock gerido; com stock zero não aparece qualquer etiqueta.
  */
 function cvl_product_image_badge_data( WC_Product $product ) {
-    $status         = $product->get_stock_status();
-    $stock_quantity = $product->managing_stock() ? $product->get_stock_quantity() : null;
-    $stock_quantity = null !== $stock_quantity ? max( 0, (int) $stock_quantity ) : null;
-    $can_manage     = is_user_logged_in() && current_user_can( 'manage_woocommerce' );
-
-    if ( 'outofstock' === $status ) {
-        return null;
-    }
-
-    $class = '';
-    $label = '';
-
     if ( $product->get_featured() ) {
-        $class = 'is-featured';
-        $label = __( 'MELHOR PREÇO!', 'chavevertical-lite' );
-    } elseif ( 'instock' === $status && 1 === $stock_quantity ) {
-        $class = 'is-low-stock';
-        $label = __( 'SÓ 1 EM STOCK', 'chavevertical-lite' );
-    } elseif ( 'instock' === $status && 2 === $stock_quantity ) {
-        $class = 'is-low-stock';
-        $label = __( 'ÚLTIMAS UNIDADES', 'chavevertical-lite' );
-    } elseif ( $product->is_on_sale() ) {
-        $class = 'is-sale';
-        $label = __( 'PROMOÇÃO', 'chavevertical-lite' );
+        return array(
+            'class' => 'is-featured',
+            'label' => __( 'MELHOR PREÇO!', 'chavevertical-lite' ),
+        );
     }
 
-    // O stock normal é mostrado na linha de disponibilidade do card.
-    // Apenas situações comerciais especiais usam badge sobre a imagem.
-    if ( $can_manage && null !== $stock_quantity ) {
-        $stock_label = sprintf( __( '%d EM STOCK', 'chavevertical-lite' ), $stock_quantity );
-
-        if ( 'is-stock' === $class ) {
-            $label = $stock_label;
-        } elseif ( 'is-low-stock' === $class && 1 === $stock_quantity ) {
-            // "SÓ 1 EM STOCK" já mostra exatamente a quantidade real.
-        } elseif ( '' === $label ) {
-            $class = 'is-stock';
-            $label = $stock_label;
-        } else {
-            $label .= ' · ' . $stock_label;
-        }
+    if ( $product->is_on_sale() ) {
+        return array(
+            'class' => 'is-sale',
+            'label' => __( 'PROMOÇÃO', 'chavevertical-lite' ),
+        );
     }
 
-    if ( '' === $label ) {
-        return null;
-    }
-
-    return array(
-        'class' => $class,
-        'label' => $label,
-    );
+    return null;
 }
 
 /**
@@ -638,12 +602,18 @@ function cvl_loop_product_stock() {
     $backorders_allowed = $product->backorders_allowed();
     $stock_quantity     = $product->managing_stock() ? $product->get_stock_quantity() : null;
     $stock_quantity     = null !== $stock_quantity ? max( 0, (int) $stock_quantity ) : null;
+    $can_manage         = is_user_logged_in() && current_user_can( 'manage_woocommerce' );
 
-    $class = 'is-instock';
-    $label = __( 'Em stock', 'chavevertical-lite' );
+    $class        = 'is-instock';
+    $label        = __( 'Em stock', 'chavevertical-lite' );
+    $contact_link = false;
 
     if ( null !== $stock_quantity && $stock_quantity > 0 ) {
-        if ( 1 === $stock_quantity ) {
+        if ( $can_manage ) {
+            $label = 1 === $stock_quantity
+                ? __( '1 unidade em stock', 'chavevertical-lite' )
+                : sprintf( __( '%d unidades em stock', 'chavevertical-lite' ), $stock_quantity );
+        } elseif ( 1 === $stock_quantity ) {
             $label = __( 'Apenas 1 unidade em stock', 'chavevertical-lite' );
         } elseif ( 2 === $stock_quantity ) {
             $label = __( 'Últimas unidades em stock', 'chavevertical-lite' );
@@ -651,15 +621,32 @@ function cvl_loop_product_stock() {
             $label = __( '3 ou mais unidades em stock', 'chavevertical-lite' );
         }
     } elseif ( 'onbackorder' === $status || $backorders_allowed ) {
-        $class = 'is-backorder';
-        $label = __( 'Disponível por encomenda a fornecedor', 'chavevertical-lite' );
+        $class        = 'is-backorder';
+        $label        = __( 'Encomenda a fornecedor', 'chavevertical-lite' );
+        $contact_link = true;
     } elseif ( 'outofstock' === $status || ( null !== $stock_quantity && 0 === $stock_quantity ) ) {
-        $class = 'is-outofstock';
-        $label = __( 'Produto sob consulta', 'chavevertical-lite' );
+        $class        = 'is-outofstock';
+        $label        = __( 'Produto sob consulta', 'chavevertical-lite' );
+        $contact_link = true;
+    }
+
+    $status_html = '<span aria-hidden="true"></span>' . esc_html( $label );
+
+    if ( $contact_link ) {
+        $sku = $product->get_sku();
+        $message = sprintf(
+            'Olá, pretendo consultar o prazo de entrega do produto %1$s%2$s. %3$s',
+            $product->get_name(),
+            $sku ? ' (Ref: ' . $sku . ')' : '',
+            $product->get_permalink()
+        );
+        $whatsapp_url = 'https://wa.me/351914580410?text=' . rawurlencode( $message );
+
+        $status_html = '<a class="cvl-product-stock-link" href="' . esc_url( $whatsapp_url ) . '" target="_blank" rel="noopener nofollow">' . $status_html . '</a>';
     }
 
     echo '<div class="cvl-product-status-row">';
-    echo '<div class="cvl-product-stock ' . esc_attr( $class ) . '"><span aria-hidden="true"></span>' . esc_html( $label ) . '</div>';
+    echo '<div class="cvl-product-stock ' . esc_attr( $class ) . '">' . wp_kses_post( $status_html ) . '</div>';
     echo '</div>';
 }
 add_action( 'woocommerce_after_shop_loop_item_title', 'cvl_loop_product_stock', 7 );
