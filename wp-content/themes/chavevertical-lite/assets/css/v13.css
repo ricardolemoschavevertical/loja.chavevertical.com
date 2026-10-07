@@ -5229,3 +5229,12 @@ html.cvl-availability-open body{
     font-size:6.4px!important;
   }
 }
+
+
+/* Single product related products — 8 cards on wide screens */
+@media(min-width:1600px){
+  body.single-product.woocommerce .cvl-product-after .related.products ul.products{
+    grid-template-columns:repeat(8,minmax(0,1fr))!important;
+    gap:14px!important;
+  }
+}
