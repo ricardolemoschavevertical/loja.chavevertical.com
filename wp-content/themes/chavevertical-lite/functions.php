@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.107' );
+define( 'CVL_VERSION', '0.16.108' );
 
 function cvl_asset_version( $relative_path = '' ) {
     $relative_path = ltrim( (string) $relative_path, '/' );
@@ -624,7 +624,8 @@ add_action( 'wp', function () {
 }, 25 );
 
 /**
- * Card de produto: disponibilidade à esquerda e avaliação à direita.
+ * Card de produto: disponibilidade comercial centrada.
+ * A avaliação deixa de ser apresentada na listagem.
  */
 function cvl_loop_product_stock() {
     global $product;
@@ -633,38 +634,32 @@ function cvl_loop_product_stock() {
         return;
     }
 
-    $status = $product->get_stock_status();
-    $class  = 'is-backorder';
-    $label  = __( 'Por encomenda', 'chavevertical-lite' );
+    $status             = $product->get_stock_status();
+    $backorders_allowed = $product->backorders_allowed();
+    $stock_quantity     = $product->managing_stock() ? $product->get_stock_quantity() : null;
+    $stock_quantity     = null !== $stock_quantity ? max( 0, (int) $stock_quantity ) : null;
 
-    if ( 'instock' === $status ) {
-        $class = 'is-instock';
-        $label = __( 'Em stock', 'chavevertical-lite' );
-    } elseif ( 'outofstock' === $status ) {
+    $class = 'is-instock';
+    $label = __( 'Em stock', 'chavevertical-lite' );
+
+    if ( null !== $stock_quantity && $stock_quantity > 0 ) {
+        if ( 1 === $stock_quantity ) {
+            $label = __( 'Apenas 1 unidade em stock', 'chavevertical-lite' );
+        } elseif ( 2 === $stock_quantity ) {
+            $label = __( 'Últimas unidades em stock', 'chavevertical-lite' );
+        } else {
+            $label = __( '3 ou mais unidades em stock', 'chavevertical-lite' );
+        }
+    } elseif ( 'onbackorder' === $status || $backorders_allowed ) {
+        $class = 'is-backorder';
+        $label = __( 'Disponível por encomenda a fornecedor', 'chavevertical-lite' );
+    } elseif ( 'outofstock' === $status || ( null !== $stock_quantity && 0 === $stock_quantity ) ) {
         $class = 'is-outofstock';
-        $label = __( 'Sob consulta', 'chavevertical-lite' );
+        $label = __( 'Produto sob consulta', 'chavevertical-lite' );
     }
-
-    $average = (float) $product->get_average_rating();
-    $count   = (int) $product->get_review_count();
-    $filled  = max( 0, min( 5, (int) round( $average ) ) );
 
     echo '<div class="cvl-product-status-row">';
     echo '<div class="cvl-product-stock ' . esc_attr( $class ) . '"><span aria-hidden="true"></span>' . esc_html( $label ) . '</div>';
-
-    if ( $count > 0 ) {
-        echo '<div class="cvl-product-card-rating" aria-label="' . esc_attr( sprintf( __( 'Avaliação média: %s em 5', 'chavevertical-lite' ), wc_format_decimal( $average, 1 ) ) ) . '">';
-        echo '<span class="cvl-product-card-stars" aria-hidden="true">';
-        for ( $i = 1; $i <= 5; $i++ ) {
-            echo $i <= $filled ? '★' : '☆';
-        }
-        echo '</span>';
-        echo '<strong>' . esc_html( wc_format_decimal( $average, 1 ) ) . '</strong>';
-        echo '</div>';
-    } else {
-        echo '<span class="cvl-product-card-no-rating">' . esc_html__( 'Sem avaliações', 'chavevertical-lite' ) . '</span>';
-    }
-
     echo '</div>';
 }
 add_action( 'woocommerce_after_shop_loop_item_title', 'cvl_loop_product_stock', 7 );
