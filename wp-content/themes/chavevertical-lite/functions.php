@@ -1,7 +1,7 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
-define( 'CVL_VERSION', '0.16.102' );
+define( 'CVL_VERSION', '0.16.103' );
 
 function cvl_asset_version( $relative_path = '' ) {
     $relative_path = ltrim( (string) $relative_path, '/' );
@@ -819,7 +819,7 @@ add_filter( 'woocommerce_loop_add_to_cart_link', function ( $html, $product ) {
         && $product->is_purchasable()
         && $product->is_in_stock();
 
-    $cart_icon = '<svg class="cvl-product-action-icon cvl-cart-button-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 3.5h2.1c.48 0 .9.33 1.02.8l.55 2.2h12.76c.75 0 1.27.74 1.02 1.45l-1.95 5.47a2.4 2.4 0 0 1-2.26 1.58H9.4a2.4 2.4 0 0 1-2.32-1.8L5.1 5.5H3a1 1 0 1 1 0-2Z"></path><circle cx="9.5" cy="19.2" r="1.55"></circle><circle cx="17.2" cy="19.2" r="1.55"></circle></svg>';
+    $cart_icon = '<svg class="cvl-product-action-icon cvl-cart-button-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 8h14l1 13H4L5 8Z"></path><path d="M9 8V6a3 3 0 0 1 6 0v2"></path></svg>';
     $view_icon = '<svg class="cvl-product-action-icon cvl-view-product-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.32 11.45C2.81 6.98 7.03 3.75 12 3.75s9.19 3.23 10.68 7.7c.12.36.12.75 0 1.1-1.49 4.48-5.71 7.7-10.68 7.7s-9.19-3.22-10.68-7.7a1.75 1.75 0 0 1 0-1.1ZM17.25 12a5.25 5.25 0 1 1-10.5 0 5.25 5.25 0 0 1 10.5 0Z"></path><circle cx="12" cy="12" r="2.45"></circle></svg>';
 
     if ( ! $can_add_directly ) {
