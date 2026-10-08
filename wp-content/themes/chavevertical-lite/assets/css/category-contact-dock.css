@@ -1,0 +1,69 @@
+/* Chave Vertical - contactos expansíveis exclusivamente em páginas de catálogo. */
+.cv-category-contact-dock,.cv-category-contact-dock *{box-sizing:border-box}
+.cv-category-contact-dock{
+  --cv-dock-tab:54px;--cv-dock-row:64px;--cv-dock-width:min(354px,calc(100vw - 16px));
+  position:fixed;z-index:100;top:50%;right:env(safe-area-inset-right,0px);
+  transform:translateY(-50%);display:flex;flex-direction:column;align-items:flex-end;
+  gap:8px;width:var(--cv-dock-tab);padding:0;margin:0;font-family:Arial,sans-serif;
+  text-align:left;pointer-events:none;
+}
+.cv-category-contact-dock .cv-dock-item{
+  --cv-dock-color:#16a34a;--cv-dock-tint:#e9f8ee;
+  position:relative;display:block;flex:none;pointer-events:auto;
+  width:var(--cv-dock-tab);height:var(--cv-dock-row);
+  padding:0;margin:0;overflow:hidden;color:var(--cv-dock-color);
+  background:#fff;border:1px solid #e5e7eb;border-left:4px solid var(--cv-dock-color);
+  border-right:0;border-radius:12px 0 0 12px;
+  box-shadow:-3px 3px 12px rgba(0,0,0,.08);
+  transition:width .20s ease,box-shadow .20s ease;
+}
+.cv-category-contact-dock .cv-dock-phone{--cv-dock-color:#d97706;--cv-dock-tint:#fff4e5}
+.cv-category-contact-dock .cv-dock-email{--cv-dock-color:#111827;--cv-dock-tint:#f1f2f4}
+.cv-category-contact-dock .cv-dock-form{--cv-dock-color:#1d4ed8;--cv-dock-tint:#edf3ff}
+.cv-category-contact-dock .cv-dock-item[open]{
+  width:var(--cv-dock-width);border-color:var(--cv-dock-color);
+  box-shadow:-5px 6px 19px rgba(0,0,0,.15);
+}
+.cv-category-contact-dock summary{
+  display:flex;align-items:center;justify-content:center;position:absolute;
+  top:0;right:0;width:calc(var(--cv-dock-tab) - 4px);height:100%;z-index:2;
+  padding:0;margin:0;border:0;background:#fff;color:inherit;
+  list-style:none;cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+.cv-category-contact-dock summary::-webkit-details-marker{display:none}
+.cv-category-contact-dock summary::marker{content:""}
+.cv-category-contact-dock summary::before,.cv-category-contact-dock summary::after{content:none!important}
+.cv-category-contact-dock .cv-dock-icon{
+  display:flex;align-items:center;justify-content:center;
+  width:34px;height:34px;flex:0 0 34px;border-radius:50%;
+  background:var(--cv-dock-tint);color:var(--cv-dock-color);
+}
+.cv-category-contact-dock .cv-dock-icon svg{display:block;width:19px;height:19px}
+.cv-category-contact-dock .cv-dock-whatsapp .cv-dock-icon svg{width:24px;height:24px}
+.cv-category-contact-dock .cv-dock-panel{
+  position:absolute;top:0;right:calc(var(--cv-dock-tab) - 4px);
+  width:calc(var(--cv-dock-width) - var(--cv-dock-tab));height:100%;
+  padding:5px 9px 5px 12px;display:flex;flex-direction:column;
+  justify-content:center;min-width:0;
+}
+.cv-category-contact-dock .cv-dock-help{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin:0 0 4px;font-size:11px;line-height:1.18;font-weight:500;color:#444}
+.cv-category-contact-dock .cv-dock-help b{font-size:10px;line-height:1.2;padding:1px 6px;border-radius:999px;background:var(--cv-dock-color);color:#fff}
+.cv-category-contact-dock .cv-dock-panel a{display:inline-block;max-width:100%;color:var(--cv-dock-color);font-size:13.5px;line-height:1.2;font-weight:800;text-decoration:none;overflow-wrap:anywhere}
+.cv-category-contact-dock .cv-dock-panel a:hover{text-decoration:underline}
+.cv-category-contact-dock .cv-dock-panel a:focus-visible,.cv-category-contact-dock summary:focus-visible{outline:3px solid var(--cv-dock-color);outline-offset:-3px;border-radius:4px}
+.cv-category-contact-dock .cv-dock-phone-links{display:flex;align-items:center;flex-wrap:wrap;gap:3px 6px}
+.cv-category-contact-dock .cv-dock-phone-links a{white-space:nowrap}
+.cv-category-contact-dock .cv-dock-phone-links>span{color:#999}
+body.cv-has-category-contact-dock .cvl-floating-contact{display:none!important}
+@media(max-width:480px){
+ .cv-category-contact-dock{--cv-dock-tab:48px;--cv-dock-row:62px;--cv-dock-width:min(346px,calc(100vw - 10px));gap:6px}
+ .cv-category-contact-dock .cv-dock-panel{padding-left:8px;padding-right:4px}
+ .cv-category-contact-dock .cv-dock-panel a{font-size:13px}
+ .cv-category-contact-dock .cv-dock-help{font-size:10px}
+}
+@media(max-height:500px){
+ .cv-category-contact-dock{--cv-dock-row:52px;top:auto;bottom:max(8px,env(safe-area-inset-bottom,0px));transform:none;gap:4px}
+ .cv-category-contact-dock .cv-dock-help{margin-bottom:2px}
+}
+@media(prefers-reduced-motion:reduce){.cv-category-contact-dock .cv-dock-item{transition:none}}
+@media print{.cv-category-contact-dock{display:none!important}}

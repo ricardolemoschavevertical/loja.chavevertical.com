@@ -47,6 +47,11 @@ if ( file_exists( $cvl_availability_request_file ) ) {
     require_once $cvl_availability_request_file;
 }
 
+$cvl_category_contact_dock_file = get_template_directory() . '/inc/category-contact-dock.php';
+if ( file_exists( $cvl_category_contact_dock_file ) ) {
+    require_once $cvl_category_contact_dock_file;
+}
+
 add_action( 'after_setup_theme', function () {
     load_theme_textdomain( 'chavevertical-lite', get_template_directory() . '/languages' );
 
