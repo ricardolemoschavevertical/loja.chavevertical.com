@@ -1,13 +1,37 @@
 <?php
 /**
- * Barra de cotação fixa à direita das categorias WooCommerce.
+ * Barra comercial de contactos: shop, categorias, produtos, marcas, promoções e melhor preço.
  * Mantenha o conteúdo alinhado com src/components/CategoryContactDock.astro.
  */
 defined( 'ABSPATH' ) || exit;
 
 function cvl_category_contact_dock_enabled() {
-    return ( function_exists( 'is_product_category' ) && is_product_category() )
-        || ( function_exists( 'is_shop' ) && is_shop() );
+    // As condicionais do WooCommerce são avaliadas apenas depois de existir a query.
+    if (
+        ( function_exists( 'is_shop' ) && is_shop() )
+        || ( function_exists( 'is_product_category' ) && is_product_category() )
+        || ( function_exists( 'is_product' ) && is_product() )
+        || ( taxonomy_exists( 'product_brand' ) && is_tax( 'product_brand' ) )
+    ) {
+        return true;
+    }
+
+    // Diretório de marcas e eventuais páginas institucionais destas campanhas.
+    if (
+        is_page( array( 'marcas', 'promocoes', 'promocoes-oportunidades', 'melhor-preco' ) )
+    ) {
+        return true;
+    }
+
+    // Estas duas vistas são geradas em /shop/?on_sale=1 e
+    // /shop/?melhor_preco=1, sem páginas WordPress dedicadas.
+    return (
+        function_exists( 'cvl_is_promotion_catalog_request' )
+        && cvl_is_promotion_catalog_request()
+    ) || (
+        function_exists( 'cvl_is_best_price_catalog_request' )
+        && cvl_is_best_price_catalog_request()
+    );
 }
 
 add_action( 'wp_enqueue_scripts', static function () {
