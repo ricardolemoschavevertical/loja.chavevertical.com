@@ -25,6 +25,8 @@
   width:var(--cv-dock-width);border-color:var(--cv-dock-color);
   box-shadow:-5px 6px 19px rgba(0,0,0,.15);
 }
+.cv-category-contact-dock .cv-dock-item[open] .cv-dock-panel{cursor:pointer}
+.cv-category-contact-dock .cv-dock-phone-links a[data-cv-dock-primary]{font-weight:900}
 .cv-category-contact-dock summary{
   display:flex;align-items:center;justify-content:center;position:absolute;
   top:0;right:0;width:calc(var(--cv-dock-tab) - 4px);height:100%;z-index:2;
@@ -61,6 +63,9 @@ body.cv-has-category-contact-dock .cvl-floating-contact{display:none!important}
  .cv-category-contact-dock .cv-dock-panel{padding-left:8px;padding-right:4px}
  .cv-category-contact-dock .cv-dock-panel a{font-size:13px}
  .cv-category-contact-dock .cv-dock-help{font-size:10px}
+ /* No telemóvel, destacar unicamente o contacto direto pedido. */
+ .cv-category-contact-dock .cv-dock-phone-links>span,
+ .cv-category-contact-dock .cv-dock-phone-links>a:not([data-cv-dock-primary]){display:none}
 }
 @media(max-height:500px){
  .cv-category-contact-dock{--cv-dock-row:52px;top:auto;bottom:max(8px,env(safe-area-inset-bottom,0px));transform:none;gap:4px}

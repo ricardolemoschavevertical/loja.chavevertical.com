@@ -143,6 +143,32 @@
       }
 
       items.forEach((item) => {
+        // Um clique no ícone após expandir (hover em desktop / primeiro toque
+        // em mobile) executa a ação. A área vazia do cartão também é clicável.
+        // Ligações secundárias, como o telefone fixo, mantêm a sua ação.
+        const summary = item.querySelector('summary');
+        const primary = item.querySelector('a[data-cv-dock-primary]');
+        const closedLabel = summary?.getAttribute('aria-label') || '';
+        const actionLabel = primary?.getAttribute('aria-label') || primary?.textContent?.trim() || '';
+        const runPrimary = () => {
+          if (primary) primary.click();
+        };
+
+        summary?.addEventListener('click', (event) => {
+          // No primeiro toque deixa o <details> abrir de forma nativa.
+          if (!item.open) return;
+          // No segundo toque ou após hover, não recolher: ativar a ação.
+          event.preventDefault();
+          runPrimary();
+        });
+
+        item.addEventListener('click', (event) => {
+          if (!item.open || !event.target || typeof event.target.closest !== 'function') return;
+          // O summary e as ligações já têm handlers próprios; evitar duplicação.
+          if (event.target.closest('summary, a, button, input, textarea, select')) return;
+          runPrimary();
+        });
+
         item.addEventListener('pointerenter', (event) => {
           if (!supportsHover.matches || event.pointerType !== 'mouse') return;
           closeOthers(item);
@@ -155,6 +181,11 @@
         });
         item.addEventListener('toggle', () => {
           if (item.open) closeOthers(item);
+          if (summary) {
+            summary.setAttribute('aria-label', item.open && actionLabel
+              ? 'Executar ação: ' + actionLabel
+              : closedLabel);
+          }
         });
         item.addEventListener('focusout', (event) => {
           if (item.contains(event.relatedTarget)) return;
