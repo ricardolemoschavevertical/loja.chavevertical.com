@@ -7,7 +7,63 @@
       const items = Array.from(dock.querySelectorAll('.cv-dock-item'));
       const supportsHover = window.matchMedia('(hover:hover) and (pointer:fine)');
       const closeOthers = (active) => {
-        items.forEach((item) => { if (item !== active) item.open = false; });
+        // A aplicação Tawk.to é carregada só quando o visitante interage com o botão.
+      // Se já existir um widget instalado (por exemplo, por plugin WooCommerce),
+      // aproveita-se essa instância: nunca são carregados dois scripts de chat.
+      const tawkItem = dock.querySelector('.cv-dock-tawk');
+      const tawkLink = dock.querySelector('[data-cv-tawk-launch]');
+      let tawkPreloadStarted = false;
+      const preloadTawk = () => {
+        if (tawkPreloadStarted) return;
+        tawkPreloadStarted = true;
+        if ((window.Tawk_API && typeof window.Tawk_API.maximize === 'function') ||
+            document.querySelector('script[src*="embed.tawk.to/"]')) return;
+
+        window.Tawk_API = window.Tawk_API || {};
+        const api = window.Tawk_API;
+        const previousOnLoad = api.onLoad;
+        api.onLoad = function (...args) {
+          try {
+            if (typeof previousOnLoad === 'function') previousOnLoad.apply(this, args);
+          } finally {
+            // Só o nosso carregamento adia o widget de origem até o utilizador abrir o chat.
+            if (typeof api.hideWidget === 'function' && !(api.isChatMaximized && api.isChatMaximized())) {
+              api.hideWidget();
+            }
+          }
+        };
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = 'https://embed.tawk.to/5fb80845a1d54c18d8ebc361/default';
+        script.setAttribute('data-cv-tawk-embed', '1');
+        document.head.appendChild(script);
+      };
+      if (tawkItem && tawkLink) {
+        tawkItem.addEventListener('pointerenter', (event) => {
+          if (event.pointerType === 'mouse') preloadTawk();
+        });
+        tawkItem.addEventListener('focusin', preloadTawk);
+        tawkItem.addEventListener('toggle', () => {
+          if (tawkItem.open) preloadTawk();
+        });
+        tawkLink.addEventListener('click', (event) => {
+          const api = window.Tawk_API;
+          if (api && typeof api.maximize === 'function') {
+            try {
+              if (typeof api.showWidget === 'function') api.showWidget();
+              api.maximize();
+              event.preventDefault();
+              closeOthers(null);
+              return;
+            } catch (_) {
+              // Se a API falhar, segue-se o URL oficial de chat direto do href.
+            }
+          }
+          // Em ligações lentas ou com scripts bloqueados, abre o chat direto numa
+          // nova aba (target=_blank), sem deixar o botão sem resposta.
+        });
+      }
+      items.forEach((item) => { if (item !== active) item.open = false; });
       };
       items.forEach((item) => {
         item.addEventListener('pointerenter', (event) => {

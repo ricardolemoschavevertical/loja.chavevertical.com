@@ -18,6 +18,7 @@
   transition:width .20s ease,box-shadow .20s ease;
 }
 .cv-category-contact-dock .cv-dock-phone{--cv-dock-color:#d97706;--cv-dock-tint:#fff4e5}
+.cv-category-contact-dock .cv-dock-tawk{--cv-dock-color:#0f766e;--cv-dock-tint:#e5f7f3}
 .cv-category-contact-dock .cv-dock-email{--cv-dock-color:#111827;--cv-dock-tint:#f1f2f4}
 .cv-category-contact-dock .cv-dock-form{--cv-dock-color:#1d4ed8;--cv-dock-tint:#edf3ff}
 .cv-category-contact-dock .cv-dock-item[open]{

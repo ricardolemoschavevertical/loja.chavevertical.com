@@ -56,6 +56,13 @@ add_action( 'wp_footer', static function () {
       <span class="cv-dock-phone-links"><a href="tel:+351234020500">234 020 500</a><span aria-hidden="true">|</span><a href="tel:+351914938100">914 938 100</a></span>
     </div>
   </details>
+  <details class="cv-dock-item cv-dock-tawk">
+    <summary aria-label="Abrir Chat Online Tawk.to"><span class="cv-dock-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4.5 4.5h15a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-8l-5 3v-3h-2a2 2 0 0 1-2-2v-10a2 2 0 0 1 2-2Z"/><path d="M7.5 10h9M7.5 13.5h6"/></svg></span></summary>
+    <div class="cv-dock-panel">
+      <span class="cv-dock-help">Podemos ajudar em direto? <b>Chat Online</b></span>
+      <a href="https://tawk.to/chat/5fb80845a1d54c18d8ebc361/default" target="_blank" rel="noopener noreferrer" data-cv-tawk-launch>Conversar pelo Tawk.to</a>
+    </div>
+  </details>
   <details class="cv-dock-item cv-dock-email">
     <summary aria-label="Abrir contacto por email"><span class="cv-dock-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><path d="M3 5h18v14H3zM3 6l9 7 9-7"/></svg></span></summary>
     <div class="cv-dock-panel">
