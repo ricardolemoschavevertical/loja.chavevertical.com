@@ -1,43 +1,118 @@
-/* Toque e teclado: <details> nativo. Desktop: expansão no hover sem bloquear cliques. */
+/**
+ * Barra lateral Chave Vertical e visibilidade do launcher nativo Tawk.to.
+ * O botão flutuante inferior do Tawk só é visível durante uma conversa ativa.
+ * A barra lateral continua disponível para iniciar/reabrir uma conversa.
+ */
 (() => {
-  const setup = () => {
+  'use strict';
+
+  if (window.__cvTawkDockRuntimeReady) return;
+  window.__cvTawkDockRuntimeReady = true;
+
+  const TAWK_EMBED = 'https://embed.tawk.to/5fb80845a1d54c18d8ebc361/default';
+  let embedRequested = false;
+  let openedFromDock = false;
+  let conversationStarted = false;
+  let conversationEnded = false;
+
+  const safeBoolean = (method) => {
+    const api = window.Tawk_API;
+    if (typeof api?.[method] !== 'function') return false;
+    try { return api[method]() === true; } catch (_) { return false; }
+  };
+
+  const conversationIsActive = () => (
+    !conversationEnded && (
+      conversationStarted ||
+      safeBoolean('isChatOngoing') ||
+      safeBoolean('isVisitorEngaged')
+    )
+  );
+
+  const syncNativeWidget = () => {
+    const api = window.Tawk_API;
+    if (!api) return;
+    // Nunca mostrar o launcher inferior a um visitante sem conversa.
+    // A janela que o cliente abriu na barra lateral continua utilizável.
+    const visible = openedFromDock || conversationIsActive();
+    const action = visible ? 'showWidget' : 'hideWidget';
+    if (typeof api[action] === 'function') {
+      try { api[action](); } catch (_) { /* widget ainda a inicializar */ }
+    }
+  };
+
+  const installTawkHooks = () => {
+    const api = window.Tawk_API = window.Tawk_API || {};
+    if (api.__cvTawkVisibilityHooks) return;
+    api.__cvTawkVisibilityHooks = true;
+
+    const hook = (eventName, onEvent) => {
+      const previous = api[eventName];
+      api[eventName] = function (...args) {
+        try {
+          if (typeof previous === 'function') previous.apply(this, args);
+        } finally {
+          onEvent(...args);
+        }
+      };
+    };
+
+    hook('onBeforeLoad', syncNativeWidget);
+    hook('onLoad', syncNativeWidget);
+    hook('onChatStarted', () => {
+      conversationStarted = true;
+      conversationEnded = false;
+      syncNativeWidget();
+    });
+    hook('onChatEnded', () => {
+      conversationStarted = false;
+      conversationEnded = true;
+      openedFromDock = false;
+      // O estado isVisitorEngaged pode demorar a atualizar-se; ocultar já.
+      syncNativeWidget();
+    });
+    hook('onChatMinimized', () => {
+      // Se ainda não iniciou uma conversa, a bolha nativa volta a desaparecer.
+      openedFromDock = false;
+      syncNativeWidget();
+    });
+    hook('onChatMaximized', syncNativeWidget);
+    syncNativeWidget();
+  };
+
+  const preloadTawk = () => {
+    installTawkHooks();
+    const api = window.Tawk_API;
+    if (typeof api.maximize === 'function' ||
+        document.querySelector('script[src*="embed.tawk.to/"]') ||
+        embedRequested) return;
+
+    embedRequested = true;
+    const script = document.createElement('script');
+    script.async = true;
+    script.src = TAWK_EMBED;
+    script.dataset.cvTawkEmbed = '1';
+    script.addEventListener('error', () => {
+      embedRequested = false;
+      script.remove();
+    });
+    document.head.appendChild(script);
+  };
+
+  const setupContactDock = () => {
+    installTawkHooks();
     document.querySelectorAll('[data-cv-category-contact-dock]').forEach((dock) => {
       if (dock.dataset.cvDockReady === '1') return;
       dock.dataset.cvDockReady = '1';
+
       const items = Array.from(dock.querySelectorAll('.cv-dock-item'));
       const supportsHover = window.matchMedia('(hover:hover) and (pointer:fine)');
       const closeOthers = (active) => {
-        // A aplicação Tawk.to é carregada só quando o visitante interage com o botão.
-      // Se já existir um widget instalado (por exemplo, por plugin WooCommerce),
-      // aproveita-se essa instância: nunca são carregados dois scripts de chat.
+        items.forEach((item) => { if (item !== active) item.open = false; });
+      };
+
       const tawkItem = dock.querySelector('.cv-dock-tawk');
       const tawkLink = dock.querySelector('[data-cv-tawk-launch]');
-      let tawkPreloadStarted = false;
-      const preloadTawk = () => {
-        if (tawkPreloadStarted) return;
-        tawkPreloadStarted = true;
-        if ((window.Tawk_API && typeof window.Tawk_API.maximize === 'function') ||
-            document.querySelector('script[src*="embed.tawk.to/"]')) return;
-
-        window.Tawk_API = window.Tawk_API || {};
-        const api = window.Tawk_API;
-        const previousOnLoad = api.onLoad;
-        api.onLoad = function (...args) {
-          try {
-            if (typeof previousOnLoad === 'function') previousOnLoad.apply(this, args);
-          } finally {
-            // Só o nosso carregamento adia o widget de origem até o utilizador abrir o chat.
-            if (typeof api.hideWidget === 'function' && !(api.isChatMaximized && api.isChatMaximized())) {
-              api.hideWidget();
-            }
-          }
-        };
-        const script = document.createElement('script');
-        script.async = true;
-        script.src = 'https://embed.tawk.to/5fb80845a1d54c18d8ebc361/default';
-        script.setAttribute('data-cv-tawk-embed', '1');
-        document.head.appendChild(script);
-      };
       if (tawkItem && tawkLink) {
         tawkItem.addEventListener('pointerenter', (event) => {
           if (event.pointerType === 'mouse') preloadTawk();
@@ -47,24 +122,26 @@
           if (tawkItem.open) preloadTawk();
         });
         tawkLink.addEventListener('click', (event) => {
+          installTawkHooks();
           const api = window.Tawk_API;
-          if (api && typeof api.maximize === 'function') {
+          if (typeof api?.maximize === 'function') {
             try {
-              if (typeof api.showWidget === 'function') api.showWidget();
+              openedFromDock = true;
+              syncNativeWidget();
               api.maximize();
               event.preventDefault();
               closeOthers(null);
               return;
             } catch (_) {
-              // Se a API falhar, segue-se o URL oficial de chat direto do href.
+              openedFromDock = false;
             }
           }
-          // Em ligações lentas ou com scripts bloqueados, abre o chat direto numa
-          // nova aba (target=_blank), sem deixar o botão sem resposta.
+          // Caso o script esteja bloqueado/ainda a carregar, o href oficial
+          // abre o chat numa nova aba. Nunca se perde o acesso ao chat.
+          preloadTawk();
         });
       }
-      items.forEach((item) => { if (item !== active) item.open = false; });
-      };
+
       items.forEach((item) => {
         item.addEventListener('pointerenter', (event) => {
           if (!supportsHover.matches || event.pointerType !== 'mouse') return;
@@ -72,7 +149,9 @@
           item.open = true;
         });
         item.addEventListener('pointerleave', (event) => {
-          if (event.pointerType === 'mouse' && !item.contains(document.activeElement)) item.open = false;
+          if (event.pointerType === 'mouse' && !item.contains(document.activeElement)) {
+            item.open = false;
+          }
         });
         item.addEventListener('toggle', () => {
           if (item.open) closeOthers(item);
@@ -80,10 +159,14 @@
         item.addEventListener('focusout', (event) => {
           if (item.contains(event.relatedTarget)) return;
           setTimeout(() => {
-            if (!item.contains(document.activeElement) && !(supportsHover.matches && item.matches(':hover'))) item.open = false;
+            if (!item.contains(document.activeElement) &&
+                !(supportsHover.matches && item.matches(':hover'))) {
+              item.open = false;
+            }
           }, 0);
         });
       });
+
       document.addEventListener('pointerdown', (event) => {
         if (!dock.contains(event.target)) closeOthers(null);
       });
@@ -95,12 +178,20 @@
         closeOthers(null);
         if (focused) {
           event.preventDefault();
-          expanded.querySelector('summary')?.focus({preventScroll:true});
+          expanded.querySelector('summary')?.focus({ preventScroll: true });
         }
       });
     });
   };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup, {once:true});
-  else setup();
-  document.addEventListener('astro:page-load', setup);
+
+  // Inicializar ANTES do embed, inclusive quando o Tawk é instalado por
+  // um plugin externo e a barra lateral não está visível nesta página.
+  installTawkHooks();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupContactDock, { once: true });
+  } else {
+    setupContactDock();
+  }
+  window.addEventListener('load', installTawkHooks, { once: true });
+  document.addEventListener('astro:page-load', setupContactDock);
 })();

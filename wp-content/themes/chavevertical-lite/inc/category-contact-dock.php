@@ -35,6 +35,18 @@ function cvl_category_contact_dock_enabled() {
 }
 
 add_action( 'wp_enqueue_scripts', static function () {
+    // Controlar a bolha inferior do Tawk em todas as páginas públicas, mesmo
+    // quando o chat é inserido por um plugin independente do tema.
+    // Carregar no <head> para registar onLoad antes do embed do Tawk.to.
+    wp_enqueue_script(
+        'cvl-category-contact-dock',
+        get_template_directory_uri() . '/assets/js/category-contact-dock.js',
+        array(),
+        cvl_asset_version( 'assets/js/category-contact-dock.js' ),
+        false
+    );
+
+    // Os cinco atalhos laterais só são renderizados nas páginas comerciais.
     if ( ! cvl_category_contact_dock_enabled() ) {
         return;
     }
@@ -44,14 +56,7 @@ add_action( 'wp_enqueue_scripts', static function () {
         array( 'cvl-main' ),
         cvl_asset_version( 'assets/css/category-contact-dock.css' )
     );
-    wp_enqueue_script(
-        'cvl-category-contact-dock',
-        get_template_directory_uri() . '/assets/js/category-contact-dock.js',
-        array(),
-        cvl_asset_version( 'assets/js/category-contact-dock.js' ),
-        true
-    );
-}, 20 );
+}, 5 );
 
 add_filter( 'body_class', static function ( $classes ) {
     if ( cvl_category_contact_dock_enabled() ) {
