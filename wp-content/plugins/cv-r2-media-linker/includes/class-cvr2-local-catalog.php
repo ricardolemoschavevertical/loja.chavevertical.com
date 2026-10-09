@@ -8,8 +8,18 @@ defined( 'ABSPATH' ) || exit;
 final class CVR2_Local_Catalog {
     public const SNAPSHOT_OPTION = 'cvr2_local_snapshot_v1';
     public const IMPORT_OPTION   = 'cvr2_local_import_v1';
+    // PAGE_SIZE remains the fallback for snapshots started by 2.5.0. Changing it
+    // mid-run would shift REST pagination and skip or duplicate products.
     private const PAGE_SIZE      = 40;
-    private const STEP_SIZE      = 12;
+    private const STEP_SIZE      = 8;
+
+    private static function rest_profiles(): array {
+        return array(
+            'safe'     => array( 'page_size' => 10, 'cooldown_ms' => 2500 ),
+            'balanced' => array( 'page_size' => 20, 'cooldown_ms' => 1250 ),
+            'fast'     => array( 'page_size' => 30, 'cooldown_ms' => 650 ),
+        );
+    }
 
     public static function init(): void {
         foreach ( array(
@@ -21,6 +31,7 @@ final class CVR2_Local_Catalog {
             'cvr2_local_pause'        => 'ajax_pause',
             'cvr2_local_delete'       => 'ajax_delete',
             'cvr2_local_report'       => 'ajax_report',
+            'cvr2_local_watchdog'     => 'ajax_watchdog',
         ) as $action => $method ) {
             add_action( 'wp_ajax_' . $action, array( __CLASS__, $method ) );
         }
@@ -254,13 +265,29 @@ final class CVR2_Local_Catalog {
         self::respond( array(
             'snapshot' => self::snapshot(),
             'import'   => self::import(),
+            'watchdog_enabled' => CVR2_Admin::watchdog_enabled(),
         ) );
+    }
+
+    public static function ajax_watchdog(): void {
+        self::guard();
+        $enabled = '1' === (string) wp_unslash( $_POST['enabled'] ?? '0' );
+        update_option( 'cvr2_watchdog_enabled', $enabled ? 'yes' : 'no', false );
+        self::respond( array( 'enabled' => $enabled ) );
     }
 
     public static function ajax_rest_start(): void {
         self::guard();
-        self::respond( self::with_lock( static function () {
-            return self::new_snapshot( 'rest' );
+        $profile = sanitize_key( (string) wp_unslash( $_POST['profile'] ?? 'safe' ) );
+        self::respond( self::with_lock( static function () use ( $profile ) {
+            $profiles = self::rest_profiles();
+            $selected = $profiles[ $profile ] ?? $profiles['safe'];
+            return self::new_snapshot( 'rest', array(
+                'profile'        => isset( $profiles[$profile] ) ? $profile : 'safe',
+                'page_size'      => (int) $selected['page_size'],
+                'cooldown_ms'    => (int) $selected['cooldown_ms'],
+                'next_request_at'=> 0.0,
+            ) );
         } ) );
     }
 
@@ -278,9 +305,19 @@ final class CVR2_Local_Catalog {
                 return new WP_Error( 'cvr2_local_source', 'Origem desconhecida.' );
             }
 
-            $page   = max( 1, (int) ( $state['page'] ?? 1 ) );
+            // Server-side pacing: multiple browser tabs cannot bypass this limit.
+            $remaining = (float) ( $state['next_request_at'] ?? 0 ) - microtime( true );
+            if ( $remaining > 0 ) {
+                $state['wait_ms'] = (int) ceil( $remaining * 1000 );
+                return $state;
+            }
+
+            $page = max( 1, (int) ( $state['page'] ?? 1 ) );
+            // Existing 2.5.0 snapshots do not carry page_size: retain their original 40
+            // so their already-written records and future pages stay aligned.
+            $page_size = max( 1, min( 40, (int) ( $state['page_size'] ?? self::PAGE_SIZE ) ) );
             $result = CVR2_REST_Client::request( 'products', array(
-                'page' => $page, 'per_page' => self::PAGE_SIZE,
+                'page' => $page, 'per_page' => $page_size,
                 'orderby' => 'id', 'order' => 'asc', 'status' => 'any',
             ), 90 );
             if ( is_wp_error( $result ) ) {
@@ -315,9 +352,13 @@ final class CVR2_Local_Catalog {
             $state['total_pages'] = max( 1, (int) $result['total_pages'] );
             $state['page']        = $page + 1;
             $state['updated_at']  = time();
+            $state['wait_ms'] = max( 500, (int) ( $state['cooldown_ms'] ?? 2500 ) );
+            $state['next_request_at'] = microtime( true ) + $state['wait_ms'] / 1000;
             if ( $page >= $state['total_pages'] || empty( $rows ) ) {
                 $state['status'] = 'ready';
                 $state['completed_at'] = time();
+                $state['wait_ms'] = 0;
+                $state['next_request_at'] = 0;
             }
             self::save_snapshot( $state );
             return $state;
@@ -363,6 +404,8 @@ final class CVR2_Local_Catalog {
                 'skipped'  => 0,
                 'failed'   => 0,
                 'total'    => (int) $snapshot['records'],
+                'next_batch_at' => 0.0,
+                'wait_ms' => 0,
                 'recent'   => array(),
                 'report_bytes' => 0,
                 'updated_at' => time(),
@@ -397,6 +440,11 @@ final class CVR2_Local_Catalog {
                 return new WP_Error( 'cvr2_local_stale', 'Execução antiga. Recuperar o estado atualizado.' );
             }
             if ( 'running' !== ( $state['status'] ?? '' ) ) {
+                return $state;
+            }
+            $remaining = (float) ( $state['next_batch_at'] ?? 0 ) - microtime( true );
+            if ( $remaining > 0 ) {
+                $state['wait_ms'] = (int) ceil( $remaining * 1000 );
                 return $state;
             }
             $snapshot = self::snapshot();
@@ -516,6 +564,16 @@ final class CVR2_Local_Catalog {
                 update_option( self::IMPORT_OPTION, $state, false );
             }
             fclose( $fp );
+            if ( 'running' === $state['status'] ) {
+                // Importing from disk still consumes Woo/DB workers: share capacity.
+                $state['wait_ms'] = 900;
+                $state['next_batch_at'] = microtime( true ) + 0.9;
+                update_option( self::IMPORT_OPTION, $state, false );
+            } else {
+                $state['wait_ms'] = 0;
+                $state['next_batch_at'] = 0.0;
+                update_option( self::IMPORT_OPTION, $state, false );
+            }
             return $state;
         } ) );
     }
