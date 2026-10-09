@@ -45,6 +45,32 @@ $locations = array(
                 <a class="cvl-contact-action is-whatsapp" href="https://wa.me/351914580410" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">💬</span><?php esc_html_e( 'WhatsApp', 'chavevertical-lite' ); ?></a>
                 <a class="cvl-contact-action is-email" href="mailto:geral@chavevertical.pt"><span aria-hidden="true">✉️</span><?php esc_html_e( 'Email geral', 'chavevertical-lite' ); ?></a>
             </div>
+            <div class="cvl-contact-hero-cards">
+<article class="cvl-contact-card is-online is-ecommerce">
+                <div class="cvl-contact-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 8H7"></path><circle cx="10" cy="20" r="1.2"></circle><circle cx="18" cy="20" r="1.2"></circle></svg></div>
+                <h3><span class="cvl-contact-card-emoji" aria-hidden="true">🛒</span><?php esc_html_e( 'Encomendas On-line', 'chavevertical-lite' ); ?></h3>
+                <p class="cvl-contact-card-name">Ricardo Lemos</p>
+                <ul class="cvl-contact-card-list">
+                    <li><span aria-hidden="true">📱</span><a href="tel:+351914580410">914 580 410</a></li>
+                    <li><span aria-hidden="true">✉️</span><a href="mailto:ricardo@chavevertical.com">ricardo@chavevertical.com</a></li>
+                </ul>
+                <div class="cvl-contact-card-actions">
+                    <a class="is-whatsapp" href="https://wa.me/351914580410" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">💬</span><?php esc_html_e( 'WhatsApp', 'chavevertical-lite' ); ?></a>
+                    <a class="is-email" href="mailto:ricardo@chavevertical.com"><span aria-hidden="true">✉️</span><?php esc_html_e( 'Email', 'chavevertical-lite' ); ?></a>
+                </div>
+            </article>
+
+<article class="cvl-contact-card is-commercial">
+                <div class="cvl-contact-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2"></path></svg></div>
+                <h3><span class="cvl-contact-card-emoji" aria-hidden="true">🤝</span><?php esc_html_e( 'Departamento Comercial', 'chavevertical-lite' ); ?></h3>
+                <p class="cvl-contact-card-name">Ricardo · José · Joana · Samuel · Andreia · Luis</p>
+                <ul class="cvl-contact-card-list">
+                    <li><span aria-hidden="true">☎️</span><a href="tel:+351234020500">234 020 500</a></li>
+                    <li><span aria-hidden="true">📱</span><a href="tel:+351914938100">914 938 100</a></li>
+                    <li><span aria-hidden="true">✉️</span><a href="mailto:geral@chavevertical.pt">geral@chavevertical.pt</a></li>
+                </ul>
+            </article>
+            </div>
         </div>
 
         <aside class="cvl-contact-form-card" aria-label="<?php esc_attr_e( 'Formulário de contacto', 'chavevertical-lite' ); ?>">
@@ -118,37 +144,11 @@ $locations = array(
 
     <section class="cvl-contact-section">
         <header class="cvl-contact-section-head">
-            <span><?php esc_html_e( 'Contacte a equipa certa', 'chavevertical-lite' ); ?></span>
+            <span><?php esc_html_e( 'Outros contactos', 'chavevertical-lite' ); ?></span>
             <h2><?php esc_html_e( 'Departamentos', 'chavevertical-lite' ); ?></h2>
         </header>
 
-        <div class="cvl-contact-grid">
-            <article class="cvl-contact-card is-online is-ecommerce">
-                <div class="cvl-contact-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 8H7"></path><circle cx="10" cy="20" r="1.2"></circle><circle cx="18" cy="20" r="1.2"></circle></svg></div>
-                <h3><span class="cvl-contact-card-emoji" aria-hidden="true">🛒</span><?php esc_html_e( 'Encomendas On-line', 'chavevertical-lite' ); ?></h3>
-                <p class="cvl-contact-card-name">Ricardo Lemos</p>
-                <ul class="cvl-contact-card-list">
-                    <li><span aria-hidden="true">📱</span><a href="tel:+351914580410">914 580 410</a></li>
-                    <li><span aria-hidden="true">✉️</span><a href="mailto:ricardo@chavevertical.com">ricardo@chavevertical.com</a></li>
-                </ul>
-                <div class="cvl-contact-card-actions">
-                    <a class="is-whatsapp" href="https://wa.me/351914580410" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">💬</span><?php esc_html_e( 'WhatsApp', 'chavevertical-lite' ); ?></a>
-                    <a class="is-email" href="mailto:ricardo@chavevertical.com"><span aria-hidden="true">✉️</span><?php esc_html_e( 'Email', 'chavevertical-lite' ); ?></a>
-                </div>
-            </article>
-
-            <article class="cvl-contact-card is-commercial">
-                <div class="cvl-contact-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2"></path></svg></div>
-                <h3><span class="cvl-contact-card-emoji" aria-hidden="true">🤝</span><?php esc_html_e( 'Departamento Comercial', 'chavevertical-lite' ); ?></h3>
-                <p class="cvl-contact-card-name">Ricardo · José · Joana · Samuel · Andreia · Luis</p>
-                <ul class="cvl-contact-card-list">
-                    <li><span aria-hidden="true">☎️</span><a href="tel:+351234020500">234 020 500</a></li>
-                    <li><span aria-hidden="true">📱</span><a href="tel:+351914938100">914 938 100</a></li>
-                    <li><span aria-hidden="true">✉️</span><a href="mailto:geral@chavevertical.pt">geral@chavevertical.pt</a></li>
-                </ul>
-            </article>
-
-            <article class="cvl-contact-card is-service">
+        <article class="cvl-contact-card is-service">
                 <div class="cvl-contact-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.6 6.4a4.5 4.5 0 0 0-5.7 5.7L3.5 17.5a2.1 2.1 0 0 0 3 3l5.4-5.4a4.5 4.5 0 0 0 5.7-5.7l-2.7 2.7-3-3 2.7-2.7Z"></path></svg></div>
                 <h3><span class="cvl-contact-card-emoji" aria-hidden="true">🛠️</span><?php esc_html_e( 'Serviço Pós-Venda', 'chavevertical-lite' ); ?></h3>
                 <p class="cvl-contact-card-name">Samuel</p>
