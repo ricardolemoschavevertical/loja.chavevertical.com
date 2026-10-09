@@ -655,15 +655,22 @@ function cvl_loop_product_meta() {
     $sku   = $product->get_sku();
     $brand = cvl_get_product_brand( $product->get_id() );
 
+    // O titulo ja foi renderizado dentro do link do produto. Fechamo-lo
+    // para que a marca tenha um link independente, sem aninhar <a>.
+    echo '</a>';
     echo '<div class="cvl-product-brand-sku-row">';
 
-    echo '<span class="cvl-product-brand"';
     if ( $brand ) {
-        echo ' aria-label="' . esc_attr( $brand['name'] ) . '"';
-    }
-    echo '>';
+        $brand_url = $brand['url'];
+        $brand_is_link = is_string( $brand_url ) && '' !== $brand_url && ! is_wp_error( $brand_url );
+        $brand_tag = $brand_is_link ? 'a' : 'span';
 
-    if ( $brand ) {
+        echo '<' . $brand_tag . ' class="cvl-product-brand" aria-label="' . esc_attr( sprintf( __( 'Ver produtos da marca %s', 'chavevertical-lite' ), $brand['name'] ) ) . '"';
+        if ( $brand_is_link ) {
+            echo ' href="' . esc_url( $brand_url ) . '"';
+        }
+        echo '>';
+
         if ( $brand['thumbnail_id'] ) {
             echo wp_kses_post(
                 wp_get_attachment_image(
@@ -680,15 +687,17 @@ function cvl_loop_product_meta() {
         } else {
             echo '<span class="cvl-product-brand-name">' . esc_html( $brand['name'] ) . '</span>';
         }
-    }
 
-    echo '</span>';
+        echo '</' . $brand_tag . '>';
+    }
 
     if ( $sku ) {
         echo '<span class="cvl-product-sku" title="' . esc_attr( $sku ) . '"><i class="cvl-product-barcode-icon" aria-hidden="true"></i><span class="cvl-product-sku-text">' . esc_html( $sku ) . '</span></span>';
     }
 
     echo '</div>';
+    // Mantem o preco e os restantes dados do cartao ligados ao produto.
+    echo '<a class="woocommerce-LoopProduct-link woocommerce-loop-product__link cvl-product-content-link" href="' . esc_url( $product->get_permalink() ) . '">';
 }
 add_action( 'woocommerce_after_shop_loop_item_title', 'cvl_loop_product_meta', 4 );
 
