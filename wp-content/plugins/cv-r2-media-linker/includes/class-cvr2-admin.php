@@ -1300,7 +1300,7 @@ final class CVR2_Admin {
                 return Boolean(
                     activeRunId
                     && activeImportMode
-                    && String(state.status || '') !== 'done'
+                    && !['done', 'paused'].includes(String(state.status || ''))
                 );
             }
 
@@ -1404,6 +1404,14 @@ final class CVR2_Admin {
                         });
                         renderState(data.state);
 
+                        if (data.paused || data.state?.status === 'paused') {
+                            running = false;
+                            manualPause = true;
+                            cancelWatchdog();
+                            writeWatchdog('Watchdog automático: importação pausada no servidor.');
+                            write(data.message || 'Importação REST pausada e checkpoint preservado.');
+                            break;
+                        }
                         if (data.busy) {
                             write(data.message || 'Outro lote desta execução ainda está a terminar.');
                             await new Promise((resolve) => window.setTimeout(resolve, 600));
@@ -1503,7 +1511,7 @@ final class CVR2_Admin {
                 cancelWatchdog();
                 setBusy(true);
                 try {
-                    const data = await call('cvr2_import_status');
+                    const data = await call('cvr2_resume_import');
                     activeRunId = String(data.state?.run_id || '');
                     activeImportMode = String(data.state?.import_mode || '');
                     renderState(data.state);
@@ -1522,15 +1530,22 @@ final class CVR2_Admin {
                 }
             });
 
-            document.querySelector('[data-cvr2-action="pause"]')?.addEventListener('click', () => {
+            document.querySelector('[data-cvr2-action="pause"]')?.addEventListener('click', async () => {
                 manualPause = true;
                 running = false;
                 cancelWatchdog();
                 stopStatusPolling();
                 setBusy(false);
-                refreshLiveStatus(true);
-                writeWatchdog('Watchdog automático: pausado manualmente.');
-                write('Importação pausada no browser. O progresso ficou guardado e pode ser retomado.');
+                try {
+                    const data = await call('cvr2_pause_import');
+                    renderState(data.state);
+                    writeWatchdog(data.pending
+                        ? 'Watchdog automático: pausa solicitada; a concluir o produto atual.'
+                        : 'Watchdog automático: importação pausada no servidor.');
+                    write(data.message || 'Importação pausada no servidor, checkpoint preservado.');
+                } catch (error) {
+                    write('Erro ao guardar a pausa no servidor: ' + (error.message || error));
+                }
             });
 
             const initialState = <?php echo wp_json_encode( $state, JSON_UNESCAPED_UNICODE ); ?>;
