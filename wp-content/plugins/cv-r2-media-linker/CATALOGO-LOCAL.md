@@ -33,6 +33,32 @@ O **Watchdog automático da importação REST antiga** está **desligado por def
 
 Não é criada uma restrição global às outras APIs WooCommerce: esta proteção limita o importador, permitindo que pedidos de encomendas, clientes, pesquisas e outras integrações continuem disponíveis. Uma redução de carga não garante que um servidor saturado nunca tenha atrasos; acompanhar os logs e os tempos de resposta num teste controlado.
 
+## Resolver a mensagem «O importador REST antigo está ativo» (2.5.2)
+
+Nas versões anteriores, o botão **Pausar** parava apenas o ciclo no browser;
+a opção WordPress `cvr2_import_state` podia continuar com o estado `running`,
+mesmo depois de se fechar o separador. Com o watchdog desligado, a
+execução não reiniciava, mas o Catálogo Local ficava bloqueado pelo estado antigo.
+
+No separador **Catálogo Local / CSV**, na área **Importador REST antigo**:
+
+1. Confirmar os produtos processados e o estado do importador antigo.
+2. Clicar em **Pausar importação REST antiga (guardar progresso)**.
+3. Se aparecer **Pausa solicitada**, ainda existe um lote em execução; esperar
+   que termine o produto atual e clicar em **Atualizar estado**. Repetir o pedido
+   de pausa caso a ligação tenha expirado e o estado continue pendente.
+4. Assim que o estado mostrar **Pausado**, iniciar **Preparar catálogo REST**.
+
+A pausa **não limpa nem reinicia** a importação antiga: preserva `run_id`,
+página REST, `batch_index`, produtos já processados e restantes contadores.
+Se mais tarde quiser retomar a importação REST antiga, aceder ao separador
+**Importação** e clicar em **Retomar**, desde que não haja preparação ou
+importação local ativa. O watchdog **não** reinicia execuções pausadas.
+
+Por segurança, um lote REST que esteja efetivamente a processar um produto
+não é interrompido a meio da gravação; só pode ser pausado no checkpoint.
+O Catálogo Local continua bloqueado até deixar de existir um pedido ativo.
+
 ## Origem B — CSV do Windows
 
 1. Carregar um ficheiro `.csv` (até 250 MB, dependente dos limites PHP).
