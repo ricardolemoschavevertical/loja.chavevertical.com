@@ -25,6 +25,7 @@ final class CVR2_Local_Catalog {
         foreach ( array(
             'cvr2_local_status'       => 'ajax_status',
             'cvr2_local_rest_start'   => 'ajax_rest_start',
+            'cvr2_local_prepare_pause'=> 'ajax_prepare_pause',
             'cvr2_local_prepare_step' => 'ajax_prepare_step',
             'cvr2_local_import_start' => 'ajax_import_start',
             'cvr2_local_import_step'  => 'ajax_import_step',
@@ -180,8 +181,8 @@ final class CVR2_Local_Catalog {
             return new WP_Error( 'cvr2_local_running', 'Há uma importação local em curso; interromper antes de preparar outro catálogo.' );
         }
         $old = self::snapshot();
-        if ( 'building' === ( $old['status'] ?? '' ) ) {
-            return new WP_Error( 'cvr2_local_building', 'Já existe um catálogo em preparação. Retomar ou eliminar antes de começar outro.' );
+        if ( in_array( (string) ( $old['status'] ?? '' ), array( 'building', 'paused_building' ), true ) ) {
+            return new WP_Error( 'cvr2_local_building', 'Já existe um catálogo em preparação/pausa. Retomar ou eliminar antes de começar outro.' );
         }
         $legacy = (array) get_option( CVR2_STATE_OPTION, array() );
         if ( 'running' === ( $legacy['status'] ?? '' ) ) {
@@ -291,10 +292,29 @@ final class CVR2_Local_Catalog {
         } ) );
     }
 
+    public static function ajax_prepare_pause(): void {
+        self::guard();
+        // The pause flag can be set while a REST request is still in progress.
+        // The worker rereads it before saving its next checkpoint.
+        $state = self::snapshot();
+        if ( 'rest' !== ( $state['source'] ?? '' ) ||
+             ! in_array( (string) ( $state['status'] ?? '' ), array( 'building', 'paused_building' ), true ) ) {
+            self::respond( new WP_Error( 'cvr2_local_no_active_rest', 'Não existe uma preparação REST ativa para pausar/retomar.' ) );
+        }
+        $pause = '1' === (string) wp_unslash( $_POST['pause'] ?? '1' );
+        $state['status'] = $pause ? 'paused_building' : 'building';
+        $state['updated_at'] = time();
+        self::save_snapshot( $state );
+        self::respond( $state );
+    }
+
     public static function ajax_prepare_step(): void {
         self::guard();
         self::respond( self::with_lock( static function () {
             $state = self::snapshot();
+            if ( 'paused_building' === ( $state['status'] ?? '' ) ) {
+                return $state; // Do not call Woo REST while paused.
+            }
             if ( 'building' !== ( $state['status'] ?? '' ) ) {
                 return new WP_Error( 'cvr2_local_not_building', 'Não há catálogo em preparação.' );
             }
@@ -359,6 +379,11 @@ final class CVR2_Local_Catalog {
                 $state['completed_at'] = time();
                 $state['wait_ms'] = 0;
                 $state['next_request_at'] = 0;
+            } else {
+                $latest_state = self::snapshot();
+                if ( 'paused_building' === ( $latest_state['status'] ?? '' ) ) {
+                    $state['status'] = 'paused_building';
+                }
             }
             self::save_snapshot( $state );
             return $state;
