@@ -96,7 +96,7 @@ final class CVR2_Admin {
         update_option( 'cvr2_structure_synced_at', time(), false );
 
         $message = sprintf(
-            'Estrutura sincronizada: %d categorias, %d etiquetas, %d marcas e %d atributos.',
+            'Estrutura verificada: %d categorias existentes correspondentes (nenhuma criada), %d etiquetas, %d marcas e %d atributos.',
             (int) $result['categories'],
             (int) $result['tags'],
             (int) $result['brands'],
@@ -791,7 +791,7 @@ final class CVR2_Admin {
                     </div>
                     <div class="cvr2-actions">
                         <button class="button" type="button" data-cvr2-action="test">1. Testar REST</button>
-                        <button class="button" type="button" data-cvr2-action="structure">2. Sincronizar estrutura</button>
+                        <button class="button" type="button" data-cvr2-action="structure">2. Preparar termos e atributos (opcional)</button>
                         <button class="button button-primary" type="button" data-cvr2-action="start">3. Iniciar / recomeçar importação</button>
                         <button class="button" type="button" data-cvr2-action="resume">Retomar</button>
                         <button class="button" type="button" data-cvr2-action="pause">Pausar</button>
@@ -1199,7 +1199,7 @@ final class CVR2_Admin {
 
             document.querySelector('[data-cvr2-action="structure"]')?.addEventListener('click', async () => {
                 setBusy(true);
-                write('A sincronizar categorias, etiquetas, marcas e atributos…');
+                write('A verificar categorias existentes e preparar etiquetas, marcas e atributos…');
                 try { const data = await call('cvr2_sync_structure'); write(data.message); }
                 catch (error) { write(error.message || error); }
                 finally { setBusy(false); }
