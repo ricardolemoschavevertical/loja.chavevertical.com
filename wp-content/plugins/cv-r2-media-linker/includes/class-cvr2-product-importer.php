@@ -184,9 +184,18 @@ final class CVR2_Product_Importer {
 
         $slug = sanitize_title( (string) ( $item['slug'] ?? '' ) );
         if ( '' !== $slug ) {
-            $term = get_term_by( 'slug', $slug, 'product_cat' );
-            if ( $term instanceof WP_Term ) {
-                return (int) $term->term_id;
+            $matches = get_terms(
+                array(
+                    'taxonomy'   => 'product_cat',
+                    'hide_empty' => false,
+                    'slug'       => $slug,
+                    'number'     => 2,
+                    'fields'     => 'ids',
+                )
+            );
+            // Do not guess when two branches contain the same category slug.
+            if ( ! is_wp_error( $matches ) && 1 === count( $matches ) ) {
+                return absint( $matches[0] );
             }
         }
 
