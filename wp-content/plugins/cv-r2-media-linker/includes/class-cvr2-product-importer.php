@@ -428,7 +428,10 @@ final class CVR2_Product_Importer {
         self::apply_attributes( $product, (array) ( $source['attributes'] ?? array() ) );
         self::apply_default_attributes( $product, (array) ( $source['default_attributes'] ?? array() ) );
         if ( ! $defer_images ) {
-            self::apply_images( $product, (array) ( $source['images'] ?? array() ) );
+            $image_result = self::apply_images( $product, (array) ( $source['images'] ?? array() ) );
+            if ( is_wp_error( $image_result ) ) {
+                return $image_result;
+            }
         } // If deferred, retain the current product image and gallery unchanged.
 
         self::$writing_source_slug = true;
@@ -489,7 +492,10 @@ final class CVR2_Product_Importer {
                 // Read all required variation data except image bytes/URLs.
                 $variation_query['_fields'] = 'id,sku,status,global_unique_id,regular_price,sale_price,manage_stock,stock_quantity,stock_status,backorders,weight,dimensions,menu_order,attributes,meta_data';
             }
-            $variations = CVR2_REST_Client::all_pages( 'products/' . $source_id . '/variations', $variation_query );
+            // Snapshot import: child variations were already downloaded to the local file.
+            $variations = array_key_exists( '__cvr2_variations', $source )
+                ? (array) $source['__cvr2_variations']
+                : CVR2_REST_Client::all_pages( 'products/' . $source_id . '/variations', $variation_query );
             if ( is_wp_error( $variations ) ) {
                 update_post_meta( $target_id, '_cvr2_variation_import_error', $variations->get_error_message() );
             } else {
@@ -524,10 +530,16 @@ final class CVR2_Product_Importer {
         }
 
         $source_images          = (array) ( $source['images'] ?? array() );
-        $product_images_changed = ! self::product_images_match_source( $product, $source_images );
+        // When importing from a local snapshot, empty image references must not
+        // delete an existing featured image or gallery.
+        $product_images_changed = ! empty( $source_images )
+            && ! self::product_images_match_source( $product, $source_images );
 
         if ( $product_images_changed ) {
-            self::apply_images( $product, $source_images );
+            $image_result = self::apply_images( $product, $source_images );
+            if ( is_wp_error( $image_result ) ) {
+                return $image_result;
+            }
             $saved_id = $product->save();
 
             if ( ! $saved_id ) {
@@ -538,25 +550,41 @@ final class CVR2_Product_Importer {
         $variation_images_updated = 0;
         $variation_images_checked = 0;
 
-        if ( $product instanceof WC_Product_Variable && $source_id ) {
-            $variations = CVR2_REST_Client::all_pages(
-                'products/' . $source_id . '/variations',
-                array(
-                    'status'  => 'any',
-                    '_fields' => 'id,sku,image',
-                )
-            );
+        if ( $product instanceof WC_Product_Variable && ( $source_id || array_key_exists( '__cvr2_variations', $source ) ) ) {
+            $variations = array_key_exists( '__cvr2_variations', $source )
+                ? (array) $source['__cvr2_variations']
+                : CVR2_REST_Client::all_pages(
+                    'products/' . $source_id . '/variations',
+                    array(
+                        'status'  => 'any',
+                        '_fields' => 'id,sku,image',
+                    )
+                );
 
-            if ( ! is_wp_error( $variations ) ) {
-                foreach ( $variations as $variation_source ) {
-                    $variation_result = self::update_variation_image_only( (array) $variation_source );
-                    if ( 'updated' === $variation_result ) {
-                        $variation_images_updated++;
-                    }
-                    if ( in_array( $variation_result, array( 'updated', 'unchanged' ), true ) ) {
-                        $variation_images_checked++;
-                    }
+            if ( is_wp_error( $variations ) ) {
+                return $variations;
+            }
+            $variation_errors = array();
+            foreach ( $variations as $variation_source ) {
+                $variation_source = (array) $variation_source;
+                $variation_result = self::update_variation_image_only( $variation_source );
+                if ( 'updated' === $variation_result ) {
+                    $variation_images_updated++;
                 }
+                if ( in_array( $variation_result, array( 'updated', 'unchanged' ), true ) ) {
+                    $variation_images_checked++;
+                }
+                if ( 'error' === $variation_result ||
+                     ( 'missing' === $variation_result && ! empty( $variation_source['image'] ) ) ) {
+                    $variation_errors[] = (string) ( $variation_source['sku'] ?? $variation_source['id'] ?? '?' );
+                }
+            }
+            if ( $variation_errors ) {
+                return new WP_Error(
+                    'cvr2_variation_image_errors',
+                    'Falha na imagem das variações: ' . implode( ', ', array_slice( $variation_errors, 0, 10 ) ) .
+                        '. As imagens já associadas foram mantidas quando possível.'
+                );
             }
         }
 
@@ -672,7 +700,8 @@ final class CVR2_Product_Importer {
             return 'unchanged';
         }
 
-        if ( empty( $image ) && ! $current_image_id ) {
+        // Do not erase an existing variation image when the source reference is blank.
+        if ( empty( $image ) ) {
             return 'unchanged';
         }
 
@@ -1061,19 +1090,23 @@ final class CVR2_Product_Importer {
         $product->set_default_attributes( $out );
     }
 
-    private static function apply_images( WC_Product $product, array $images ): void {
+    private static function apply_images( WC_Product $product, array $images ) {
         $ids = array();
-
         foreach ( $images as $image ) {
             $id = CVR2_Media::attachment_for_source_image( (array) $image );
-            if ( ! is_wp_error( $id ) && $id ) {
-                $ids[] = absint( $id );
+            if ( is_wp_error( $id ) ) {
+                return $id;
             }
+            if ( ! $id ) {
+                return new WP_Error( 'cvr2_image_unresolved', 'Não foi possível associar uma imagem. Galeria mantida sem alterações.' );
+            }
+            $ids[] = absint( $id );
         }
-
+        // Only set image and gallery after ALL references were resolved.
         $ids = array_values( array_unique( array_filter( $ids ) ) );
         $product->set_image_id( $ids ? array_shift( $ids ) : 0 );
         $product->set_gallery_image_ids( $ids );
+        return true;
     }
 
     private static function apply_brand_terms( int $product_id, array $brands, bool $defer_images = false ): void {
