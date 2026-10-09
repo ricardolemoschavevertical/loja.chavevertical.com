@@ -17,6 +17,22 @@ URL de administração:
 5. Verificar resultados e eventuais linhas rejeitadas.
 6. **Associar imagens mais tarde**. O plugin consulta as referências já guardadas no ficheiro, reutiliza anexos R2 existentes ou regista-os com o mecanismo do `cv-r2-media-linker`. Não reimporta preços, descrições nem categorias.
 
+## Proteção das APIs e controlo do watchdog (2.5.1)
+
+Se outras integrações REST ficarem lentas quando se inicia a preparação do catálogo, utilizar **Proteção elevada**, selecionada por defeito. A preparação tem três ritmos:
+
+- **Proteção elevada:** 10 produtos por página REST, com intervalo mínimo de 2,5 segundos entre páginas.
+- **Equilibrado:** 20 produtos por página, com intervalo mínimo de 1,25 segundos.
+- **Mais rápido:** 30 produtos por página, com intervalo mínimo de 0,65 segundos.
+
+O intervalo entre páginas é imposto também no servidor, pelo que reabrir o browser ou outro separador não permite saturar a REST API. Para catálogos iniciados anteriormente, é preservado o tamanho das páginas antigas (40), para impedir que a retoma salte produtos, mas aplica-se o intervalo de segurança.
+
+O botão **Pausar preparação** interrompe a preparação REST no servidor e mantém o checkpoint. **Retomar operação** continua a mesma página, sem recomeçar o catálogo. A fase de importação do ficheiro também intercala pausas curtas para partilhar os recursos da base de dados.
+
+O **Watchdog automático da importação REST antiga** está **desligado por defeito**. O interruptor aparece tanto no separador **Importação** como em **Catálogo Local / CSV** e a escolha é guardada no WordPress para todos os browsers. Quando está desligado, os erros não disparam uma retoma automática: o utilizador deve clicar em **Retomar**. Desligar o watchdog não cancela uma importação que já está em curso; para isso utilizar **Pausar**.
+
+Não é criada uma restrição global às outras APIs WooCommerce: esta proteção limita o importador, permitindo que pedidos de encomendas, clientes, pesquisas e outras integrações continuem disponíveis. Uma redução de carga não garante que um servidor saturado nunca tenha atrasos; acompanhar os logs e os tempos de resposta num teste controlado.
+
 ## Origem B — CSV do Windows
 
 1. Carregar um ficheiro `.csv` (até 250 MB, dependente dos limites PHP).
