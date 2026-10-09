@@ -596,3 +596,64 @@
   .cvl-contact-page .cvl-contact-form-card{padding:16px}
   .cvl-contact-page .cvl-contact-form textarea{min-height:96px}
 }
+
+/* Contactos: departamentos principais ao lado do formulario, restantes uniformes. */
+.cvl-contact-page .cvl-contact-hero{
+  grid-template-columns:minmax(0,1fr) minmax(370px,440px);
+  align-items:start;
+}
+.cvl-contact-page .cvl-contact-hero-cards{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+  margin-top:20px;
+}
+.cvl-contact-page .cvl-contact-hero-cards .cvl-contact-card{
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  height:100%;
+  padding:16px;
+  border-radius:13px;
+}
+.cvl-contact-page .cvl-contact-hero-cards .cvl-contact-card-icon{
+  width:38px;
+  height:38px;
+  margin-bottom:10px;
+  border-radius:10px;
+}
+.cvl-contact-page .cvl-contact-hero-cards .cvl-contact-card h3{
+  font-size:14px;
+  line-height:1.3;
+}
+.cvl-contact-page .cvl-contact-hero-cards .cvl-contact-card-name{
+  font-size:11px;
+  overflow-wrap:anywhere;
+}
+.cvl-contact-page .cvl-contact-hero-cards .cvl-contact-card-list a{overflow-wrap:anywhere}
+.cvl-contact-page .cvl-contact-hero-cards .cvl-contact-card-actions{margin-top:auto;padding-top:14px}
+.cvl-contact-page .cvl-contact-grid{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  align-items:stretch;
+  gap:16px;
+}
+.cvl-contact-page .cvl-contact-grid .cvl-contact-card{
+  display:flex;
+  flex-direction:column;
+  width:100%;
+  height:100%;
+  min-height:225px;
+}
+.cvl-contact-page .cvl-contact-grid .cvl-contact-card-list{margin-top:2px}
+@media(max-width:1199.98px){
+  .cvl-contact-page .cvl-contact-hero-cards{grid-template-columns:1fr}
+}
+@media(max-width:991.98px){
+  .cvl-contact-page .cvl-contact-hero{grid-template-columns:1fr}
+  .cvl-contact-page .cvl-contact-hero-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:639.98px){
+  .cvl-contact-page .cvl-contact-hero-cards{grid-template-columns:1fr;gap:12px;margin-top:16px}
+  .cvl-contact-page .cvl-contact-grid{grid-template-columns:1fr}
+  .cvl-contact-page .cvl-contact-grid .cvl-contact-card{min-height:0}
+}
