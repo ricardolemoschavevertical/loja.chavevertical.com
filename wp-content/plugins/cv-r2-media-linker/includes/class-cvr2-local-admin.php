@@ -55,6 +55,12 @@ final class CVR2_Local_Admin {
             </section>
         </div>
         <div class="cvr2-card" style="margin-top:16px">
+            <h3>Importador REST antigo — desbloquear sem perder progresso</h3>
+            <p id="cvr2-local-legacy-info">A consultar o estado do importador antigo…</p>
+            <button class="button" type="button" id="cvr2-local-pause-legacy">Pausar importação REST antiga (guardar progresso)</button>
+            <p class="description">O estado «Em execução» pode ter ficado guardado mesmo que o separador anterior tenha sido fechado.
+            Este botão pausa no servidor e mantém a página, o lote e os produtos já importados. Se existir um pedido ainda em curso,
+            a pausa é aplicada quando esse produto terminar. Não limpa nem reinicia a importação.</p>
             <h3>Proteção das restantes APIs</h3>
             <label for="cvr2-local-watchdog">
                 <input id="cvr2-local-watchdog" type="checkbox" <?php checked( CVR2_Admin::watchdog_enabled() ); ?>>
@@ -108,6 +114,23 @@ final class CVR2_Local_Admin {
             }
             const format = (v) => Number(v || 0).toLocaleString('pt-PT');
             const normalized = (x) => String(x).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+            function displayLegacy(legacy = {}) {
+                const box = byId('cvr2-local-legacy-info');
+                if (!box) return;
+                const statuses = {
+                    running:'Em execução (ou checkpoint antigo pendente)',
+                    paused:'Pausado, pode preparar o Catálogo Local',
+                    error:'Interrompido com erro',
+                    done:'Concluído',
+                    none:'Sem execução guardada'
+                };
+                let message = 'Estado: ' + (statuses[legacy.status] || legacy.status || 'Desconhecido') +
+                    ' | Produtos processados: ' + format(legacy.processed) +
+                    (legacy.total ? ' / ' + format(legacy.total) : '');
+                if (legacy.in_flight) message += ' | Lote ainda em processamento';
+                if (legacy.pause_pending) message += ' | Pausa solicitada; a aguardar fim do produto atual';
+                box.textContent = message;
+            }
             function display(snap, imp) {
                 snapshot = snap || {};
                 current = imp || {};
@@ -135,6 +158,7 @@ final class CVR2_Local_Admin {
             async function refresh() {
                 const state = await call('cvr2_local_status');
                 display(state.snapshot, state.import);
+                displayLegacy(state.legacy);
                 if (watchdogOption && typeof state.watchdog_enabled === 'boolean') {
                     watchdogOption.checked = state.watchdog_enabled;
                 }
@@ -203,6 +227,23 @@ final class CVR2_Local_Admin {
                     write('Falha ao guardar a opção do watchdog: ' + error.message);
                 } finally {
                     watchdogOption.disabled = false;
+                }
+            });
+            bind('cvr2-local-pause-legacy', async () => {
+                if (!confirm('Pausar o importador REST antigo no servidor, mantendo o checkpoint para retomar mais tarde?')) return;
+                const button = byId('cvr2-local-pause-legacy');
+                button.disabled = true;
+                try {
+                    const result = await call('cvr2_local_pause_legacy');
+                    write(result.message || 'Pedido de pausa enviado.');
+                    await refresh();
+                    if (result.pending) {
+                        write('Existe um lote REST a concluir um produto. Aguarda e volta a clicar em «Atualizar estado»; só inicia o catálogo quando constar «Pausado».');
+                    }
+                } catch (error) {
+                    write('Não foi possível pausar o importador antigo: ' + error.message);
+                } finally {
+                    button.disabled = false;
                 }
             });
             bind('cvr2-local-products', () => launch(async () => {
