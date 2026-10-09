@@ -41,6 +41,7 @@ As URLs de imagens do CSV devem estar no domínio de origem ou no domínio R2 p�
 - É obrigatório que o PHP-FPM tenha permissão de escrita. Não guardar ficheiros em `wp-content/uploads`, nem usar URLs públicas.
 - Pedidos administrativos AJAX exigem nonce WordPress e permissões `manage_woocommerce` + `edit_products`; operações são serializadas com `flock`.
 - Checkpoints em options persistem depois de cada página preparada ou produto gravado. Reexecução idempotente procura produtos por identidade SKU/ID de origem/slug, conforme o modo.
+- Relatório CSV completo por fase, descarregado pelo botão de administração com nonce. O relatório inclui SKU, ID de origem, resultado e mensagem de cada produto; fica fora do document root. O relatório da fase anterior é substituído quando se inicia outra fase — descarregar antes, se necessário.
 - O botão **Eliminar ficheiro local e estado** elimina o JSONL selecionado e o CSV atualmente carregado; **não elimina produtos WooCommerce**.
 
 ## Testes de aceitação antes de importar o catálogo completo
