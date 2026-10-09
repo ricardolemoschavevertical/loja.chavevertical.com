@@ -148,7 +148,8 @@ $locations = array(
             <h2><?php esc_html_e( 'Departamentos', 'chavevertical-lite' ); ?></h2>
         </header>
 
-        <article class="cvl-contact-card is-service">
+        <div class="cvl-contact-grid">
+            <article class="cvl-contact-card is-service">
                 <div class="cvl-contact-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.6 6.4a4.5 4.5 0 0 0-5.7 5.7L3.5 17.5a2.1 2.1 0 0 0 3 3l5.4-5.4a4.5 4.5 0 0 0 5.7-5.7l-2.7 2.7-3-3 2.7-2.7Z"></path></svg></div>
                 <h3><span class="cvl-contact-card-emoji" aria-hidden="true">🛠️</span><?php esc_html_e( 'Serviço Pós-Venda', 'chavevertical-lite' ); ?></h3>
                 <p class="cvl-contact-card-name">Samuel</p>
