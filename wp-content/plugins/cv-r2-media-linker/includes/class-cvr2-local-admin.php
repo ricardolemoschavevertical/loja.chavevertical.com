@@ -53,6 +53,7 @@ final class CVR2_Local_Admin {
                 <button class="button" id="cvr2-local-resume">Retomar operação</button>
                 <button class="button" id="cvr2-local-pause">Pausar / continuar importação</button>
                 <button class="button" id="cvr2-local-refresh">Atualizar estado</button>
+                <button class="button" id="cvr2-local-report">Descarregar relatório CSV completo</button>
                 <button class="button button-link-delete" id="cvr2-local-delete">Eliminar ficheiro local e estado</button>
             </div>
             <p id="cvr2-local-snapshot-info">Sem catálogo preparado.</p>
@@ -241,6 +242,16 @@ final class CVR2_Local_Admin {
                 if (data.import.status === 'running') return importLoop();
                 write('Não há operação por retomar.');
             }));
+            bind('cvr2-local-report', () => {
+                const form = document.createElement('form');
+                form.method = 'POST'; form.action = ajaxurl; form.target = '_blank';
+                for (const [key,value] of Object.entries({action:'cvr2_local_report', nonce})) {
+                    const field = document.createElement('input');
+                    field.type = 'hidden'; field.name = key; field.value = String(value);
+                    form.appendChild(field);
+                }
+                document.body.appendChild(form); form.submit(); form.remove();
+            });
             bind('cvr2-local-delete', () => launch(async () => {
                 if (!confirm('Eliminar o catálogo privado e os estados guardados? Esta operação não elimina produtos WooCommerce.')) return;
                 await call('cvr2_local_delete');
