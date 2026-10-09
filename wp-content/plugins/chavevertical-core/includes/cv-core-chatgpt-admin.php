@@ -24,6 +24,18 @@ add_action( 'admin_bar_menu', static function ( WP_Admin_Bar $bar ): void {
         'title'  => 'Copiar link da pagina',
         'href'   => '#',
     ) );
+    $bar->add_node( array(
+        'id'     => 'cv-chatgpt-screenshot',
+        'parent' => 'cv-chatgpt-page',
+        'title'  => 'Copiar screenshot (separador atual)',
+        'href'   => '#',
+    ) );
+    $bar->add_node( array(
+        'id'     => 'cv-chatgpt-screenshot-save',
+        'parent' => 'cv-chatgpt-page',
+        'title'  => 'Guardar screenshot PNG',
+        'href'   => '#',
+    ) );
 }, 100 );
 
 add_action( 'admin_footer', 'cv_core_chatgpt_toolbar_script' );
@@ -52,6 +64,8 @@ function cv_core_chatgpt_toolbar_script(): void {
         const pageUrl = <?php echo wp_json_encode( esc_url_raw( $url ) ); ?>;
         const openLink = document.querySelector('#wp-admin-bar-cv-chatgpt-page > a');
         const copyLink = document.querySelector('#wp-admin-bar-cv-chatgpt-copy > a');
+        const screenshotLink = document.querySelector('#wp-admin-bar-cv-chatgpt-screenshot > a');
+        const screenshotSaveLink = document.querySelector('#wp-admin-bar-cv-chatgpt-screenshot-save > a');
         if (!openLink) return;
         const copy = async () => {
             try {
@@ -67,6 +81,68 @@ function cv_core_chatgpt_toolbar_script(): void {
                 input.remove();
             }
         };
+        // O browser exige que o utilizador escolha e autorize o separador a capturar.
+        // Nunca se envia a imagem para servidores: e copiada ou guardada localmente.
+        const captureScreenshot = async (download) => {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+                window.alert('Este browser nao suporta capturas de ecrã nesta pagina.');
+                return;
+            }
+            let stream;
+            try {
+                stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { displaySurface: 'browser' },
+                    audio: false,
+                    preferCurrentTab: true,
+                    selfBrowserSurface: 'include'
+                });
+                const video = document.createElement('video');
+                video.muted = true;
+                video.playsInline = true;
+                video.srcObject = stream;
+                await video.play();
+                if (!video.videoWidth) {
+                    await new Promise((resolve) => {
+                        video.addEventListener('loadedmetadata', resolve, { once: true });
+                    });
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                if (!blob) throw new Error('Falha ao criar a imagem PNG');
+                if (download) {
+                    const anchor = document.createElement('a');
+                    const objectUrl = URL.createObjectURL(blob);
+                    anchor.href = objectUrl;
+                    anchor.download = 'cv-screenshot-' + Date.now() + '.png';
+                    document.body.appendChild(anchor);
+                    anchor.click();
+                    anchor.remove();
+                    setTimeout(() => URL.revokeObjectURL(objectUrl), 5000);
+                } else {
+                    if (!navigator.clipboard || !window.ClipboardItem) {
+                        throw new Error('Copia de imagens nao suportada. Utilize Guardar screenshot PNG.');
+                    }
+                    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                    window.alert('Screenshot copiado. Cole no ChatGPT com Ctrl+V.');
+                }
+            } catch (error) {
+                if (error && (error.name === 'NotAllowedError' || error.name === 'AbortError')) return;
+                window.alert('Nao foi possivel capturar o ecrã: ' + (error && error.message ? error.message : 'erro desconhecido'));
+            } finally {
+                if (stream) stream.getTracks().forEach(track => track.stop());
+            }
+        };
+        if (screenshotLink) screenshotLink.addEventListener('click', event => {
+            event.preventDefault();
+            void captureScreenshot(false);
+        });
+        if (screenshotSaveLink) screenshotSaveLink.addEventListener('click', event => {
+            event.preventDefault();
+            void captureScreenshot(true);
+        });
         openLink.href = 'https://chatgpt.com/?q=' + encodeURIComponent('Analisa esta página: ' + pageUrl);
         openLink.addEventListener('click', () => { void copy(); });
         if (copyLink) {
