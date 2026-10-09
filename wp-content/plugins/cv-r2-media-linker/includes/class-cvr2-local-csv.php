@@ -89,8 +89,7 @@ final class CVR2_Local_CSV {
                 $preview[] = array_slice( array_map( 'sanitize_text_field', $row ), 0, 20 );
             }
         }
-        $header_end = ftell( $fp );
-        // ftell after preview cannot be used as beginning of data: rewind and read only header.
+        // Rewind: retain only the offset after the first header record.
         rewind( $fp );
         fgetcsv( $fp, 0, $best, '"', '' );
         $data_start = ftell( $fp );
@@ -233,6 +232,25 @@ final class CVR2_Local_CSV {
         }
         CVR2_Local_Catalog::save_snapshot( $state );
         return $state;
+    }
+
+    /**
+     * User-supplied CSV image URLs must point to the configured source or R2 origin.
+     * This prevents the existing media fallback from downloading an arbitrary intranet URL.
+     */
+    public static function validate_images( array $row ) {
+        $origins = array( CVR2_REST_Client::source_url(), CVR2_REST_Client::r2_base_url() );
+        $hosts = array_filter( array_map( static fn( $u ) => strtolower( (string) wp_parse_url( $u, PHP_URL_HOST ) ), $origins ) );
+        foreach ( (array) ( $row['images'] ?? array() ) as $item ) {
+            $src = (string) ( $item['src'] ?? '' );
+            $parts = wp_parse_url( $src );
+            if ( ! is_array( $parts ) || 'https' !== strtolower( (string) ( $parts['scheme'] ?? '' ) )
+                 || ! in_array( strtolower( (string) ( $parts['host'] ?? '' ) ), $hosts, true )
+                 || isset( $parts['user'] ) || isset( $parts['pass'] ) ) {
+                return new WP_Error( 'cvr2_csv_unsafe_image', 'Imagem CSV fora da origem HTTPS autorizada: ' . esc_url_raw( $src ) );
+            }
+        }
+        return true;
     }
 
     private static function category_id( string $raw ) {
