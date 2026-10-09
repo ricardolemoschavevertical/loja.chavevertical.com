@@ -40,7 +40,15 @@ final class CVR2_Product_Importer {
         if ( is_wp_error( $categories ) ) {
             $result['warnings'][] = 'Categorias: ' . $categories->get_error_message();
         } else {
+            // As categorias já têm de existir; esta verificação não cria nem altera categorias.
             $result['categories'] = self::sync_hierarchical_terms( 'product_cat', $categories );
+            $unmatched = max( 0, count( $categories ) - $result['categories'] );
+            if ( $unmatched ) {
+                $result['warnings'][] = sprintf(
+                    '%d categoria(s) da origem sem correspondência de slug/ID no destino. Nenhuma categoria foi criada.',
+                    $unmatched
+                );
+            }
         }
 
         $tags = CVR2_REST_Client::all_pages( 'products/tags', array( 'hide_empty' => 'false' ) );
@@ -164,7 +172,42 @@ final class CVR2_Product_Importer {
         return is_wp_error( $terms ) || ! $terms ? 0 : absint( $terms[0] );
     }
 
-    private static function ensure_term( string $taxonomy, array $item, ?int $parent = null ): int {
+    /** Resolve categories only in the destination: never create or alter product_cat. */
+    private static function existing_category_id( array $item ): int {
+        $source_id = absint( $item['id'] ?? 0 );
+        if ( $source_id ) {
+            $mapped_id = self::find_term_by_source_id( 'product_cat', $source_id );
+            if ( $mapped_id && get_term( $mapped_id, 'product_cat' ) instanceof WP_Term ) {
+                return $mapped_id;
+            }
+        }
+
+        $slug = sanitize_title( (string) ( $item['slug'] ?? '' ) );
+        if ( '' !== $slug ) {
+            $matches = get_terms(
+                array(
+                    'taxonomy'   => 'product_cat',
+                    'hide_empty' => false,
+                    'slug'       => $slug,
+                    'number'     => 2,
+                    'fields'     => 'ids',
+                )
+            );
+            // Do not guess when two branches contain the same category slug.
+            if ( ! is_wp_error( $matches ) && 1 === count( $matches ) ) {
+                return absint( $matches[0] );
+            }
+        }
+
+        // No automatic name-only mapping: duplicate names across branches are unsafe.
+        return 0;
+    }
+
+    private static function ensure_term( string $taxonomy, array $item, ?int $parent = null, bool $include_image = true ): int {
+        if ( 'product_cat' === $taxonomy ) {
+            return self::existing_category_id( $item );
+        }
+
         if ( ! taxonomy_exists( $taxonomy ) ) {
             return 0;
         }
@@ -217,7 +260,7 @@ final class CVR2_Product_Importer {
             update_term_meta( $term_id, '_cvr2_source_term_id', $source_id );
         }
 
-        if ( ! empty( $item['image']['src'] ) || ! empty( $item['image']['id'] ) ) {
+        if ( $include_image && ( ! empty( $item['image']['src'] ) || ! empty( $item['image']['id'] ) ) ) {
             $image = is_array( $item['image'] ) ? $item['image'] : array();
             $attachment_id = CVR2_Media::attachment_for_source_image( $image );
             if ( ! is_wp_error( $attachment_id ) && $attachment_id ) {
@@ -297,7 +340,7 @@ final class CVR2_Product_Importer {
         );
     }
 
-    public static function import_source_product( array $source, bool $create_only = false ) {
+    public static function import_source_product( array $source, bool $create_only = false, bool $defer_images = false ) {
         $source_id      = absint( $source['id'] ?? 0 );
         $type           = sanitize_key( (string) ( $source['type'] ?? 'simple' ) );
         $sku            = wc_clean( (string) ( $source['sku'] ?? '' ) );
@@ -355,17 +398,27 @@ final class CVR2_Product_Importer {
         self::apply_common_fields( $product, $source );
 
         $category_ids = array();
+        $missing_categories = array();
         foreach ( (array) ( $source['categories'] ?? array() ) as $term ) {
-            $id = self::ensure_term( 'product_cat', (array) $term );
+            $term = (array) $term;
+            $id = self::existing_category_id( $term );
             if ( $id ) {
                 $category_ids[] = $id;
+            } else {
+                $missing_categories[] = sanitize_text_field( (string) ( $term['slug'] ?? $term['name'] ?? '[sem slug]' ) );
             }
+        }
+        if ( $missing_categories ) {
+            return new WP_Error(
+                'cvr2_category_missing',
+                'Categorias inexistentes no destino (não foram criadas): ' . implode( ', ', $missing_categories )
+            );
         }
         $product->set_category_ids( array_values( array_unique( $category_ids ) ) );
 
         $tag_ids = array();
         foreach ( (array) ( $source['tags'] ?? array() ) as $term ) {
-            $id = self::ensure_term( 'product_tag', (array) $term );
+            $id = self::ensure_term( 'product_tag', (array) $term, null, ! $defer_images );
             if ( $id ) {
                 $tag_ids[] = $id;
             }
@@ -374,7 +427,9 @@ final class CVR2_Product_Importer {
 
         self::apply_attributes( $product, (array) ( $source['attributes'] ?? array() ) );
         self::apply_default_attributes( $product, (array) ( $source['default_attributes'] ?? array() ) );
-        self::apply_images( $product, (array) ( $source['images'] ?? array() ) );
+        if ( ! $defer_images ) {
+            self::apply_images( $product, (array) ( $source['images'] ?? array() ) );
+        } // If deferred, retain the current product image and gallery unchanged.
 
         self::$writing_source_slug = true;
         try {
@@ -424,17 +479,22 @@ final class CVR2_Product_Importer {
         update_post_meta( $target_id, '_cvr2_slug_locked', 1 );
         update_post_meta( $target_id, '_cvr2_imported_at', gmdate( 'c' ) );
 
-        self::apply_brand_terms( $target_id, (array) ( $source['brands'] ?? array() ) );
+        self::apply_brand_terms( $target_id, (array) ( $source['brands'] ?? array() ), $defer_images );
         self::copy_meta_data( $target_id, (array) ( $source['meta_data'] ?? array() ) );
         self::store_pending_relations( $target_id, $source );
 
         if ( 'variable' === $type && $source_id ) {
-            $variations = CVR2_REST_Client::all_pages( 'products/' . $source_id . '/variations', array( 'status' => 'any' ) );
+            $variation_query = array( 'status' => 'any' );
+            if ( $defer_images ) {
+                // Read all required variation data except image bytes/URLs.
+                $variation_query['_fields'] = 'id,sku,status,global_unique_id,regular_price,sale_price,manage_stock,stock_quantity,stock_status,backorders,weight,dimensions,menu_order,attributes,meta_data';
+            }
+            $variations = CVR2_REST_Client::all_pages( 'products/' . $source_id . '/variations', $variation_query );
             if ( is_wp_error( $variations ) ) {
                 update_post_meta( $target_id, '_cvr2_variation_import_error', $variations->get_error_message() );
             } else {
                 foreach ( $variations as $variation ) {
-                    self::import_variation( $target_id, (array) $variation );
+                    self::import_variation( $target_id, (array) $variation, $defer_images );
                 }
             }
         }
@@ -1016,14 +1076,14 @@ final class CVR2_Product_Importer {
         $product->set_gallery_image_ids( $ids );
     }
 
-    private static function apply_brand_terms( int $product_id, array $brands ): void {
+    private static function apply_brand_terms( int $product_id, array $brands, bool $defer_images = false ): void {
         if ( ! taxonomy_exists( 'product_brand' ) ) {
             return;
         }
 
         $ids = array();
         foreach ( $brands as $brand ) {
-            $id = self::ensure_term( 'product_brand', (array) $brand );
+            $id = self::ensure_term( 'product_brand', (array) $brand, null, ! $defer_images );
             if ( $id ) {
                 $ids[] = $id;
             }
@@ -1153,7 +1213,7 @@ final class CVR2_Product_Importer {
         );
     }
 
-    private static function import_variation( int $parent_id, array $source ) {
+    private static function import_variation( int $parent_id, array $source, bool $defer_images = false ) {
         $source_id = absint( $source['id'] ?? 0 );
         $sku       = wc_clean( (string) ( $source['sku'] ?? '' ) );
         $target_id = 0;
@@ -1234,7 +1294,7 @@ final class CVR2_Product_Importer {
 
         $variation->set_attributes( $variation_attributes );
 
-        if ( ! empty( $source['image'] ) && is_array( $source['image'] ) ) {
+        if ( ! $defer_images && ! empty( $source['image'] ) && is_array( $source['image'] ) ) {
             $image_id = CVR2_Media::attachment_for_source_image( $source['image'] );
             if ( ! is_wp_error( $image_id ) && $image_id ) {
                 $variation->set_image_id( absint( $image_id ) );

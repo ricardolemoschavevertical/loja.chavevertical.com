@@ -96,7 +96,7 @@ final class CVR2_Admin {
         update_option( 'cvr2_structure_synced_at', time(), false );
 
         $message = sprintf(
-            'Estrutura sincronizada: %d categorias, %d etiquetas, %d marcas e %d atributos.',
+            'Estrutura verificada: %d categorias existentes correspondentes (nenhuma criada), %d etiquetas, %d marcas e %d atributos.',
             (int) $result['categories'],
             (int) $result['tags'],
             (int) $result['brands'],
@@ -119,7 +119,7 @@ final class CVR2_Admin {
         self::guard_ajax();
 
         $import_mode = sanitize_key( (string) wp_unslash( $_POST['import_mode'] ?? 'update_existing' ) );
-        if ( ! in_array( $import_mode, array( 'update_existing', 'create_only', 'images_only' ), true ) ) {
+        if ( ! in_array( $import_mode, array( 'update_existing', 'create_only', 'products_no_images', 'images_only' ), true ) ) {
             $import_mode = 'update_existing';
         }
 
@@ -156,8 +156,10 @@ final class CVR2_Admin {
             array(
                 'state'   => $state,
                 'message' => 'images_only' === $import_mode
-                    ? sprintf( 'Importação de imagens iniciada — lote máximo de %d produto(s).', $batch_size )
-                    : sprintf( 'Importação iniciada — lote máximo de %d produto(s).', $batch_size ),
+                    ? sprintf( '2.ª fase: associação de imagens iniciada — lote máximo de %d produto(s).', $batch_size )
+                    : ( 'products_no_images' === $import_mode
+                        ? sprintf( '1.ª fase: produtos sem imagens iniciada — lote máximo de %d produto(s).', $batch_size )
+                        : sprintf( 'Importação iniciada — lote máximo de %d produto(s).', $batch_size ) ),
             )
         );
     }
@@ -340,9 +342,23 @@ final class CVR2_Admin {
         );
 
         if ( 'images_only' === $import_mode ) {
-            // Reduz bastante o payload: este modo não precisa de preços,
-            // descrições, categorias, atributos ou meta.
+            // Segunda fase: receber apenas os campos necessários para resolver imagens.
             $request_args['_fields'] = 'id,name,type,sku,slug,images';
+        } elseif ( 'products_no_images' === $import_mode ) {
+            // Primeira fase: conservar dados completos de produto, SEO, categoria e
+            // relações, excluindo imagens e galerias do payload REST.
+            $request_args['_fields'] = implode( ',', array(
+                'id','name','type','sku','slug','status','featured','catalog_visibility',
+                'description','short_description','global_unique_id','regular_price',
+                'sale_price','date_on_sale_from_gmt','date_on_sale_to_gmt','virtual',
+                'downloadable','download_limit','download_expiry','tax_status',
+                'tax_class','manage_stock','stock_quantity','stock_status','backorders',
+                'sold_individually','weight','dimensions','reviews_allowed',
+                'purchase_note','menu_order','date_created_gmt','date_modified_gmt',
+                'low_stock_amount','external_url','button_text','shipping_class',
+                'downloads','categories','tags','attributes','default_attributes',
+                'brands','meta_data','upsell_ids','cross_sell_ids','grouped_products',
+            ) );
         }
 
         $result = CVR2_REST_Client::request( 'products', $request_args, 60 );
@@ -487,7 +503,11 @@ final class CVR2_Admin {
                 continue;
             }
 
-            $imported = CVR2_Product_Importer::import_source_product( $source_product, 'create_only' === $import_mode );
+            $imported = CVR2_Product_Importer::import_source_product(
+                $source_product,
+                'create_only' === $import_mode,
+                'products_no_images' === $import_mode
+            );
 
             if ( is_wp_error( $imported ) ) {
                 if ( str_starts_with( (string) $imported->get_error_code(), 'cvr2_slug_' ) ) {
@@ -759,18 +779,19 @@ final class CVR2_Admin {
                         <strong>Produtos e estado WooCommerce</strong>
                         <label><input type="radio" name="cvr2_import_mode" value="update_existing" checked> Atualizar produtos existentes e criar produtos novos</label>
                         <label><input type="radio" name="cvr2_import_mode" value="create_only"> Ignorar produtos existentes e criar apenas produtos novos</label>
-                        <label><input type="radio" name="cvr2_import_mode" value="images_only"> Apenas atualizar imagens dos produtos existentes</label>
-                        <small>Na importação completa são preservados os estados Publicado, Rascunho, Pendente e Privado. Os atributos globais, termos, atributos locais, atributos de variação e valores por defeito são garantidos durante o processamento de cada produto, sem bloquear o arranque numa sincronização completa da estrutura. No modo de imagens só são atualizadas imagem principal, galeria e imagens das variações existentes.</small>
+                        <label><input type="radio" name="cvr2_import_mode" value="products_no_images"> <strong>1.ª fase — importar produtos sem imagens</strong> (criar e atualizar, sem alterar imagens existentes)</label>
+                        <label><input type="radio" name="cvr2_import_mode" value="images_only"> <strong>2.ª fase — associar as imagens</strong> dos produtos e variações já importados</label>
+                        <small>Para acelerar a migração, executar primeiro a 1.ª fase e, depois de terminar, a 2.ª fase. A associação de imagens não é executada na 1.ª fase. Em todos os modos, só são utilizadas categorias existentes: as categorias em falta bloqueiam o produto, nunca são criadas automaticamente. Os estados Publicado, Rascunho, Pendente e Privado, atributos e metadados SEO mantêm-se.</small>
 
                         <div class="cvr2-batch-size">
                             <label for="cvr2-batch-size"><strong>Quantidade por lote</strong></label>
                             <input id="cvr2-batch-size" type="number" min="1" max="50" step="1" value="<?php echo esc_attr( (string) max( 1, min( 50, absint( $state['batch_size'] ?? 10 ) ) ) ); ?>" inputmode="numeric">
-                            <small>Aplica-se a criar, atualizar e atualizar apenas imagens. Recomendado: 5–10 para criação/atualização completa e 10–20 para apenas imagens. Máximo: 50.</small>
+                            <small>Máximo 50. Recomendado: começar com 5–10 produtos por lote, aumentar progressivamente se o servidor responder bem. A 1.ª fase é normalmente mais rápida porque ignora o processamento de imagens.</small>
                         </div>
                     </div>
                     <div class="cvr2-actions">
                         <button class="button" type="button" data-cvr2-action="test">1. Testar REST</button>
-                        <button class="button" type="button" data-cvr2-action="structure">2. Sincronizar estrutura</button>
+                        <button class="button" type="button" data-cvr2-action="structure">2. Preparar termos e atributos (opcional)</button>
                         <button class="button button-primary" type="button" data-cvr2-action="start">3. Iniciar / recomeçar importação</button>
                         <button class="button" type="button" data-cvr2-action="resume">Retomar</button>
                         <button class="button" type="button" data-cvr2-action="pause">Pausar</button>
@@ -884,7 +905,8 @@ final class CVR2_Admin {
                 const modeLabels = {
                     update_existing: 'ATUALIZAR EXISTENTES + CRIAR NOVOS',
                     create_only: 'CRIAR APENAS NOVOS — EXISTENTES IGNORADOS',
-                    images_only: 'APENAS ATUALIZAR IMAGENS'
+                    products_no_images: '1.ª FASE — PRODUTOS SEM IMAGENS',
+                    images_only: '2.ª FASE — APENAS ATUALIZAR IMAGENS'
                 };
 
                 if (activeMode) {
@@ -1177,7 +1199,7 @@ final class CVR2_Admin {
 
             document.querySelector('[data-cvr2-action="structure"]')?.addEventListener('click', async () => {
                 setBusy(true);
-                write('A sincronizar categorias, etiquetas, marcas e atributos…');
+                write('A verificar categorias existentes e preparar etiquetas, marcas e atributos…');
                 try { const data = await call('cvr2_sync_structure'); write(data.message); }
                 catch (error) { write(error.message || error); }
                 finally { setBusy(false); }
