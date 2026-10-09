@@ -220,12 +220,17 @@ final class CVR2_Local_Admin {
                 await prepareLoop();
             }));
             bind('cvr2-local-refresh', () => launch(async () => {await refresh();write('Estado atualizado.');}));
-            bind('cvr2-local-pause', () => launch(async () => {
+            // Pause must remain clickable while the importer loop is active.
+            bind('cvr2-local-pause', async () => {
                 stopped = true;
-                const data = await call('cvr2_local_pause');
-                display(snapshot, data);
-                write(data.status === 'paused' ? 'Importação pausada. Podes retomar mais tarde.' : 'Importação pronta para retomar.');
-            }));
+                try {
+                    const data = await call('cvr2_local_pause');
+                    display(snapshot, data);
+                    write(data.status === 'paused' ? 'Importação pausada. Podes retomar mais tarde.' : 'Importação pronta para retomar.');
+                } catch (error) {
+                    write('Erro ao pausar: ' + error.message);
+                }
+            });
             bind('cvr2-local-resume', () => launch(async () => {
                 const data = await refresh();
                 if (data.snapshot.status === 'building') return prepareLoop();
