@@ -12,6 +12,8 @@ final class CVR2_Admin {
         add_action( 'wp_ajax_cvr2_import_status', array( __CLASS__, 'ajax_import_status' ) );
         add_action( 'wp_ajax_cvr2_reset_import', array( __CLASS__, 'ajax_reset_import' ) );
         add_action( 'wp_ajax_cvr2_set_watchdog', array( __CLASS__, 'ajax_set_watchdog' ) );
+        add_action( 'wp_ajax_cvr2_pause_import', array( __CLASS__, 'ajax_pause_import' ) );
+        add_action( 'wp_ajax_cvr2_resume_import', array( __CLASS__, 'ajax_resume_import' ) );
     }
 
     public static function menu(): void {
@@ -32,6 +34,140 @@ final class CVR2_Admin {
             wp_send_json_error( array( 'message' => 'Sem permissões.' ), 403 );
         }
         check_ajax_referer( 'cvr2_import', 'nonce' );
+    }
+
+    private const PAUSE_REQUEST_OPTION = 'cvr2_legacy_pause_requested';
+
+    /**
+     * A "running" option is a saved checkpoint, not evidence that an HTTP batch
+     * is still running. Keep it untouched until a user explicitly pauses it.
+     */
+    public static function legacy_has_live_batch( array $state ): bool {
+        $run_id = (string) ( $state['run_id'] ?? '' );
+        return '' !== $run_id && (bool) get_transient( 'cvr2_batch_lock_' . md5( $run_id ) );
+    }
+
+    public static function legacy_blocks_local(): bool {
+        $state = (array) get_option( CVR2_STATE_OPTION, array() );
+        $run_id = (string) ( $state['run_id'] ?? '' );
+        if ( self::legacy_has_live_batch( $state ) ) {
+            return true;
+        }
+        if ( '' !== $run_id && $run_id === (string) get_option( self::PAUSE_REQUEST_OPTION, '' ) ) {
+            return true; // A running batch may still be finishing its current product.
+        }
+        return 'running' === ( $state['status'] ?? '' );
+    }
+
+    public static function legacy_status_for_local(): array {
+        $state = (array) get_option( CVR2_STATE_OPTION, array() );
+        $run_id = (string) ( $state['run_id'] ?? '' );
+        return array(
+            'status' => (string) ( $state['status'] ?? 'none' ),
+            'processed' => absint( $state['processed'] ?? 0 ),
+            'total' => absint( $state['total'] ?? 0 ),
+            'in_flight' => self::legacy_has_live_batch( $state ),
+            'pause_pending' => '' !== $run_id && $run_id === (string) get_option( self::PAUSE_REQUEST_OPTION, '' ),
+        );
+    }
+
+    /**
+     * Request a cooperative pause, preserving product index/page/checkpoints.
+     * Never cancel a live PHP request halfway through a WooCommerce write.
+     */
+    public static function pause_legacy_safely(): array {
+        $state = (array) get_option( CVR2_STATE_OPTION, array() );
+        $run_id = (string) ( $state['run_id'] ?? '' );
+        if ( '' === $run_id || in_array( (string) ( $state['status'] ?? '' ), array( 'done', 'paused' ), true ) ) {
+            return array(
+                'state' => $state,
+                'pending' => false,
+                'message' => 'Importador REST antigo sem execução ativa ou já pausado.',
+            );
+        }
+
+        // Persistent signal picked up after the current WooCommerce product finishes.
+        update_option( self::PAUSE_REQUEST_OPTION, $run_id, false );
+        if ( self::legacy_has_live_batch( $state ) ) {
+            return array(
+                'state' => $state,
+                'pending' => true,
+                'message' => 'Pausa solicitada. O lote em curso vai terminar o produto atual e guardar o checkpoint.',
+            );
+        }
+
+        $state['status'] = 'paused';
+        $state['paused_at'] = time();
+        $state['updated_at'] = time();
+        update_option( CVR2_STATE_OPTION, $state, false );
+        delete_option( self::PAUSE_REQUEST_OPTION );
+        return array(
+            'state' => $state,
+            'pending' => false,
+            'message' => 'Importador REST antigo pausado no servidor. O progresso foi preservado.',
+        );
+    }
+
+    private static function apply_pending_pause( array &$state ): bool {
+        $run_id = (string) ( $state['run_id'] ?? '' );
+        $requested = (string) get_option( self::PAUSE_REQUEST_OPTION, '' );
+        $current = (array) get_option( CVR2_STATE_OPTION, array() );
+        if ( '' === $run_id || (
+                $requested !== $run_id
+                && !( $run_id === (string) ( $current['run_id'] ?? '' )
+                     && 'paused' === ( $current['status'] ?? '' ) )
+            ) ) {
+            return false;
+        }
+        $state['status'] = 'paused';
+        $state['paused_at'] = time();
+        $state['updated_at'] = time();
+        update_option( CVR2_STATE_OPTION, $state, false );
+        if ( $requested === $run_id ) {
+            delete_option( self::PAUSE_REQUEST_OPTION );
+        }
+        return true;
+    }
+
+    private static function send_paused( array $state ): void {
+        wp_send_json_success( array(
+            'done' => false,
+            'paused' => true,
+            'state' => $state,
+            'message' => 'Importação REST antiga pausada no servidor; checkpoint guardado.',
+        ) );
+    }
+
+    public static function ajax_pause_import(): void {
+        self::guard_ajax();
+        wp_send_json_success( self::pause_legacy_safely() );
+    }
+
+    public static function ajax_resume_import(): void {
+        self::guard_ajax();
+        $local_catalog = CVR2_Local_Catalog::snapshot();
+        $local_import  = CVR2_Local_Catalog::import();
+        if ( in_array( (string) ( $local_catalog['status'] ?? '' ), array( 'building', 'paused_building' ), true )
+            || 'running' === ( $local_import['status'] ?? '' ) ) {
+            wp_send_json_error( array(
+                'message' => 'A preparação ou importação local está ativa. Pausa-a antes de retomar a REST antiga.',
+            ), 409 );
+        }
+        $state = (array) get_option( CVR2_STATE_OPTION, array() );
+        if ( empty( $state['run_id'] ) || 'done' === ( $state['status'] ?? '' ) ) {
+            wp_send_json_error( array( 'message' => 'Não existe execução REST antiga pendente para retomar.' ), 409 );
+        }
+        if ( self::legacy_has_live_batch( $state ) ) {
+            wp_send_json_error( array( 'message' => 'Ainda existe um lote REST em curso.' ), 409 );
+        }
+        delete_option( self::PAUSE_REQUEST_OPTION );
+        $state['status'] = 'running';
+        $state['updated_at'] = time();
+        update_option( CVR2_STATE_OPTION, $state, false );
+        wp_send_json_success( array(
+            'state' => $state,
+            'message' => 'Importação REST retomada a partir do checkpoint.',
+        ) );
     }
 
     public static function watchdog_enabled(): bool {
@@ -178,6 +314,7 @@ final class CVR2_Admin {
             'updated_at'  => time(),
         );
 
+        delete_option( self::PAUSE_REQUEST_OPTION );
         update_option( CVR2_STATE_OPTION, $state, false );
         wp_send_json_success(
             array(
@@ -223,6 +360,13 @@ final class CVR2_Admin {
 
     public static function ajax_reset_import(): void {
         self::guard_ajax();
+        $state = (array) get_option( CVR2_STATE_OPTION, array() );
+        if ( self::legacy_has_live_batch( $state ) ) {
+            wp_send_json_error( array(
+                'message' => 'Existe um lote REST em curso. Espera que termine antes de limpar o estado.',
+            ), 409 );
+        }
+        delete_option( self::PAUSE_REQUEST_OPTION );
         delete_option( CVR2_STATE_OPTION );
         wp_send_json_success( array( 'message' => 'Estado da importação limpo.' ) );
     }
@@ -252,6 +396,9 @@ final class CVR2_Admin {
                     'state' => $state,
                 )
             );
+        }
+        if ( 'paused' === ( $state['status'] ?? '' ) ) {
+            self::send_paused( $state );
         }
 
         $request_run_id = sanitize_text_field( (string) wp_unslash( $_POST['run_id'] ?? '' ) );
@@ -303,6 +450,12 @@ final class CVR2_Admin {
         }
 
         set_transient( $lock_key, $lock_token, 180 );
+        // A pause may have been requested after the initial state read.
+        // Check again after claiming the batch lock, before any source REST call.
+        if ( self::apply_pending_pause( $state ) ) {
+            delete_transient( $lock_key );
+            self::send_paused( $state );
+        }
         register_shutdown_function(
             static function () use ( $lock_key, $lock_token ): void {
                 if ( get_transient( $lock_key ) === $lock_token ) {
@@ -349,6 +502,9 @@ final class CVR2_Admin {
             }
 
             update_option( CVR2_STATE_OPTION, $state, false );
+            if ( self::apply_pending_pause( $state ) ) {
+                self::send_paused( $state );
+            }
 
             wp_send_json_success(
                 array(
@@ -406,6 +562,9 @@ final class CVR2_Admin {
         $result = CVR2_REST_Client::request( 'products', $request_args, 60 );
 
         if ( is_wp_error( $result ) ) {
+            if ( self::apply_pending_pause( $state ) ) {
+                self::send_paused( $state );
+            }
             $state['status']     = 'error';
             $state['updated_at'] = time();
             $state['errors'][]   = $result->get_error_message();
@@ -429,6 +588,9 @@ final class CVR2_Admin {
         foreach ( $items as $index => $source_product ) {
             if ( $index < $batch_index ) {
                 continue;
+            }
+            if ( self::apply_pending_pause( $state ) ) {
+                self::send_paused( $state );
             }
 
             $source_product = (array) $source_product;
@@ -480,6 +642,9 @@ final class CVR2_Admin {
 
                 // Checkpoint por produto — não esperar pelo fim do lote.
                 update_option( CVR2_STATE_OPTION, $state, false );
+                if ( self::apply_pending_pause( $state ) ) {
+                    self::send_paused( $state );
+                }
 
                 if ( microtime( true ) - $batch_started_at >= $time_budget && $state['batch_index'] < count( $items ) ) {
                     wp_send_json_success(
@@ -527,6 +692,9 @@ final class CVR2_Admin {
                     )
                 );
                 update_option( CVR2_STATE_OPTION, $state, false );
+                if ( self::apply_pending_pause( $state ) ) {
+                    self::send_paused( $state );
+                }
 
                 if ( microtime( true ) - $batch_started_at >= $time_budget && $state['batch_index'] < count( $items ) ) {
                     wp_send_json_success(
@@ -597,6 +765,9 @@ final class CVR2_Admin {
             $state['batch_index'] = $index + 1;
             $state['updated_at']  = time();
             update_option( CVR2_STATE_OPTION, $state, false );
+            if ( self::apply_pending_pause( $state ) ) {
+                self::send_paused( $state );
+            }
 
             if ( microtime( true ) - $batch_started_at >= $time_budget && $state['batch_index'] < count( $items ) ) {
                 wp_send_json_success(
@@ -613,6 +784,9 @@ final class CVR2_Admin {
             }
         }
 
+        if ( self::apply_pending_pause( $state ) ) {
+            self::send_paused( $state );
+        }
         $state['updated_at'] = time();
         $state['batch_index'] = 0;
         $state['current']     = array();
