@@ -33,6 +33,7 @@ final class CVR2_Local_Catalog {
             'cvr2_local_delete'       => 'ajax_delete',
             'cvr2_local_report'       => 'ajax_report',
             'cvr2_local_watchdog'     => 'ajax_watchdog',
+            'cvr2_local_pause_legacy' => 'ajax_pause_legacy',
         ) as $action => $method ) {
             add_action( 'wp_ajax_' . $action, array( __CLASS__, $method ) );
         }
@@ -184,9 +185,11 @@ final class CVR2_Local_Catalog {
         if ( in_array( (string) ( $old['status'] ?? '' ), array( 'building', 'paused_building' ), true ) ) {
             return new WP_Error( 'cvr2_local_building', 'Já existe um catálogo em preparação/pausa. Retomar ou eliminar antes de começar outro.' );
         }
-        $legacy = (array) get_option( CVR2_STATE_OPTION, array() );
-        if ( 'running' === ( $legacy['status'] ?? '' ) ) {
-            return new WP_Error( 'cvr2_local_legacy_busy', 'O importador REST antigo está ativo; não executar em paralelo.' );
+        if ( CVR2_Admin::legacy_blocks_local() ) {
+            return new WP_Error(
+                'cvr2_local_legacy_busy',
+                'O importador REST antigo tem uma execução pendente ou um lote ativo. Clica em «Pausar importação REST antiga», sem perder o checkpoint, e volta a tentar.'
+            );
         }
 
         $id = bin2hex( random_bytes( 16 ) );
@@ -267,7 +270,15 @@ final class CVR2_Local_Catalog {
             'snapshot' => self::snapshot(),
             'import'   => self::import(),
             'watchdog_enabled' => CVR2_Admin::watchdog_enabled(),
+            'legacy' => CVR2_Admin::legacy_status_for_local(),
         ) );
+    }
+
+    public static function ajax_pause_legacy(): void {
+        self::guard();
+        self::respond( self::with_lock( static function () {
+            return CVR2_Admin::pause_legacy_safely();
+        } ) );
     }
 
     public static function ajax_watchdog(): void {
@@ -401,9 +412,11 @@ final class CVR2_Local_Catalog {
             if ( ! in_array( $phase, array( 'products', 'images' ), true ) ) {
                 return new WP_Error( 'cvr2_local_phase', 'Fase inválida.' );
             }
-            $legacy = (array) get_option( CVR2_STATE_OPTION, array() );
-            if ( 'running' === ( $legacy['status'] ?? '' ) ) {
-                return new WP_Error( 'cvr2_local_legacy_busy', 'O importador antigo está em execução.' );
+            if ( CVR2_Admin::legacy_blocks_local() ) {
+                return new WP_Error(
+                    'cvr2_local_legacy_busy',
+                    'O importador REST antigo está ativo ou aguarda a pausa. Pausa-o primeiro e confirma que não existe lote em curso.'
+                );
             }
             $previous = self::import();
             if ( 'running' === ( $previous['status'] ?? '' ) ) {
@@ -610,11 +623,10 @@ final class CVR2_Local_Catalog {
             $state['status'] = 'paused';
             update_option( self::IMPORT_OPTION, $state, false );
         } elseif ( 'paused' === ( $state['status'] ?? '' ) ) {
-            $legacy = (array) get_option( CVR2_STATE_OPTION, array() );
-            if ( 'running' === ( $legacy['status'] ?? '' ) ) {
+            if ( CVR2_Admin::legacy_blocks_local() ) {
                 self::respond( new WP_Error(
                     'cvr2_local_legacy_busy',
-                    'A importação REST antiga está ativa; não é seguro retomar esta importação em paralelo.'
+                    'A importação REST antiga está ativa ou a terminar um lote; não é seguro retomar em paralelo.'
                 ) );
             }
             $state['status'] = 'running';
