@@ -561,16 +561,30 @@ final class CVR2_Product_Importer {
                     )
                 );
 
-            if ( ! is_wp_error( $variations ) ) {
-                foreach ( $variations as $variation_source ) {
-                    $variation_result = self::update_variation_image_only( (array) $variation_source );
-                    if ( 'updated' === $variation_result ) {
-                        $variation_images_updated++;
-                    }
-                    if ( in_array( $variation_result, array( 'updated', 'unchanged' ), true ) ) {
-                        $variation_images_checked++;
-                    }
+            if ( is_wp_error( $variations ) ) {
+                return $variations;
+            }
+            $variation_errors = array();
+            foreach ( $variations as $variation_source ) {
+                $variation_source = (array) $variation_source;
+                $variation_result = self::update_variation_image_only( $variation_source );
+                if ( 'updated' === $variation_result ) {
+                    $variation_images_updated++;
                 }
+                if ( in_array( $variation_result, array( 'updated', 'unchanged' ), true ) ) {
+                    $variation_images_checked++;
+                }
+                if ( 'error' === $variation_result ||
+                     ( 'missing' === $variation_result && ! empty( $variation_source['image'] ) ) ) {
+                    $variation_errors[] = (string) ( $variation_source['sku'] ?? $variation_source['id'] ?? '?' );
+                }
+            }
+            if ( $variation_errors ) {
+                return new WP_Error(
+                    'cvr2_variation_image_errors',
+                    'Falha na imagem das variações: ' . implode( ', ', array_slice( $variation_errors, 0, 10 ) ) .
+                        '. As imagens já associadas foram mantidas quando possível.'
+                );
             }
         }
 
