@@ -20,6 +20,7 @@ final class CVR2_Local_Catalog {
             'cvr2_local_import_step'  => 'ajax_import_step',
             'cvr2_local_pause'        => 'ajax_pause',
             'cvr2_local_delete'       => 'ajax_delete',
+            'cvr2_local_report'       => 'ajax_report',
         ) as $action => $method ) {
             add_action( 'wp_ajax_' . $action, array( __CLASS__, $method ) );
         }
@@ -87,6 +88,58 @@ final class CVR2_Local_Catalog {
             return $directory;
         }
         return $directory . '/catalog-' . $id . '.jsonl';
+    }
+
+    private static function report_path( array $state ) {
+        $uuid = (string) ( $state['run_id'] ?? '' );
+        if ( ! preg_match( '/^[a-f0-9-]{36}$/D', $uuid ) ) {
+            return new WP_Error( 'cvr2_local_report_id', 'Identificador de relatório inválido.' );
+        }
+        $dir = self::directory();
+        return is_wp_error( $dir ) ? $dir : $dir . '/report-' . $uuid . '.csv';
+    }
+
+    private static function report_row( array &$state, array $source, string $kind, string $message ) {
+        $path = self::report_path( $state );
+        if ( is_wp_error( $path ) ) { return $path; }
+        $fp = @fopen( $path, 'c+b' );
+        if ( ! $fp ) {
+            return new WP_Error( 'cvr2_local_report_write', 'Não foi possível escrever o relatório.' );
+        }
+        $offset = max( 0, (int) ( $state['report_bytes'] ?? 0 ) );
+        if ( ( fstat( $fp )['size'] ?? 0 ) < $offset || ! ftruncate( $fp, $offset ) ||
+             fseek( $fp, $offset ) !== 0 ) {
+            fclose( $fp );
+            return new WP_Error( 'cvr2_local_report_damage', 'Relatório interrompido num ponto inesperado.' );
+        }
+        $written = fputcsv( $fp, array(
+            $state['phase'], (string) ( $source['id'] ?? '' ),
+            (string) ( $source['sku'] ?? '' ),
+            $kind, $message,
+        ), ';', '"', '' );
+        if ( false === $written ) {
+            fclose( $fp );
+            return new WP_Error( 'cvr2_local_report_disk', 'Erro a guardar o relatório no disco.' );
+        }
+        fflush( $fp );
+        $state['report_bytes'] = ftell( $fp );
+        fclose( $fp );
+        return true;
+    }
+
+    public static function ajax_report(): void {
+        self::guard();
+        $state = self::import();
+        $path = self::report_path( $state );
+        if ( is_wp_error( $path ) || ! is_file( $path ) ) {
+            wp_die( 'Relatório ainda não disponível.', 404 );
+        }
+        nocache_headers();
+        header( 'Content-Type: text/csv; charset=utf-8' );
+        header( 'X-Content-Type-Options: nosniff' );
+        header( 'Content-Disposition: attachment; filename="cv-import-report.csv"' );
+        readfile( $path );
+        exit;
     }
 
     public static function with_lock( callable $callback ) {
@@ -311,9 +364,25 @@ final class CVR2_Local_Catalog {
                 'failed'   => 0,
                 'total'    => (int) $snapshot['records'],
                 'recent'   => array(),
+                'report_bytes' => 0,
                 'updated_at' => time(),
             );
+            $report = self::report_path( $state );
+            if ( is_wp_error( $report ) ) { return $report; }
+            $fp = @fopen( $report, 'wb' );
+            if ( ! $fp || false === fputcsv( $fp, array( 'Fase', 'ID de origem', 'SKU', 'Resultado', 'Mensagem' ), ';', '"', '' ) ) {
+                if ( $fp ) { fclose( $fp ); }
+                return new WP_Error( 'cvr2_local_report_open', 'Não foi possível criar o relatório CSV privado.' );
+            }
+            fflush( $fp );
+            $state['report_bytes'] = ftell( $fp );
+            fclose( $fp );
+            @chmod( $report, 0600 );
             update_option( self::IMPORT_OPTION, $state, false );
+            $previous_report = self::report_path( $previous );
+            if ( ! is_wp_error( $previous_report ) && $previous_report !== $report && is_file( $previous_report ) ) {
+                @unlink( $previous_report );
+            }
             return $state;
         } ) );
     }
@@ -417,7 +486,12 @@ final class CVR2_Local_Catalog {
                     'message' => $message,
                 ) );
                 $state['recent'] = array_slice( $state['recent'], 0, 30 );
-                // Checkpoint only after WooCommerce has completed the record.
+                // Report and checkpoint only after WooCommerce has completed the record.
+                $reported = self::report_row( $state, (array) $source, $kind, $message );
+                if ( is_wp_error( $reported ) ) {
+                    fclose( $fp );
+                    return $reported;
+                }
                 $state['offset'] = ftell( $fp );
                 $state['updated_at'] = time();
                 $latest = self::import();
@@ -470,6 +544,10 @@ final class CVR2_Local_Catalog {
             $path = self::file_path( $snapshot );
             if ( ! is_wp_error( $path ) && is_file( $path ) ) {
                 @unlink( $path );
+            }
+            $report = self::report_path( $current );
+            if ( ! is_wp_error( $report ) && is_file( $report ) ) {
+                @unlink( $report );
             }
             delete_option( self::SNAPSHOT_OPTION );
             delete_option( self::IMPORT_OPTION );
