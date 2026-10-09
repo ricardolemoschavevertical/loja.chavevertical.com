@@ -318,10 +318,18 @@ add_filter( 'gettext', function ( $translated, $text, $domain ) {
         'Your cart is currently empty!'  => 'O seu carrinho está vazio.',
         'Your cart is currently empty.'  => 'O seu carrinho está vazio.',
         'New in store'                   => 'Produtos em promoção',
+        'Shipping will be calculated at checkout' => 'Os portes de envio serão calculados ao finalizar a encomenda',
+        'Shipping will be calculated at checkout.' => 'Os portes de envio serão calculados ao finalizar a encomenda.',
+        'Quantity: %s'                   => 'Quantidade: %s',
+        'Quantity:'                      => 'Quantidade:',
     );
 
     return isset( $translations[ $text ] ) ? $translations[ $text ] : $translated;
 }, 20, 3 );
+
+// Limita os produtos sugeridos no carrinho (cross-sells) a seis.
+add_filter( 'woocommerce_cross_sells_total', static function () { return 6; } );
+add_filter( 'woocommerce_cross_sells_columns', static function () { return 6; } );
 
 add_filter( 'wc_empty_cart_message', function () {
     return __( 'O seu carrinho está vazio. Aproveite as nossas promoções ou continue a explorar a loja.', 'chavevertical-lite' );
