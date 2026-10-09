@@ -146,6 +146,11 @@ final class CVR2_Local_Catalog {
             return new WP_Error( 'cvr2_local_file', 'Não foi possível criar o ficheiro privado.' );
         }
         @chmod( $path, 0600 );
+        // No abandoned previous snapshots after intentionally replacing the selected one.
+        $old_path = self::file_path( $old );
+        if ( ! is_wp_error( $old_path ) && $old_path !== $path && is_file( $old_path ) ) {
+            @unlink( $old_path );
+        }
         self::save_snapshot( $state );
         delete_option( self::IMPORT_OPTION );
         delete_option( 'cvr2_local_products_done' );
