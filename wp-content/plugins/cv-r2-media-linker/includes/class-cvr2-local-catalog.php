@@ -361,6 +361,9 @@ final class CVR2_Local_Catalog {
                 } elseif ( empty( $source['images'] ) &&
                            empty( $source['__cvr2_variations'] ) ) {
                     $outcome = array( 'skipped' => true );
+                } elseif ( 'csv' === $snapshot['source'] &&
+                           is_wp_error( CVR2_Local_CSV::validate_images( $source ) ) ) {
+                    $outcome = CVR2_Local_CSV::validate_images( $source );
                 } else {
                     $outcome = CVR2_Product_Importer::update_source_product_images( $source );
                 }
@@ -402,7 +405,8 @@ final class CVR2_Local_Catalog {
                 $state['status'] = 'done';
                 $state['completed_at'] = time();
                 update_option( self::IMPORT_OPTION, $state, false );
-                if ( 'products' === $state['phase'] && 0 === (int) $state['failed'] ) {
+                if ( 'products' === $state['phase'] ) {
+                    // Failed rows are reported; successful products may still receive images.
                     update_option( 'cvr2_local_products_done', (string) $snapshot['id'], false );
                 }
             }
