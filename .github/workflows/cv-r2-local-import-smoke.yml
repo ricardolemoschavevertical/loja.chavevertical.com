@@ -1,0 +1,38 @@
+name: CV R2 Local Import - smoke checks
+
+on:
+  pull_request:
+    paths:
+      - "wp-content/plugins/cv-r2-media-linker/**"
+      - ".github/workflows/cv-r2-local-import-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax
+        run: |
+          find wp-content/plugins/cv-r2-media-linker -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Embedded admin JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          source=Path('wp-content/plugins/cv-r2-media-linker/includes/class-cvr2-local-admin.php').read_text()
+          matches=re.findall(r'<script>(.*?)</script>', source, flags=re.S)
+          assert len(matches)==1, 'Expected one admin script'
+          js=re.sub(r'<\?php.*?\?>', 'null', matches[0], flags=re.S)
+          Path('/tmp/cvr2-local-admin.js').write_text(js)
+          PY
+          node --check /tmp/cvr2-local-admin.js
+      - name: Import phase invariants
+        run: |
+          set -e
+          grep -q "'products', 'images'" wp-content/plugins/cv-r2-media-linker/includes/class-cvr2-local-catalog.php
+          grep -q "wp_json_encode" wp-content/plugins/cv-r2-media-linker/includes/class-cvr2-local-catalog.php
+          grep -q "CVR2_Product_Importer::import_source_product" wp-content/plugins/cv-r2-media-linker/includes/class-cvr2-local-catalog.php
+          grep -q "CVR2_Local_CSV::import_product" wp-content/plugins/cv-r2-media-linker/includes/class-cvr2-local-catalog.php
