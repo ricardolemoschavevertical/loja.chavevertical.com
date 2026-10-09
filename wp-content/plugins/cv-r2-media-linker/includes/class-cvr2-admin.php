@@ -11,6 +11,7 @@ final class CVR2_Admin {
         add_action( 'wp_ajax_cvr2_import_batch', array( __CLASS__, 'ajax_import_batch' ) );
         add_action( 'wp_ajax_cvr2_import_status', array( __CLASS__, 'ajax_import_status' ) );
         add_action( 'wp_ajax_cvr2_reset_import', array( __CLASS__, 'ajax_reset_import' ) );
+        add_action( 'wp_ajax_cvr2_set_watchdog', array( __CLASS__, 'ajax_set_watchdog' ) );
     }
 
     public static function menu(): void {
@@ -31,6 +32,23 @@ final class CVR2_Admin {
             wp_send_json_error( array( 'message' => 'Sem permissões.' ), 403 );
         }
         check_ajax_referer( 'cvr2_import', 'nonce' );
+    }
+
+    public static function watchdog_enabled(): bool {
+        // Default OFF: do not restart an import automatically if an API is overloaded.
+        return 'yes' === get_option( 'cvr2_watchdog_enabled', 'no' );
+    }
+
+    public static function ajax_set_watchdog(): void {
+        self::guard_ajax();
+        $enabled = '1' === (string) wp_unslash( $_POST['enabled'] ?? '0' );
+        update_option( 'cvr2_watchdog_enabled', $enabled ? 'yes' : 'no', false );
+        wp_send_json_success( array(
+            'enabled' => $enabled,
+            'message' => $enabled
+                ? 'Watchdog ativado: permite retoma automática da importação REST após falhas.'
+                : 'Watchdog desligado: a retoma passa a ser exclusivamente manual.',
+        ) );
     }
 
     public static function save_settings(): void {
@@ -123,6 +141,15 @@ final class CVR2_Admin {
             $import_mode = 'update_existing';
         }
 
+        $local_catalog = CVR2_Local_Catalog::snapshot();
+        $local_import  = CVR2_Local_Catalog::import();
+        if ( in_array( (string) ( $local_catalog['status'] ?? '' ), array( 'building', 'paused_building' ), true )
+            || 'running' === ( $local_import['status'] ?? '' ) ) {
+            wp_send_json_error( array(
+                'message' => 'Está a preparar/importar um catálogo local. Não iniciar o importador REST antigo em paralelo.',
+            ), 409 );
+        }
+
         $requested_batch_size = absint( wp_unslash( $_POST['batch_size'] ?? 10 ) );
         $requested_batch_size = max( 1, min( 50, $requested_batch_size ) );
         $batch_size = $requested_batch_size;
@@ -189,6 +216,7 @@ final class CVR2_Admin {
             array(
                 'state' => $state,
                 'done'  => ! empty( $state ) && 'done' === ( $state['status'] ?? '' ),
+                'watchdog_enabled' => self::watchdog_enabled(),
             )
         );
     }
@@ -202,7 +230,21 @@ final class CVR2_Admin {
     public static function ajax_import_batch(): void {
         self::guard_ajax();
 
+        if ( '1' === (string) wp_unslash( $_POST['auto_resume'] ?? '0' ) && ! self::watchdog_enabled() ) {
+            wp_send_json_error( array(
+                'message' => 'Watchdog desligado. Não é permitida retoma automática; usa «Retomar».',
+            ), 409 );
+        }
+
         $state = (array) get_option( CVR2_STATE_OPTION, array() );
+        $local_catalog = CVR2_Local_Catalog::snapshot();
+        $local_import  = CVR2_Local_Catalog::import();
+        if ( in_array( (string) ( $local_catalog['status'] ?? '' ), array( 'building', 'paused_building' ), true )
+            || 'running' === ( $local_import['status'] ?? '' ) ) {
+            wp_send_json_error( array(
+                'message' => 'Catálogo local em execução; importação REST antiga bloqueada para evitar sobrecarga.',
+            ), 409 );
+        }
         if ( empty( $state ) || 'done' === ( $state['status'] ?? '' ) ) {
             wp_send_json_success(
                 array(
@@ -804,7 +846,14 @@ final class CVR2_Admin {
                     </div>
 
                     <div class="cvr2-active-mode" data-cvr2-active-mode>Modo ativo: nenhum</div>
-                    <div class="cvr2-watchdog" data-cvr2-watchdog>Watchdog automático: sem execução ativa.</div>
+                    <div class="cvr2-watchdog">
+                        <label for="cvr2-watchdog-enabled">
+                            <input type="checkbox" id="cvr2-watchdog-enabled" <?php checked( self::watchdog_enabled() ); ?>>
+                            <strong>Ativar watchdog automático (retoma após falhas)</strong>
+                        </label>
+                        <small style="display:block;margin-top:5px">Por defeito desligado, para evitar sobrecarga. Mesmo desligado, os checkpoints continuam guardados e podes clicar em «Retomar».</small>
+                        <div data-cvr2-watchdog style="margin-top:6px">Watchdog automático: desligado.</div>
+                    </div>
 
                     <div class="cvr2-progress-meta">
                         <span data-cvr2-progress-text>0 / 0 produtos</span>
@@ -866,6 +915,8 @@ final class CVR2_Admin {
             const results = document.querySelector('[data-cvr2-results]');
             const activeMode = document.querySelector('[data-cvr2-active-mode]');
             const watchdogStatus = document.querySelector('[data-cvr2-watchdog]');
+            const watchdogCheckbox = document.querySelector('#cvr2-watchdog-enabled');
+            let watchdogEnabled = <?php echo wp_json_encode( self::watchdog_enabled() ); ?>;
             const buttons = document.querySelectorAll('[data-cvr2-action]');
             const modeInputs = document.querySelectorAll('input[name="cvr2_import_mode"]');
             const batchInput = document.querySelector('#cvr2-batch-size');
@@ -898,7 +949,8 @@ final class CVR2_Admin {
                     batchInput.disabled = busy;
                 }
             };
-            const yieldBrowser = () => new Promise((resolve) => window.setTimeout(resolve, 75));
+            // Ceder recursos a outras APIs entre cada lote.
+            const yieldBrowser = () => new Promise((resolve) => window.setTimeout(resolve, 650));
 
             function renderState(state) {
                 state = state || {};
@@ -1034,6 +1086,11 @@ final class CVR2_Admin {
                 try {
                     const data = await call('cvr2_import_status', activeRunId ? {run_id: activeRunId} : {});
                     renderState(data.state);
+                    if (typeof data.watchdog_enabled === 'boolean') {
+                        watchdogEnabled = data.watchdog_enabled;
+                        if (watchdogCheckbox) watchdogCheckbox.checked = watchdogEnabled;
+                        if (!watchdogEnabled) cancelWatchdog();
+                    }
                 } catch (error) {
                     // O pedido principal pode continuar a trabalhar mesmo que
                     // uma leitura de estado falhe momentaneamente.
@@ -1044,7 +1101,8 @@ final class CVR2_Admin {
 
             function startStatusPolling() {
                 stopStatusPolling();
-                statusTimer = window.setInterval(refreshLiveStatus, 750);
+                // A API de estado também consome trabalhadores PHP; 5 s é suficiente.
+                statusTimer = window.setInterval(refreshLiveStatus, 5000);
                 refreshLiveStatus();
             }
 
@@ -1075,6 +1133,10 @@ final class CVR2_Admin {
             function armWatchdog() {
                 cancelWatchdog();
 
+                if (!watchdogEnabled) {
+                    writeWatchdog('Watchdog automático: DESLIGADO. Usa «Retomar» para continuar após uma interrupção.');
+                    return;
+                }
                 if (manualPause) {
                     writeWatchdog('Watchdog automático: pausado manualmente.');
                     return;
@@ -1096,7 +1158,7 @@ final class CVR2_Admin {
                 watchdogTimer = window.setTimeout(async () => {
                     watchdogTimer = null;
 
-                    if (manualPause || running || !canResume()) return;
+                    if (!watchdogEnabled || manualPause || running || !canResume()) return;
 
                     let state = lastKnownState;
 
@@ -1104,6 +1166,12 @@ final class CVR2_Admin {
                         const data = await call('cvr2_import_status', checkpoint.runId ? {run_id: checkpoint.runId} : {});
                         state = data.state || {};
                         renderState(state);
+                        if (typeof data.watchdog_enabled === 'boolean' && !data.watchdog_enabled) {
+                            watchdogEnabled = false;
+                            if (watchdogCheckbox) watchdogCheckbox.checked = false;
+                            writeWatchdog('Watchdog automático: DESLIGADO.');
+                            return;
+                        }
 
                         if (data.done || !canResume(state)) {
                             writeWatchdog('Watchdog automático: execução concluída.');
@@ -1134,27 +1202,31 @@ final class CVR2_Admin {
                         return;
                     }
 
+                    if (!watchdogEnabled) return;
                     write('Watchdog: a importação esteve parada durante 1 minuto. A retomar automaticamente…');
                     writeWatchdog('Watchdog automático: a retomar agora…');
-                    loop();
+                    loop(true);
                 }, WATCHDOG_DELAY_MS);
             }
 
-            async function loop() {
+            async function loop(autoResume = false) {
                 if (running) return;
 
                 cancelWatchdog();
                 manualPause = false;
                 running = true;
                 setBusy(true);
-                writeWatchdog('Watchdog automático: execução em curso; retoma se parar.');
+                writeWatchdog(watchdogEnabled
+                    ? 'Watchdog automático: importação em curso; retoma se parar.'
+                    : 'Watchdog automático: DESLIGADO; importação manual em curso.');
                 startStatusPolling();
 
                 try {
                     while (running) {
                         const data = await call('cvr2_import_batch', {
                             run_id: activeRunId,
-                            import_mode: activeImportMode
+                            import_mode: activeImportMode,
+                            auto_resume: autoResume ? '1' : '0'
                         });
                         renderState(data.state);
 
@@ -1183,7 +1255,9 @@ final class CVR2_Admin {
                         renderState(error.state);
                     }
 
-                    write((error.message || error) + ' — o watchdog tentará retomar em 1 minuto.');
+                    write((error.message || error) + (watchdogEnabled
+                        ? ' — o watchdog tentará retomar em 1 minuto.'
+                        : ' — watchdog desligado; para continuar clica em «Retomar».'));
                 } finally {
                     stopStatusPolling();
                     await refreshLiveStatus(true);
@@ -1194,6 +1268,25 @@ final class CVR2_Admin {
                     }
                 }
             }
+
+            watchdogCheckbox?.addEventListener('change', async () => {
+                const desired = watchdogCheckbox.checked;
+                watchdogCheckbox.disabled = true;
+                try {
+                    const result = await call('cvr2_set_watchdog', {enabled: desired ? '1' : '0'});
+                    watchdogEnabled = Boolean(result.enabled);
+                    watchdogCheckbox.checked = watchdogEnabled;
+                    if (!watchdogEnabled) cancelWatchdog();
+                    else if (!running && !manualPause) armWatchdog();
+                    if (!watchdogEnabled) writeWatchdog('Watchdog automático: DESLIGADO; retoma manual.');
+                    write(result.message || (watchdogEnabled ? 'Watchdog ligado.' : 'Watchdog desligado.'));
+                } catch (error) {
+                    watchdogCheckbox.checked = watchdogEnabled;
+                    write('Não foi possível guardar a opção do watchdog: ' + error.message);
+                } finally {
+                    watchdogCheckbox.disabled = false;
+                }
+            });
 
             document.querySelector('[data-cvr2-action="test"]')?.addEventListener('click', async () => {
                 setBusy(true);
@@ -1268,9 +1361,7 @@ final class CVR2_Admin {
 
             const initialState = <?php echo wp_json_encode( $state, JSON_UNESCAPED_UNICODE ); ?>;
             renderState(initialState);
-            if (canResume(initialState)) {
-                armWatchdog();
-            }
+            armWatchdog();
 
             document.querySelector('[data-cvr2-action="reset"]')?.addEventListener('click', async () => {
                 manualPause = true;

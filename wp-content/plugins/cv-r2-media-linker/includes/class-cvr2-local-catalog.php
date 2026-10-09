@@ -8,19 +8,31 @@ defined( 'ABSPATH' ) || exit;
 final class CVR2_Local_Catalog {
     public const SNAPSHOT_OPTION = 'cvr2_local_snapshot_v1';
     public const IMPORT_OPTION   = 'cvr2_local_import_v1';
+    // PAGE_SIZE remains the fallback for snapshots started by 2.5.0. Changing it
+    // mid-run would shift REST pagination and skip or duplicate products.
     private const PAGE_SIZE      = 40;
-    private const STEP_SIZE      = 12;
+    private const STEP_SIZE      = 8;
+
+    private static function rest_profiles(): array {
+        return array(
+            'safe'     => array( 'page_size' => 10, 'cooldown_ms' => 2500 ),
+            'balanced' => array( 'page_size' => 20, 'cooldown_ms' => 1250 ),
+            'fast'     => array( 'page_size' => 30, 'cooldown_ms' => 650 ),
+        );
+    }
 
     public static function init(): void {
         foreach ( array(
             'cvr2_local_status'       => 'ajax_status',
             'cvr2_local_rest_start'   => 'ajax_rest_start',
+            'cvr2_local_prepare_pause'=> 'ajax_prepare_pause',
             'cvr2_local_prepare_step' => 'ajax_prepare_step',
             'cvr2_local_import_start' => 'ajax_import_start',
             'cvr2_local_import_step'  => 'ajax_import_step',
             'cvr2_local_pause'        => 'ajax_pause',
             'cvr2_local_delete'       => 'ajax_delete',
             'cvr2_local_report'       => 'ajax_report',
+            'cvr2_local_watchdog'     => 'ajax_watchdog',
         ) as $action => $method ) {
             add_action( 'wp_ajax_' . $action, array( __CLASS__, $method ) );
         }
@@ -169,8 +181,8 @@ final class CVR2_Local_Catalog {
             return new WP_Error( 'cvr2_local_running', 'Há uma importação local em curso; interromper antes de preparar outro catálogo.' );
         }
         $old = self::snapshot();
-        if ( 'building' === ( $old['status'] ?? '' ) ) {
-            return new WP_Error( 'cvr2_local_building', 'Já existe um catálogo em preparação. Retomar ou eliminar antes de começar outro.' );
+        if ( in_array( (string) ( $old['status'] ?? '' ), array( 'building', 'paused_building' ), true ) ) {
+            return new WP_Error( 'cvr2_local_building', 'Já existe um catálogo em preparação/pausa. Retomar ou eliminar antes de começar outro.' );
         }
         $legacy = (array) get_option( CVR2_STATE_OPTION, array() );
         if ( 'running' === ( $legacy['status'] ?? '' ) ) {
@@ -254,20 +266,55 @@ final class CVR2_Local_Catalog {
         self::respond( array(
             'snapshot' => self::snapshot(),
             'import'   => self::import(),
+            'watchdog_enabled' => CVR2_Admin::watchdog_enabled(),
         ) );
+    }
+
+    public static function ajax_watchdog(): void {
+        self::guard();
+        $enabled = '1' === (string) wp_unslash( $_POST['enabled'] ?? '0' );
+        update_option( 'cvr2_watchdog_enabled', $enabled ? 'yes' : 'no', false );
+        self::respond( array( 'enabled' => $enabled ) );
     }
 
     public static function ajax_rest_start(): void {
         self::guard();
-        self::respond( self::with_lock( static function () {
-            return self::new_snapshot( 'rest' );
+        $profile = sanitize_key( (string) wp_unslash( $_POST['profile'] ?? 'safe' ) );
+        self::respond( self::with_lock( static function () use ( $profile ) {
+            $profiles = self::rest_profiles();
+            $selected = $profiles[ $profile ] ?? $profiles['safe'];
+            return self::new_snapshot( 'rest', array(
+                'profile'        => isset( $profiles[$profile] ) ? $profile : 'safe',
+                'page_size'      => (int) $selected['page_size'],
+                'cooldown_ms'    => (int) $selected['cooldown_ms'],
+                'next_request_at'=> 0.0,
+            ) );
         } ) );
+    }
+
+    public static function ajax_prepare_pause(): void {
+        self::guard();
+        // The pause flag can be set while a REST request is still in progress.
+        // The worker rereads it before saving its next checkpoint.
+        $state = self::snapshot();
+        if ( 'rest' !== ( $state['source'] ?? '' ) ||
+             ! in_array( (string) ( $state['status'] ?? '' ), array( 'building', 'paused_building' ), true ) ) {
+            self::respond( new WP_Error( 'cvr2_local_no_active_rest', 'Não existe uma preparação REST ativa para pausar/retomar.' ) );
+        }
+        $pause = '1' === (string) wp_unslash( $_POST['pause'] ?? '1' );
+        $state['status'] = $pause ? 'paused_building' : 'building';
+        $state['updated_at'] = time();
+        self::save_snapshot( $state );
+        self::respond( $state );
     }
 
     public static function ajax_prepare_step(): void {
         self::guard();
         self::respond( self::with_lock( static function () {
             $state = self::snapshot();
+            if ( 'paused_building' === ( $state['status'] ?? '' ) ) {
+                return $state; // Do not call Woo REST while paused.
+            }
             if ( 'building' !== ( $state['status'] ?? '' ) ) {
                 return new WP_Error( 'cvr2_local_not_building', 'Não há catálogo em preparação.' );
             }
@@ -278,9 +325,19 @@ final class CVR2_Local_Catalog {
                 return new WP_Error( 'cvr2_local_source', 'Origem desconhecida.' );
             }
 
-            $page   = max( 1, (int) ( $state['page'] ?? 1 ) );
+            // Server-side pacing: multiple browser tabs cannot bypass this limit.
+            $remaining = (float) ( $state['next_request_at'] ?? 0 ) - microtime( true );
+            if ( $remaining > 0 ) {
+                $state['wait_ms'] = (int) ceil( $remaining * 1000 );
+                return $state;
+            }
+
+            $page = max( 1, (int) ( $state['page'] ?? 1 ) );
+            // Existing 2.5.0 snapshots do not carry page_size: retain their original 40
+            // so their already-written records and future pages stay aligned.
+            $page_size = max( 1, min( 40, (int) ( $state['page_size'] ?? self::PAGE_SIZE ) ) );
             $result = CVR2_REST_Client::request( 'products', array(
-                'page' => $page, 'per_page' => self::PAGE_SIZE,
+                'page' => $page, 'per_page' => $page_size,
                 'orderby' => 'id', 'order' => 'asc', 'status' => 'any',
             ), 90 );
             if ( is_wp_error( $result ) ) {
@@ -315,9 +372,18 @@ final class CVR2_Local_Catalog {
             $state['total_pages'] = max( 1, (int) $result['total_pages'] );
             $state['page']        = $page + 1;
             $state['updated_at']  = time();
+            $state['wait_ms'] = max( 500, (int) ( $state['cooldown_ms'] ?? 2500 ) );
+            $state['next_request_at'] = microtime( true ) + $state['wait_ms'] / 1000;
             if ( $page >= $state['total_pages'] || empty( $rows ) ) {
                 $state['status'] = 'ready';
                 $state['completed_at'] = time();
+                $state['wait_ms'] = 0;
+                $state['next_request_at'] = 0;
+            } else {
+                $latest_state = self::snapshot();
+                if ( 'paused_building' === ( $latest_state['status'] ?? '' ) ) {
+                    $state['status'] = 'paused_building';
+                }
             }
             self::save_snapshot( $state );
             return $state;
@@ -363,6 +429,8 @@ final class CVR2_Local_Catalog {
                 'skipped'  => 0,
                 'failed'   => 0,
                 'total'    => (int) $snapshot['records'],
+                'next_batch_at' => 0.0,
+                'wait_ms' => 0,
                 'recent'   => array(),
                 'report_bytes' => 0,
                 'updated_at' => time(),
@@ -397,6 +465,11 @@ final class CVR2_Local_Catalog {
                 return new WP_Error( 'cvr2_local_stale', 'Execução antiga. Recuperar o estado atualizado.' );
             }
             if ( 'running' !== ( $state['status'] ?? '' ) ) {
+                return $state;
+            }
+            $remaining = (float) ( $state['next_batch_at'] ?? 0 ) - microtime( true );
+            if ( $remaining > 0 ) {
+                $state['wait_ms'] = (int) ceil( $remaining * 1000 );
                 return $state;
             }
             $snapshot = self::snapshot();
@@ -516,6 +589,16 @@ final class CVR2_Local_Catalog {
                 update_option( self::IMPORT_OPTION, $state, false );
             }
             fclose( $fp );
+            if ( 'running' === $state['status'] ) {
+                // Importing from disk still consumes Woo/DB workers: share capacity.
+                $state['wait_ms'] = 900;
+                $state['next_batch_at'] = microtime( true ) + 0.9;
+                update_option( self::IMPORT_OPTION, $state, false );
+            } else {
+                $state['wait_ms'] = 0;
+                $state['next_batch_at'] = 0.0;
+                update_option( self::IMPORT_OPTION, $state, false );
+            }
             return $state;
         } ) );
     }
@@ -527,6 +610,13 @@ final class CVR2_Local_Catalog {
             $state['status'] = 'paused';
             update_option( self::IMPORT_OPTION, $state, false );
         } elseif ( 'paused' === ( $state['status'] ?? '' ) ) {
+            $legacy = (array) get_option( CVR2_STATE_OPTION, array() );
+            if ( 'running' === ( $legacy['status'] ?? '' ) ) {
+                self::respond( new WP_Error(
+                    'cvr2_local_legacy_busy',
+                    'A importação REST antiga está ativa; não é seguro retomar esta importação em paralelo.'
+                ) );
+            }
             $state['status'] = 'running';
             update_option( self::IMPORT_OPTION, $state, false );
         }

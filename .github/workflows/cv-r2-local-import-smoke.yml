@@ -22,13 +22,15 @@ jobs:
           python3 - <<'PY'
           import re
           from pathlib import Path
-          source=Path('wp-content/plugins/cv-r2-media-linker/includes/class-cvr2-local-admin.php').read_text()
-          matches=re.findall(r'<script>(.*?)</script>', source, flags=re.S)
-          assert len(matches)==1, 'Expected one admin script'
-          js=re.sub(r'<\?php.*?\?>', 'null', matches[0], flags=re.S)
-          Path('/tmp/cvr2-local-admin.js').write_text(js)
+          for filename in ('class-cvr2-local-admin.php', 'class-cvr2-admin.php'):
+              source=Path('wp-content/plugins/cv-r2-media-linker/includes', filename).read_text()
+              matches=re.findall(r'<script>(.*?)</script>', source, flags=re.S)
+              assert len(matches)==1, f'Expected one embedded script in {filename}'
+              js=re.sub(r'<\?php.*?\?>', 'null', matches[0], flags=re.S)
+              Path('/tmp/' + filename + '.js').write_text(js)
           PY
-          node --check /tmp/cvr2-local-admin.js
+          node --check /tmp/class-cvr2-local-admin.php.js
+          node --check /tmp/class-cvr2-admin.php.js
       - name: Import phase invariants
         run: |
           set -e
@@ -36,3 +38,6 @@ jobs:
           grep -q "wp_json_encode" wp-content/plugins/cv-r2-media-linker/includes/class-cvr2-local-catalog.php
           grep -q "CVR2_Product_Importer::import_source_product" wp-content/plugins/cv-r2-media-linker/includes/class-cvr2-local-catalog.php
           grep -q "CVR2_Local_CSV::import_product" wp-content/plugins/cv-r2-media-linker/includes/class-cvr2-local-catalog.php
+          grep -q "cvr2_watchdog_enabled" wp-content/plugins/cv-r2-media-linker/includes/class-cvr2-admin.php
+          grep -q "cvr2_local_prepare_pause" wp-content/plugins/cv-r2-media-linker/includes/class-cvr2-local-catalog.php
+          grep -q "next_request_at" wp-content/plugins/cv-r2-media-linker/includes/class-cvr2-local-catalog.php
