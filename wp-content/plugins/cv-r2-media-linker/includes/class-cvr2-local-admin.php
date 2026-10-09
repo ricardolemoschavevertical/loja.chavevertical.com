@@ -17,8 +17,15 @@ final class CVR2_Local_Admin {
             <section class="cvr2-card">
                 <h3>1. Preparar catálogo a partir do site original</h3>
                 <p>Consulta WooCommerce REST e guarda os dados completos no disco. Os produtos ainda não são alterados.</p>
+                <p><label for="cvr2-local-profile"><strong>Intensidade da REST API:</strong></label>
+                <select id="cvr2-local-profile">
+                    <option value="safe" selected>Proteção elevada — 10 produtos / pausa 2,5 s</option>
+                    <option value="balanced">Equilibrado — 20 produtos / pausa 1,25 s</option>
+                    <option value="fast">Mais rápido — 30 produtos / pausa 0,65 s</option>
+                </select></p>
                 <button class="button button-primary" id="cvr2-local-rest">Preparar catálogo REST</button>
-                <p class="description">Se existirem produtos variáveis, as respetivas variações também ficam no ficheiro.</p>
+                <button class="button" id="cvr2-local-stop-preparation">Pausar preparação</button>
+                <p class="description">A pausa é respeitada também pelo servidor, mesmo com mais do que um separador aberto. O modo de proteção elevada é o recomendado quando outras APIs da loja estão lentas. Se existirem produtos variáveis, as variações também ficam no ficheiro.</p>
             </section>
             <section class="cvr2-card">
                 <h3>Alternativa: importar CSV do Windows</h3>
@@ -48,6 +55,13 @@ final class CVR2_Local_Admin {
             </section>
         </div>
         <div class="cvr2-card" style="margin-top:16px">
+            <h3>Proteção das restantes APIs</h3>
+            <label for="cvr2-local-watchdog">
+                <input id="cvr2-local-watchdog" type="checkbox" <?php checked( CVR2_Admin::watchdog_enabled() ); ?>>
+                <strong>Ativar watchdog automático da importação REST antiga</strong>
+            </label>
+            <p class="description">Por defeito desligado. Esta opção é guardada no servidor e também aparece no separador «Importação».
+            O Catálogo Local não usa watchdog automático: retoma apenas quando clicas em «Retomar operação».</p>
             <h3>Estado, retoma e relatório</h3>
             <div class="cvr2-local-controls">
                 <button class="button" id="cvr2-local-resume">Retomar operação</button>
@@ -76,6 +90,7 @@ final class CVR2_Local_Admin {
         (() => {
             const nonce = <?php echo wp_json_encode( $nonce ); ?>;
             const fields = <?php echo wp_json_encode( $fields, JSON_UNESCAPED_UNICODE ); ?>;
+            const watchdogOption = document.querySelector('#cvr2-local-watchdog');
             let upload = null, snapshot = null, current = null, active = false, stopped = false;
             const byId = (id) => document.getElementById(id);
             const write = (s) => { byId('cvr2-local-log').textContent = String(s || ''); };
@@ -98,6 +113,7 @@ final class CVR2_Local_Admin {
                 current = imp || {};
                 byId('cvr2-local-snapshot-info').textContent = snapshot.id
                     ? 'Catálogo: ' + (snapshot.source === 'csv' ? 'CSV' : 'REST') +
+                      (snapshot.profile ? ' | Ritmo: ' + snapshot.profile : '') +
                       ' | Estado: ' + (snapshot.status || '?') + ' | Registos preparados: ' + format(snapshot.records) +
                       (snapshot.total ? ' / ' + format(snapshot.total) : '') +
                       ' | Ficheiro: ' + format(snapshot.bytes) + ' bytes'
@@ -119,6 +135,9 @@ final class CVR2_Local_Admin {
             async function refresh() {
                 const state = await call('cvr2_local_status');
                 display(state.snapshot, state.import);
+                if (watchdogOption && typeof state.watchdog_enabled === 'boolean') {
+                    watchdogOption.checked = state.watchdog_enabled;
+                }
                 return state;
             }
             function launch(fn) {
@@ -133,7 +152,8 @@ final class CVR2_Local_Admin {
                     display(data, current);
                     write('A preparar catálogo ' + String(data.source || '') + ': ' + format(data.records) + ' registos.');
                     if (data.status === 'ready') { write('Catálogo local pronto: ' + format(data.records) + ' registos. Podes importar os produtos.'); break; }
-                    await sleep(80);
+                    // Respect server-side cooldown; avoid flooding admin-ajax.
+                    await sleep(Math.max(100, Math.min(15000, Number(data.wait_ms || data.cooldown_ms || 500))));
                 }
             }
             async function importLoop() {
@@ -148,15 +168,36 @@ final class CVR2_Local_Admin {
                               ' | Concluídos: ' + format(data.success) + ' | Erros: ' + format(data.failed));
                         break;
                     }
-                    await sleep(80);
+                    await sleep(Math.max(200, Math.min(15000, Number(data.wait_ms || 900))));
                 }
             }
             const bind = (id, fn) => { byId(id).addEventListener('click', fn); };
             bind('cvr2-local-rest', () => launch(async () => {
                 if (!confirm('Preparar novo catálogo REST? O catálogo anterior deixará de estar selecionado.')) return;
-                display(await call('cvr2_local_rest_start'), current);
+                display(await call('cvr2_local_rest_start', {
+                    profile: byId('cvr2-local-profile').value || 'safe'
+                }), current);
                 await prepareLoop();
             }));
+            // Pausing preparation does not discard the JSONL checkpoint.
+            bind('cvr2-local-stop-preparation', () => {
+                stopped = true;
+                write('Preparação interrompida pelo utilizador; o catálogo fica guardado. Usa «Retomar operação» para continuar.');
+            });
+            watchdogOption?.addEventListener('change', async () => {
+                const desired = watchdogOption.checked;
+                watchdogOption.disabled = true;
+                try {
+                    const result = await call('cvr2_local_watchdog', {enabled: desired ? '1' : '0'});
+                    watchdogOption.checked = Boolean(result.enabled);
+                    write(result.enabled ? 'Watchdog automático ativado na importação REST.' : 'Watchdog automático desligado. A retoma será manual.');
+                } catch (error) {
+                    watchdogOption.checked = !desired;
+                    write('Falha ao guardar a opção do watchdog: ' + error.message);
+                } finally {
+                    watchdogOption.disabled = false;
+                }
+            });
             bind('cvr2-local-products', () => launch(async () => {
                 if (!confirm('Importar os produtos do ficheiro local sem alterar as imagens?')) return;
                 current = await call('cvr2_local_import_start', {phase:'products'});
