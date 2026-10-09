@@ -63,7 +63,7 @@ final class CVR2_Local_Catalog {
         if ( ! is_writable( $resolved ) ) {
             return new WP_Error( 'cvr2_local_write', 'A pasta privada não tem permissão de escrita para o PHP.' );
         }
-        @chmod( $resolved, 0700 );
+        // Do not chmod an existing account directory: permissions may be shared with the deployment runner.
         return $resolved;
     }
 
@@ -148,6 +148,7 @@ final class CVR2_Local_Catalog {
         @chmod( $path, 0600 );
         self::save_snapshot( $state );
         delete_option( self::IMPORT_OPTION );
+        delete_option( 'cvr2_local_products_done' );
         return $state;
     }
 
@@ -284,6 +285,9 @@ final class CVR2_Local_Catalog {
             if ( 'running' === ( $previous['status'] ?? '' ) ) {
                 return new WP_Error( 'cvr2_local_running', 'Já existe uma fase de importação em execução.' );
             }
+            if ( 'images' === $phase && get_option( 'cvr2_local_products_done' ) !== ( $snapshot['id'] ?? '' ) ) {
+                return new WP_Error( 'cvr2_local_first_phase', 'Concluir primeiro a importação dos produtos deste catálogo.' );
+            }
             if ( 'images' === $phase && 'csv' === $snapshot['source'] &&
                  empty( $snapshot['mapping']['images'] ) ) {
                 return new WP_Error( 'cvr2_local_csv_no_images', 'CSV sem coluna de imagens selecionada.' );
@@ -329,6 +333,10 @@ final class CVR2_Local_Catalog {
                 return $path;
             }
             $fp = @fopen( $path, 'rb' );
+            if ( $fp && ( fstat( $fp )['size'] ?? -1 ) !== (int) $snapshot['bytes'] ) {
+                fclose( $fp );
+                return new WP_Error( 'cvr2_local_changed', 'O ficheiro local mudou desde que foi preparado. Importação bloqueada.' );
+            }
             if ( ! $fp || fseek( $fp, (int) $state['offset'] ) !== 0 ) {
                 if ( $fp ) { fclose( $fp ); }
                 return new WP_Error( 'cvr2_local_read', 'Erro a ler o catálogo privado.' );
@@ -381,12 +389,22 @@ final class CVR2_Local_Catalog {
                 // Checkpoint only after WooCommerce has completed the record.
                 $state['offset'] = ftell( $fp );
                 $state['updated_at'] = time();
+                $latest = self::import();
+                if ( 'paused' === ( $latest['status'] ?? '' ) ) {
+                    $state['status'] = 'paused';
+                }
                 update_option( self::IMPORT_OPTION, $state, false );
+                if ( 'paused' === $state['status'] ) {
+                    break;
+                }
             }
             if ( feof( $fp ) || $state['processed'] >= $state['total'] ) {
                 $state['status'] = 'done';
                 $state['completed_at'] = time();
                 update_option( self::IMPORT_OPTION, $state, false );
+                if ( 'products' === $state['phase'] && 0 === (int) $state['failed'] ) {
+                    update_option( 'cvr2_local_products_done', (string) $snapshot['id'], false );
+                }
             }
             fclose( $fp );
             return $state;
@@ -420,6 +438,7 @@ final class CVR2_Local_Catalog {
             }
             delete_option( self::SNAPSHOT_OPTION );
             delete_option( self::IMPORT_OPTION );
+            delete_option( 'cvr2_local_products_done' );
             CVR2_Local_CSV::remove_uploaded_file();
             return array( 'deleted' => true );
         } ) );
