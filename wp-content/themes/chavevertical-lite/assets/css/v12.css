@@ -657,3 +657,37 @@
   .cvl-contact-page .cvl-contact-grid{grid-template-columns:1fr}
   .cvl-contact-page .cvl-contact-grid .cvl-contact-card{min-height:0}
 }
+
+/* Contactos: tres departamentos numa fila, duas moradas numa fila. */
+.cvl-contact-page .cvl-contact-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  align-items:stretch;
+  gap:16px;
+}
+.cvl-contact-page .cvl-contact-locations{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  align-items:stretch;
+  gap:16px;
+}
+.cvl-contact-page .cvl-contact-locations .cvl-contact-location{
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  width:100%;
+  height:100%;
+}
+.cvl-contact-page .cvl-contact-locations .cvl-contact-location-map{
+  margin-top:auto;
+}
+@media (min-width:640px) and (max-width:991.98px){
+  .cvl-contact-page .cvl-contact-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .cvl-contact-page .cvl-contact-grid .cvl-contact-card{padding:14px}
+  .cvl-contact-page .cvl-contact-locations{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .cvl-contact-page .cvl-contact-locations .cvl-contact-location{padding:16px}
+}
+@media (max-width:639.98px){
+  .cvl-contact-page .cvl-contact-grid,
+  .cvl-contact-page .cvl-contact-locations{grid-template-columns:minmax(0,1fr)}
+}
