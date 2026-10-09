@@ -546,3 +546,53 @@
     display:none!important;
   }
 }
+
+
+/* Contactos: compacto e sem caixa gigante a envolver o cabecalho e o formulario. */
+.cvl-contact-page .cvl-contact-hero{
+  overflow:visible;
+  gap:clamp(20px,3vw,42px);
+  align-items:center;
+  padding:18px 0 24px;
+  border:0;
+  border-bottom:1px solid #e6ebe7;
+  border-radius:0;
+  background:none;
+  box-shadow:none;
+}
+.cvl-contact-page .cvl-contact-hero::after{display:none}
+.cvl-contact-page .cvl-contact-hero-copy{padding:0}
+.cvl-contact-page .cvl-contact-hero h1{
+  margin:8px 0 9px;
+  font-size:clamp(30px,3.2vw,40px);
+}
+.cvl-contact-page .cvl-contact-hero-copy>p{
+  max-width:540px;
+  line-height:1.5;
+}
+.cvl-contact-page .cvl-contact-hero-actions{margin-top:16px;gap:8px}
+.cvl-contact-page .cvl-contact-form-card{
+  padding:16px 18px;
+  border-radius:13px;
+  box-shadow:0 5px 20px rgba(30,55,40,.07);
+}
+.cvl-contact-page .cvl-contact-form-heading{margin-bottom:10px}
+.cvl-contact-page .cvl-contact-form{gap:9px}
+.cvl-contact-page .cvl-contact-form-row{gap:8px}
+.cvl-contact-page .cvl-contact-form textarea{min-height:86px}
+.cvl-contact-page .cvl-contact-form input[type="text"],
+.cvl-contact-page .cvl-contact-form input[type="email"],
+.cvl-contact-page .cvl-contact-form input[type="tel"]{min-height:39px}
+@media(max-width:991.98px){
+  .cvl-contact-page .cvl-contact-hero{
+    align-items:start;
+    padding-top:15px;
+    gap:20px;
+  }
+}
+@media(max-width:639.98px){
+  .cvl-contact-page .cvl-contact-hero{padding:12px 0 22px;gap:16px}
+  .cvl-contact-page .cvl-contact-hero-actions{margin-top:13px}
+  .cvl-contact-page .cvl-contact-form-card{padding:16px}
+  .cvl-contact-page .cvl-contact-form textarea{min-height:96px}
+}
