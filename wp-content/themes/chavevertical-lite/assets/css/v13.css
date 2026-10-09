@@ -5299,3 +5299,33 @@ body .cvl-contact-page .cvl-contact-location-map iframe{
     min-height:260px;
   }
 }
+
+
+/* v0.16.108 - Marca e SKU legiveis; marca com destino proprio. */
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-brand-sku-row .cvl-product-brand{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  min-height:34px!important;
+  text-decoration:none!important;
+  cursor:pointer;
+}
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-brand-sku-row a.cvl-product-brand:hover,
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-brand-sku-row a.cvl-product-brand:focus-visible{
+  color:#006c96!important;
+  text-decoration:underline!important;
+}
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-brand-sku-row a.cvl-product-brand:focus-visible{
+  outline:2px solid currentColor;
+  outline-offset:2px;
+}
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-brand-sku-row .cvl-product-brand-name,
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-brand-sku-row .cvl-product-sku,
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-brand-sku-row .cvl-product-sku-text{
+  font-size:12px!important;
+  line-height:1.45!important;
+  font-weight:700!important;
+}
+:is(.woocommerce,.cvl-v4-products) ul.products li.product:not(.product-category) .cvl-product-brand-sku-row .cvl-product-brand-logo{
+  max-height:34px!important;
+}
