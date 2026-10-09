@@ -15,6 +15,7 @@ define( 'CV_CORE_VERSION', '0.2.2' );
 define( 'CV_CORE_MENU_SLUG', 'chave-vertical' );
 
 require_once __DIR__ . '/includes/class-cv-core-order-history.php';
+require_once __DIR__ . '/includes/cv-core-chatgpt-admin.php';
 require_once __DIR__ . '/includes/class-cv-core-brand-logo-webp.php';
 
 function cv_admin_parent_slug(): string {
