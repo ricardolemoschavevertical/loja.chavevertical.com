@@ -141,6 +141,15 @@ final class CVR2_Admin {
             $import_mode = 'update_existing';
         }
 
+        $local_catalog = CVR2_Local_Catalog::snapshot();
+        $local_import  = CVR2_Local_Catalog::import();
+        if ( in_array( (string) ( $local_catalog['status'] ?? '' ), array( 'building', 'paused_building' ), true )
+            || 'running' === ( $local_import['status'] ?? '' ) ) {
+            wp_send_json_error( array(
+                'message' => 'Está a preparar/importar um catálogo local. Não iniciar o importador REST antigo em paralelo.',
+            ), 409 );
+        }
+
         $requested_batch_size = absint( wp_unslash( $_POST['batch_size'] ?? 10 ) );
         $requested_batch_size = max( 1, min( 50, $requested_batch_size ) );
         $batch_size = $requested_batch_size;
@@ -222,6 +231,14 @@ final class CVR2_Admin {
         self::guard_ajax();
 
         $state = (array) get_option( CVR2_STATE_OPTION, array() );
+        $local_catalog = CVR2_Local_Catalog::snapshot();
+        $local_import  = CVR2_Local_Catalog::import();
+        if ( in_array( (string) ( $local_catalog['status'] ?? '' ), array( 'building', 'paused_building' ), true )
+            || 'running' === ( $local_import['status'] ?? '' ) ) {
+            wp_send_json_error( array(
+                'message' => 'Catálogo local em execução; importação REST antiga bloqueada para evitar sobrecarga.',
+            ), 409 );
+        }
         if ( empty( $state ) || 'done' === ( $state['status'] ?? '' ) ) {
             wp_send_json_success(
                 array(
