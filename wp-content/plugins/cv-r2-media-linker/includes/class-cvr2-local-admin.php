@@ -25,7 +25,7 @@ final class CVR2_Local_Admin {
                 </select></p>
                 <button class="button button-primary" id="cvr2-local-rest">Preparar catálogo REST</button>
                 <button class="button" id="cvr2-local-stop-preparation">Pausar preparação</button>
-                <p class="description">A pausa é respeitada também pelo servidor, mesmo com mais do que um separador aberto. O modo de proteção elevada é o recomendado quando outras APIs da loja estão lentas. Se existirem produtos variáveis, as variações também ficam no ficheiro.</p>
+                <p class="description">O ritmo e a pausa são respeitados pelo servidor, mesmo com mais do que um separador aberto. O modo de proteção elevada é recomendado quando outras APIs da loja estão lentas. Se existirem produtos variáveis, as variações também ficam no ficheiro.</p>
             </section>
             <section class="cvr2-card">
                 <h3>Alternativa: importar CSV do Windows</h3>
@@ -152,6 +152,7 @@ final class CVR2_Local_Admin {
                     display(data, current);
                     write('A preparar catálogo ' + String(data.source || '') + ': ' + format(data.records) + ' registos.');
                     if (data.status === 'ready') { write('Catálogo local pronto: ' + format(data.records) + ' registos. Podes importar os produtos.'); break; }
+                    if (data.status === 'paused_building') { write('Preparação REST pausada no servidor. Usa «Retomar operação».'); break; }
                     // Respect server-side cooldown; avoid flooding admin-ajax.
                     await sleep(Math.max(100, Math.min(15000, Number(data.wait_ms || data.cooldown_ms || 500))));
                 }
@@ -180,9 +181,15 @@ final class CVR2_Local_Admin {
                 await prepareLoop();
             }));
             // Pausing preparation does not discard the JSONL checkpoint.
-            bind('cvr2-local-stop-preparation', () => {
+            bind('cvr2-local-stop-preparation', async () => {
                 stopped = true;
-                write('Preparação interrompida pelo utilizador; o catálogo fica guardado. Usa «Retomar operação» para continuar.');
+                try {
+                    const data = await call('cvr2_local_prepare_pause', {pause:'1'});
+                    display(data, current);
+                    write('Preparação REST pausada no servidor. Mantém o progresso guardado; usa «Retomar operação».');
+                } catch (error) {
+                    write('Não foi possível pausar no servidor: ' + error.message);
+                }
             });
             watchdogOption?.addEventListener('change', async () => {
                 const desired = watchdogOption.checked;
@@ -275,6 +282,10 @@ final class CVR2_Local_Admin {
             });
             bind('cvr2-local-resume', () => launch(async () => {
                 const data = await refresh();
+                if (data.snapshot.status === 'paused_building') {
+                    display(await call('cvr2_local_prepare_pause', {pause:'0'}), data.import);
+                    return prepareLoop();
+                }
                 if (data.snapshot.status === 'building') return prepareLoop();
                 if (data.import.status === 'paused') {
                     current = await call('cvr2_local_pause');
