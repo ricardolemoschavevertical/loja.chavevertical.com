@@ -298,6 +298,8 @@ final class CVR2_Local_Catalog {
                 'phase'    => $phase,
                 'status'   => 'running',
                 'offset'   => 0,
+                'subphase' => 'rows',
+                'relations_page' => 1,
                 'processed'=> 0,
                 'success'  => 0,
                 'skipped'  => 0,
@@ -328,6 +330,23 @@ final class CVR2_Local_Catalog {
                  ( $state['snapshot_id'] ?? '' ) !== ( $snapshot['id'] ?? '' ) ) {
                 return new WP_Error( 'cvr2_local_snapshot_changed', 'O ficheiro local mudou; importação bloqueada.' );
             }
+            if ( 'products' === $state['phase'] && 'relations' === ( $state['subphase'] ?? '' ) ) {
+                // Resolve upsells, cross-sells and grouped children only after all source
+                // products exist. Scan only records touched by this run.
+                $page = max( 1, (int) ( $state['relations_page'] ?? 1 ) );
+                $relations = CVR2_Product_Importer::resolve_relations_page( $page, 50, (string) $state['run_id'] );
+                $state['relations_page'] = $page + 1;
+                $state['relations_total_pages'] = (int) $relations['total_pages'];
+                $state['updated_at'] = time();
+                if ( $page >= (int) $relations['total_pages'] ) {
+                    $state['status'] = 'done';
+                    $state['completed_at'] = time();
+                    update_option( 'cvr2_local_products_done', (string) $snapshot['id'], false );
+                }
+                update_option( self::IMPORT_OPTION, $state, false );
+                return $state;
+            }
+
             $path = self::file_path( $snapshot );
             if ( is_wp_error( $path ) ) {
                 return $path;
@@ -381,6 +400,10 @@ final class CVR2_Local_Catalog {
                     $state['success']++;
                     $message = 'Concluído.';
                     $kind = 'ok';
+                    if ( 'products' === $state['phase'] &&
+                         'rest' === $snapshot['source'] && ! empty( $outcome['id'] ) ) {
+                        update_post_meta( (int) $outcome['id'], '_cvr2_import_run', (string) $state['run_id'] );
+                    }
                 }
                 array_unshift( $state['recent'], array(
                     'sku' => sanitize_text_field( (string) ( $source['sku'] ?? '' ) ),
@@ -402,13 +425,16 @@ final class CVR2_Local_Catalog {
                 }
             }
             if ( feof( $fp ) || $state['processed'] >= $state['total'] ) {
-                $state['status'] = 'done';
-                $state['completed_at'] = time();
-                update_option( self::IMPORT_OPTION, $state, false );
-                if ( 'products' === $state['phase'] ) {
-                    // Failed rows are reported; successful products may still receive images.
-                    update_option( 'cvr2_local_products_done', (string) $snapshot['id'], false );
+                if ( 'products' === $state['phase'] && 'rest' === $snapshot['source'] ) {
+                    $state['subphase'] = 'relations';
+                } else {
+                    $state['status'] = 'done';
+                    $state['completed_at'] = time();
+                    if ( 'products' === $state['phase'] ) {
+                        update_option( 'cvr2_local_products_done', (string) $snapshot['id'], false );
+                    }
                 }
+                update_option( self::IMPORT_OPTION, $state, false );
             }
             fclose( $fp );
             return $state;
