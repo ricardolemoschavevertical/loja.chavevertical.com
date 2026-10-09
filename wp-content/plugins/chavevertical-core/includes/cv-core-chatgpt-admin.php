@@ -186,7 +186,7 @@ function cv_core_chatgpt_toolbar_script(): void {
         };
         if (githubLink) githubLink.addEventListener('click', event => {
             event.preventDefault();
-            const prompt = '[$github](app://connector_76869538009648d5b282a4bb21c3d157) Analisa esta página da loja Chave Vertical: ' + pageUrl;
+            const prompt = '@github\n' + pageUrl + '\n\nAnalisa esta página e aplica as alterações necessárias no repositório da loja.chavevertical.com.';
             const chatUrl = 'https://chatgpt.com/?q=' + encodeURIComponent(prompt);
             // Abrir durante o clique evita o bloqueio de pop-ups.
             const tab = window.open(chatUrl, '_blank', 'noopener,noreferrer');
