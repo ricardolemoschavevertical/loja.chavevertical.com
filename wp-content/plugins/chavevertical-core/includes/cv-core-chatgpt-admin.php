@@ -9,7 +9,7 @@ add_action( 'admin_bar_menu', static function ( WP_Admin_Bar $bar ): void {
     $bar->add_node( array( 'id' => 'cv-chatgpt-page', 'title' => 'ChatGPT', 'href' => 'https://chatgpt.com/', 'meta' => array( 'target' => '_blank', 'rel' => 'noopener noreferrer' ) ) );
     $items = array(
         array( 'id' => 'cv-chatgpt-screenshot', 'title' => '1. Print screen (copiar imagem)' ),
-        array( 'id' => 'cv-chatgpt-github', 'title' => '2. Copiar [$github]' ),
+        array( 'id' => 'cv-chatgpt-github', 'title' => '2. GitHub — abrir no ChatGPT' ),
         array( 'id' => 'cv-chatgpt-copy', 'title' => 'Copiar link da página' ),
         array( 'id' => 'cv-chatgpt-screenshot-save', 'title' => 'Guardar screenshot PNG' ),
     );
@@ -186,7 +186,12 @@ function cv_core_chatgpt_toolbar_script(): void {
         };
         if (githubLink) githubLink.addEventListener('click', event => {
             event.preventDefault();
-            void copyText('[$github](app://connector_76869538009648d5b282a4bb21c3d157)');
+            const prompt = '[$github](app://connector_76869538009648d5b282a4bb21c3d157) Analisa esta página da loja Chave Vertical: ' + pageUrl;
+            const chatUrl = 'https://chatgpt.com/?q=' + encodeURIComponent(prompt);
+            // Abrir durante o clique evita o bloqueio de pop-ups.
+            const tab = window.open(chatUrl, '_blank', 'noopener,noreferrer');
+            void copyText(prompt);
+            if (!tab) window.alert('O browser pode ter bloqueado o novo separador. A mensagem foi copiada; abra o ChatGPT e cole com Ctrl+V.');
         });
         customItems.forEach((item, index) => {
             const link = document.querySelector('#wp-admin-bar-cv-chatgpt-custom-' + index + ' > a');
