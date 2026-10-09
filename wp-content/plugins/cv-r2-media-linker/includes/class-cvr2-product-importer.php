@@ -40,7 +40,15 @@ final class CVR2_Product_Importer {
         if ( is_wp_error( $categories ) ) {
             $result['warnings'][] = 'Categorias: ' . $categories->get_error_message();
         } else {
+            // As categorias já têm de existir; esta verificação não cria nem altera categorias.
             $result['categories'] = self::sync_hierarchical_terms( 'product_cat', $categories );
+            $unmatched = max( 0, count( $categories ) - $result['categories'] );
+            if ( $unmatched ) {
+                $result['warnings'][] = sprintf(
+                    '%d categoria(s) da origem sem correspondência de slug/ID no destino. Nenhuma categoria foi criada.',
+                    $unmatched
+                );
+            }
         }
 
         $tags = CVR2_REST_Client::all_pages( 'products/tags', array( 'hide_empty' => 'false' ) );
