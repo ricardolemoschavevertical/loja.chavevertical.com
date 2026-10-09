@@ -31,6 +31,8 @@ jobs:
           PY
           node --check /tmp/class-cvr2-local-admin.php.js
           node --check /tmp/class-cvr2-admin.php.js
+      - name: Legacy import checkpoint and pause regression
+        run: php wp-content/plugins/cv-r2-media-linker/tests/test-legacy-pause.php
       - name: Import phase invariants
         run: |
           set -e
