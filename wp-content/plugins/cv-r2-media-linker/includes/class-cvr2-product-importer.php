@@ -428,7 +428,10 @@ final class CVR2_Product_Importer {
         self::apply_attributes( $product, (array) ( $source['attributes'] ?? array() ) );
         self::apply_default_attributes( $product, (array) ( $source['default_attributes'] ?? array() ) );
         if ( ! $defer_images ) {
-            self::apply_images( $product, (array) ( $source['images'] ?? array() ) );
+            $image_result = self::apply_images( $product, (array) ( $source['images'] ?? array() ) );
+            if ( is_wp_error( $image_result ) ) {
+                return $image_result;
+            }
         } // If deferred, retain the current product image and gallery unchanged.
 
         self::$writing_source_slug = true;
@@ -533,7 +536,10 @@ final class CVR2_Product_Importer {
             && ! self::product_images_match_source( $product, $source_images );
 
         if ( $product_images_changed ) {
-            self::apply_images( $product, $source_images );
+            $image_result = self::apply_images( $product, $source_images );
+            if ( is_wp_error( $image_result ) ) {
+                return $image_result;
+            }
             $saved_id = $product->save();
 
             if ( ! $saved_id ) {
@@ -680,7 +686,8 @@ final class CVR2_Product_Importer {
             return 'unchanged';
         }
 
-        if ( empty( $image ) && ! $current_image_id ) {
+        // Do not erase an existing variation image when the source reference is blank.
+        if ( empty( $image ) ) {
             return 'unchanged';
         }
 
@@ -1069,19 +1076,23 @@ final class CVR2_Product_Importer {
         $product->set_default_attributes( $out );
     }
 
-    private static function apply_images( WC_Product $product, array $images ): void {
+    private static function apply_images( WC_Product $product, array $images ) {
         $ids = array();
-
         foreach ( $images as $image ) {
             $id = CVR2_Media::attachment_for_source_image( (array) $image );
-            if ( ! is_wp_error( $id ) && $id ) {
-                $ids[] = absint( $id );
+            if ( is_wp_error( $id ) ) {
+                return $id;
             }
+            if ( ! $id ) {
+                return new WP_Error( 'cvr2_image_unresolved', 'Não foi possível associar uma imagem. Galeria mantida sem alterações.' );
+            }
+            $ids[] = absint( $id );
         }
-
+        // Only set image and gallery after ALL references were resolved.
         $ids = array_values( array_unique( array_filter( $ids ) ) );
         $product->set_image_id( $ids ? array_shift( $ids ) : 0 );
         $product->set_gallery_image_ids( $ids );
+        return true;
     }
 
     private static function apply_brand_terms( int $product_id, array $brands, bool $defer_images = false ): void {
