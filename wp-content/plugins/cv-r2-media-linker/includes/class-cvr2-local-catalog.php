@@ -610,6 +610,13 @@ final class CVR2_Local_Catalog {
             $state['status'] = 'paused';
             update_option( self::IMPORT_OPTION, $state, false );
         } elseif ( 'paused' === ( $state['status'] ?? '' ) ) {
+            $legacy = (array) get_option( CVR2_STATE_OPTION, array() );
+            if ( 'running' === ( $legacy['status'] ?? '' ) ) {
+                self::respond( new WP_Error(
+                    'cvr2_local_legacy_busy',
+                    'A importação REST antiga está ativa; não é seguro retomar esta importação em paralelo.'
+                ) );
+            }
             $state['status'] = 'running';
             update_option( self::IMPORT_OPTION, $state, false );
         }
