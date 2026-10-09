@@ -28,7 +28,7 @@ $locations = array(
     array(
         'name'    => 'Loja Condeixa - Coimbra',
         'address' => "R. Dona Maria Elsa Franco Sotto Mayor\nEdifício Conímbriga, Loja 21\n3150-133 Condeixa",
-        'maps'    => 'Rua Dona Maria Elsa Franco Sotto Mayor 38, Edifício Conímbriga, Loja 21, 3150-133 Condeixa-a-Nova, Portugal',
+        'maps'    => 'Edificio Conimbriga, Rua Dona Maria Elsa Franco Sotto Mayor 38, 3150-133 Condeixa-a-Nova, Portugal',
     ),
 );
 ?>
@@ -190,7 +190,7 @@ $locations = array(
             <?php foreach ( $locations as $location ) : ?>
                 <?php
                 $maps_url      = 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode( $location['maps'] );
-                $map_embed_url = 'https://www.google.com/maps?q=' . rawurlencode( $location['maps'] ) . '&output=embed';
+                $map_embed_url = 'https://www.google.com/maps?q=' . rawurlencode( $location['maps'] ) . '&z=17&output=embed';
                 ?>
                 <article class="cvl-contact-location">
                     <h3><span aria-hidden="true">📍</span><?php echo esc_html( $location['name'] ); ?></h3>
