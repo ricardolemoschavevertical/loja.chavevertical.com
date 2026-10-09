@@ -230,6 +230,12 @@ final class CVR2_Admin {
     public static function ajax_import_batch(): void {
         self::guard_ajax();
 
+        if ( '1' === (string) wp_unslash( $_POST['auto_resume'] ?? '0' ) && ! self::watchdog_enabled() ) {
+            wp_send_json_error( array(
+                'message' => 'Watchdog desligado. Não é permitida retoma automática; usa «Retomar».',
+            ), 409 );
+        }
+
         $state = (array) get_option( CVR2_STATE_OPTION, array() );
         $local_catalog = CVR2_Local_Catalog::snapshot();
         $local_import  = CVR2_Local_Catalog::import();
@@ -1199,11 +1205,11 @@ final class CVR2_Admin {
                     if (!watchdogEnabled) return;
                     write('Watchdog: a importação esteve parada durante 1 minuto. A retomar automaticamente…');
                     writeWatchdog('Watchdog automático: a retomar agora…');
-                    loop();
+                    loop(true);
                 }, WATCHDOG_DELAY_MS);
             }
 
-            async function loop() {
+            async function loop(autoResume = false) {
                 if (running) return;
 
                 cancelWatchdog();
@@ -1219,7 +1225,8 @@ final class CVR2_Admin {
                     while (running) {
                         const data = await call('cvr2_import_batch', {
                             run_id: activeRunId,
-                            import_mode: activeImportMode
+                            import_mode: activeImportMode,
+                            auto_resume: autoResume ? '1' : '0'
                         });
                         renderState(data.state);
 
