@@ -489,7 +489,10 @@ final class CVR2_Product_Importer {
                 // Read all required variation data except image bytes/URLs.
                 $variation_query['_fields'] = 'id,sku,status,global_unique_id,regular_price,sale_price,manage_stock,stock_quantity,stock_status,backorders,weight,dimensions,menu_order,attributes,meta_data';
             }
-            $variations = CVR2_REST_Client::all_pages( 'products/' . $source_id . '/variations', $variation_query );
+            // Snapshot import: child variations were already downloaded to the local file.
+            $variations = array_key_exists( '__cvr2_variations', $source )
+                ? (array) $source['__cvr2_variations']
+                : CVR2_REST_Client::all_pages( 'products/' . $source_id . '/variations', $variation_query );
             if ( is_wp_error( $variations ) ) {
                 update_post_meta( $target_id, '_cvr2_variation_import_error', $variations->get_error_message() );
             } else {
@@ -524,7 +527,10 @@ final class CVR2_Product_Importer {
         }
 
         $source_images          = (array) ( $source['images'] ?? array() );
-        $product_images_changed = ! self::product_images_match_source( $product, $source_images );
+        // When importing from a local snapshot, empty image references must not
+        // delete an existing featured image or gallery.
+        $product_images_changed = ! empty( $source_images )
+            && ! self::product_images_match_source( $product, $source_images );
 
         if ( $product_images_changed ) {
             self::apply_images( $product, $source_images );
@@ -538,14 +544,16 @@ final class CVR2_Product_Importer {
         $variation_images_updated = 0;
         $variation_images_checked = 0;
 
-        if ( $product instanceof WC_Product_Variable && $source_id ) {
-            $variations = CVR2_REST_Client::all_pages(
-                'products/' . $source_id . '/variations',
-                array(
-                    'status'  => 'any',
-                    '_fields' => 'id,sku,image',
-                )
-            );
+        if ( $product instanceof WC_Product_Variable && ( $source_id || array_key_exists( '__cvr2_variations', $source ) ) ) {
+            $variations = array_key_exists( '__cvr2_variations', $source )
+                ? (array) $source['__cvr2_variations']
+                : CVR2_REST_Client::all_pages(
+                    'products/' . $source_id . '/variations',
+                    array(
+                        'status'  => 'any',
+                        '_fields' => 'id,sku,image',
+                    )
+                );
 
             if ( ! is_wp_error( $variations ) ) {
                 foreach ( $variations as $variation_source ) {
