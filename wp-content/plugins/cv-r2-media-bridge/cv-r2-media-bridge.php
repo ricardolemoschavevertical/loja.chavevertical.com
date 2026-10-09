@@ -61,17 +61,45 @@ final class CV_R2_Media_Bridge {
             return new WP_Error( 'cv_r2_key', 'Chave de objeto invalida.', array( 'status' => 400 ) );
         }
 
-        // Reuse a record created by this bridge only if it still is an attachment.
-        $ids = $wpdb->get_col( $wpdb->prepare(
-            "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value = %s LIMIT 3",
-            self::META_KEY, $key
-        ) );
-        $valid = array_values( array_filter( array_map( 'intval', $ids ), 'wp_attachment_is_image' ) );
-        if ( count( $valid ) > 1 ) {
-            return new WP_Error( 'cv_r2_duplicate', 'Existem anexos duplicados para esta chave.', array( 'status' => 409 ) );
+        // Search ALL known R2 representations before creating a new record.
+        // The existing cv-r2-media-linker stores keys in these meta fields.
+        $url = self::object_url( $key );
+        $found = array();
+        foreach ( array( self::META_KEY, '_cvr2_r2_key', '_cv_r2_key', '_wp_attached_file' ) as $meta_key ) {
+            $ids = $wpdb->get_col( $wpdb->prepare(
+                "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value = %s",
+                $meta_key, $key
+            ) );
+            foreach ( $ids as $id ) {
+                if ( 'attachment' === get_post_type( (int) $id ) ) {
+                    $found[ (int) $id ] = true;
+                }
+            }
         }
-        if ( count( $valid ) === 1 ) {
-            return rest_ensure_response( array( 'id' => $valid[0], 'created' => false, 'url' => self::object_url( $key ) ) );
+        foreach ( array( '_cvr2_r2_url', '_cv_r2_url' ) as $meta_key ) {
+            $ids = $wpdb->get_col( $wpdb->prepare(
+                "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value = %s",
+                $meta_key, $url
+            ) );
+            foreach ( $ids as $id ) {
+                if ( 'attachment' === get_post_type( (int) $id ) ) {
+                    $found[ (int) $id ] = true;
+                }
+            }
+        }
+        $guid_ids = $wpdb->get_col( $wpdb->prepare(
+            "SELECT ID FROM {$wpdb->posts} WHERE post_type = 'attachment' AND guid = %s",
+            $url
+        ) );
+        foreach ( $guid_ids as $id ) {
+            $found[ (int) $id ] = true;
+        }
+        if ( count( $found ) > 1 ) {
+            return new WP_Error( 'cv_r2_duplicate', 'Existem anexos duplicados para esta chave; corrigir antes de importar.', array( 'status' => 409 ) );
+        }
+        if ( count( $found ) === 1 ) {
+            $id = (int) array_key_first( $found );
+            return rest_ensure_response( array( 'id' => $id, 'created' => false, 'url' => $url ) );
         }
 
         $url = self::object_url( $key );
@@ -98,6 +126,10 @@ final class CV_R2_Media_Bridge {
             return new WP_Error( 'cv_r2_insert', 'Nao foi possivel criar o anexo.', array( 'status' => 500 ) );
         }
         update_post_meta( $attachment_id, self::META_KEY, $key );
+        update_post_meta( $attachment_id, '_cvr2_r2_key', $key );
+        update_post_meta( $attachment_id, '_cvr2_r2_url', $url );
+        update_post_meta( $attachment_id, '_cvr2_virtual', 1 );
+        update_post_meta( $attachment_id, '_wp_attached_file', $key );
         // Intentionally no _wp_attached_file: object exists remotely and must not be treated as local.
         return rest_ensure_response( array( 'id' => (int) $attachment_id, 'created' => true, 'url' => $url ) );
     }
