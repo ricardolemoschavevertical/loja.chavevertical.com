@@ -1,0 +1,21 @@
+name: CV R2 Media Linker - PHP lint
+
+on:
+  pull_request:
+    paths:
+      - "wp-content/plugins/cv-r2-media-linker/**"
+      - ".github/workflows/cv-r2-import-php-lint.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  php-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check PHP syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          find wp-content/plugins/cv-r2-media-linker -type f -name '*.php' -print0 | xargs -0 -n1 php -l
