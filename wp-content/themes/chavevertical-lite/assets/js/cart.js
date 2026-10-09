@@ -8,7 +8,10 @@
     ['Move to Cart', 'Mover para o carrinho'],
     ['Your cart is currently empty!', 'O seu carrinho está vazio.'],
     ['Your cart is currently empty.', 'O seu carrinho está vazio.'],
-    ['New in store', 'Produtos em promoção']
+    ['New in store', 'Produtos em promoção'],
+    ['Shipping will be calculated at checkout', 'Os portes de envio serão calculados ao finalizar a encomenda'],
+    ['Shipping will be calculated at checkout.', 'Os portes de envio serão calculados ao finalizar a encomenda.'],
+    ['Quantity:', 'Quantidade:']
   ]);
 
   function translateNode(root) {
@@ -22,7 +25,7 @@
       {
         acceptNode(node) {
           const value = node.nodeValue ? node.nodeValue.trim() : '';
-          return translations.has(value)
+          return translations.has(value) || /^Quantity:\s*\d+$/i.test(value)
             ? NodeFilter.FILTER_ACCEPT
             : NodeFilter.FILTER_REJECT;
         }
@@ -39,7 +42,7 @@
     nodes.forEach((textNode) => {
       const original = textNode.nodeValue || '';
       const trimmed = original.trim();
-      const replacement = translations.get(trimmed);
+      const replacement = translations.get(trimmed) || trimmed.replace(/^Quantity:\s*(\d+)$/i, 'Quantidade: $1');
 
       if (!replacement) {
         return;
