@@ -1,0 +1,21 @@
+/* Keep the six existing promotions below the complete cart and saved list. */
+.woocommerce-cart .cvl-entry-content > .cvl-empty-cart-promotions {
+  clear: both;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Keep the native list mounted so saving/removing items still works without
+   reloading. Template rows do not count; only rendered, non-empty rows do.
+   Hide the heading, empty message and spacing, but retain the live error region. */
+@supports selector(:has(*)) {
+  .woocommerce-cart .wc-block-saved-for-later:not(:has(.wc-block-saved-for-later__list > li:not(.wc-block-saved-for-later__empty):not([hidden]))) {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  .woocommerce-cart .wc-block-saved-for-later:not(:has(.wc-block-saved-for-later__list > li:not(.wc-block-saved-for-later__empty):not([hidden]))) > :is(.wc-block-saved-for-later__header, .wp-block-heading, .wc-block-saved-for-later__list) {
+    display: none !important;
+  }
+}

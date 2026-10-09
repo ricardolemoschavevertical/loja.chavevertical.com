@@ -1,9 +1,13 @@
 <?php
 defined( 'ABSPATH' ) || exit;
-get_header();
-
 $cvl_is_cart_page  = function_exists( 'is_cart' ) && is_cart();
 $cvl_cart_is_empty = $cvl_is_cart_page && function_exists( 'WC' ) && WC()->cart && WC()->cart->is_empty();
+
+if ( $cvl_is_cart_page ) {
+    require_once __DIR__ . '/inc/cart-sections.php';
+}
+
+get_header();
 ?>
 <div class="cvl-shell cvl-content">
 <?php
