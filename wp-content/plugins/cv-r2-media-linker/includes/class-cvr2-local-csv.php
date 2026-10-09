@@ -22,8 +22,8 @@ final class CVR2_Local_CSV {
             'sale_price' => 'Preço promocional', 'manage_stock' => 'Gerir stock (1/0)',
             'stock_quantity' => 'Quantidade em stock', 'stock_status' => 'Disponibilidade',
             'weight' => 'Peso', 'length' => 'Comprimento', 'width' => 'Largura',
-            'height' => 'Altura', 'categories' => 'Categorias existentes (slugs separados por |)',
-            'images' => 'Imagens (URLs HTTPS separadas por |)',
+            'height' => 'Altura', 'categories' => 'Categorias existentes (slug/nome/caminho; separador | ou vírgula)',
+            'images' => 'Imagens (URLs HTTPS; separador | ou vírgula)',
             'seo_title' => 'Rank Math - Título SEO', 'seo_description' => 'Rank Math - Meta description',
             'focus_keyword' => 'Rank Math - Palavra-chave principal',
         );
@@ -203,13 +203,13 @@ final class CVR2_Local_CSV {
                 // Empty cells do not overwrite existing data; "0" is intentionally retained.
                 if ( '' === $value ) { continue; }
                 if ( 'images' === $field ) {
-                    $sources = array_map( 'trim', explode( '|', $value ) );
+                    $sources = array_map( 'trim', preg_split( '/\\s*[|,]\\s*/u', $value ) );
                     $data['images'] = array_values( array_map(
                         static fn( $src ) => array( 'src' => $src ),
                         array_filter( $sources, 'strlen' )
                     ) );
                 } elseif ( 'categories' === $field ) {
-                    $data['categories'] = array_values( array_filter( array_map( 'trim', explode( '|', $value ) ), 'strlen' ) );
+                    $data['categories'] = array_values( array_filter( array_map( 'trim', preg_split( '/\\s*[|,]\\s*/u', $value ) ), 'strlen' ) );
                 } else {
                     $data[$field] = $value;
                 }
