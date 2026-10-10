@@ -76,6 +76,43 @@ cvl_checkout_test_assert( cvl_checkout_valid_pt_tax_id( '123456789' ), 'Valid Po
 cvl_checkout_test_assert( cvl_checkout_valid_pt_tax_id( '509514502' ), 'Valid Portuguese company NIPC accepted' );
 cvl_checkout_test_assert( ! cvl_checkout_valid_pt_tax_id( '123456780' ), 'Invalid Portuguese NIF rejected' );
 
+// Official Portuguese ranges: persons 1–4; RNPC NIPC 5, 6, 8, 9.
+// Portuguese fiscal IDs starting with 7 are assigned by AT to other entities.
+function cvl_checkout_test_make_valid_id( string $first_eight ): string {
+    cvl_checkout_test_assert( (bool) preg_match( '/^[0-9]{8}$/D', $first_eight ), 'Test ID seed has 8 digits' );
+    $sum = 0;
+    for ( $i = 0; $i < 8; $i++ ) {
+        $sum += (int) $first_eight[$i] * ( 9 - $i );
+    }
+    $check = 11 - ( $sum % 11 );
+    return $first_eight . (string) ( $check >= 10 ? 0 : $check );
+}
+
+foreach ( array( '1', '2', '3', '4' ) as $prefix ) {
+    $tax = cvl_checkout_test_make_valid_id( $prefix . '1234567' );
+    cvl_checkout_test_assert( 'singular' === cvl_checkout_pt_tax_id_kind( $tax ), "Personal prefix $prefix classified correctly" );
+    cvl_checkout_test_assert( cvl_checkout_tax_kind_allowed( cvl_checkout_pt_tax_id_kind( $tax ), 'particular' ), "Personal prefix $prefix accepted in Particular" );
+    cvl_checkout_test_assert( ! cvl_checkout_tax_kind_allowed( cvl_checkout_pt_tax_id_kind( $tax ), 'empresa' ), "Personal prefix $prefix rejected as NIPC" );
+}
+$nonresident_singular = cvl_checkout_test_make_valid_id( '45123456' );
+cvl_checkout_test_assert( 'singular' === cvl_checkout_pt_tax_id_kind( $nonresident_singular ), 'Personal 45 range accepted' );
+
+foreach ( array( '5', '6', '8', '9' ) as $prefix ) {
+    $tax = cvl_checkout_test_make_valid_id( $prefix . '1234567' );
+    cvl_checkout_test_assert( 'nipc' === cvl_checkout_pt_tax_id_kind( $tax ), "RNPC NIPC prefix $prefix classified" );
+    cvl_checkout_test_assert( cvl_checkout_tax_kind_allowed( cvl_checkout_pt_tax_id_kind( $tax ), 'empresa' ), "NIPC prefix $prefix accepted in Empresa" );
+    cvl_checkout_test_assert( ! cvl_checkout_tax_kind_allowed( cvl_checkout_pt_tax_id_kind( $tax ), 'particular' ), "NIPC prefix $prefix rejected for Particular" );
+}
+
+$entity_seven = cvl_checkout_test_make_valid_id( '71234567' );
+cvl_checkout_test_assert( 'entidade_at' === cvl_checkout_pt_tax_id_kind( $entity_seven ), 'AT entity prefix 7 recognised separately from NIPC' );
+cvl_checkout_test_assert( cvl_checkout_tax_kind_allowed( cvl_checkout_pt_tax_id_kind( $entity_seven ), 'empresa' ), 'AT entity NIF accepted for Empresa' );
+cvl_checkout_test_assert( 'NIF da entidade' === cvl_checkout_company_tax_label( $entity_seven, 'PT' ), 'AT entity NIF correctly labelled on documents' );
+cvl_checkout_test_assert( 'N.º fiscal / VAT' === cvl_checkout_company_tax_label( 'ESB12345678', 'ES' ), 'Foreign identifier correctly labelled on documents' );
+cvl_checkout_test_assert( ! cvl_checkout_valid_pt_tax_id( cvl_checkout_test_make_valid_id( '01234567' ) ), 'Prefix 0 rejected' );
+cvl_checkout_test_assert( '' === cvl_checkout_pt_tax_id_kind( '509514503' ), 'Bad check digit rejected' );
+
+
 foreach ( array( 'particular' => $personal_clean, 'empresa' => $business_clean ) as $label => $data ) {
     $errors = new WP_Error();
     cvl_checkout_customer_validate( $data, $errors );
@@ -111,5 +148,44 @@ $invalid_nipc['billing_nipc'] = '509514503';
 $errors = new WP_Error();
 cvl_checkout_customer_validate( $invalid_nipc, $errors );
 cvl_checkout_test_assert( $errors->has_errors(), 'Invalid NIPC blocks checkout' );
+
+
+$wrong_personal_prefix = $personal_clean;
+$wrong_personal_prefix['billing_nif'] = '509514502';
+$errors = new WP_Error();
+cvl_checkout_customer_validate( $wrong_personal_prefix, $errors );
+cvl_checkout_test_assert( $errors->get_error_code() === 'billing_nif_wrong_kind', 'Company NIPC blocked in Particular' );
+
+$wrong_business_prefix = $business_clean;
+$wrong_business_prefix['billing_nipc'] = '123456789';
+$errors = new WP_Error();
+cvl_checkout_customer_validate( $wrong_business_prefix, $errors );
+cvl_checkout_test_assert( $errors->get_error_code() === 'billing_nipc_wrong_kind', 'Personal NIF blocked as company NIPC' );
+
+$special_entity = $business_clean;
+$special_entity['billing_nipc'] = $entity_seven;
+$errors = new WP_Error();
+cvl_checkout_customer_validate( $special_entity, $errors );
+cvl_checkout_test_assert( ! $errors->has_errors(), 'AT entity NIF 7 accepted in Empresa' );
+
+$foreign_business = $business_clean;
+$foreign_business['billing_country'] = 'ES';
+$foreign_business['billing_nipc'] = 'ESB12345678';
+$errors = new WP_Error();
+cvl_checkout_customer_validate( $foreign_business, $errors );
+cvl_checkout_test_assert( ! $errors->has_errors(), 'Foreign VAT number does not use Portuguese checksum' );
+
+$foreign_pt_invalid = $business_clean;
+$foreign_pt_invalid['billing_country'] = 'ES';
+$foreign_pt_invalid['billing_nipc'] = 'PT 509 514 503';
+$foreign_pt_invalid = cvl_checkout_customer_clean_data( $foreign_pt_invalid );
+$errors = new WP_Error();
+cvl_checkout_customer_validate( $foreign_pt_invalid, $errors );
+cvl_checkout_test_assert( $errors->has_errors(), 'Portuguese VAT with foreign billing still checked as Portuguese' );
+
+$pt_with_country_abroad = $business_clean;
+$pt_with_country_abroad['billing_country'] = 'FR';
+$pt_with_country_abroad = cvl_checkout_customer_clean_data( $pt_with_country_abroad );
+cvl_checkout_test_assert( '509514502' === $pt_with_country_abroad['billing_nipc'], 'Portuguese VAT prefix normalized for foreign billing address' );
 
 echo "checkout_fiscal_test_status=ok\n";
