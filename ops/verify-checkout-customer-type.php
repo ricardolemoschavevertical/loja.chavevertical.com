@@ -200,6 +200,6 @@ cvl_checkout_test_assert( $errors->has_errors(), 'Portuguese VAT with foreign bi
 $pt_with_country_abroad = $business_clean;
 $pt_with_country_abroad['billing_country'] = 'FR';
 $pt_with_country_abroad = cvl_checkout_customer_clean_data( $pt_with_country_abroad );
-cvl_checkout_test_assert( '509514502' === $pt_with_country_abroad['billing_nipc'], 'Portuguese VAT prefix normalized for foreign billing address' );
+cvl_checkout_test_assert( 'PT509514502' === $pt_with_country_abroad['billing_nipc'], 'Portuguese VAT prefix retained for foreign billing address so checksum cannot be bypassed' );
 
 echo "checkout_fiscal_test_status=ok\n";
