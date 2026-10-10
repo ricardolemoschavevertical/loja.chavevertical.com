@@ -40,13 +40,13 @@ Para campanhas de imagem integral, preparar a imagem já na proporção do espa�
 
 | Área | Tamanho recomendado | Proporção |
 | --- | ---: | ---: |
-| Hero principal | 1400×720 px | 35:18 |
-| Caixa lateral | 600×840 px | 5:7 |
+| Hero principal | 1293×422 px | ≈3,06:1 |
+| Caixa lateral | 800×800 px | 1:1 |
 | Destaques | 800×800 px | 1:1 |
 
 Preferir **WEBP**.
 
-A imagem integral usa `object-fit: cover`. Portanto, quando a imagem respeita a proporção recomendada, o preenchimento é total e não há corte relevante no formato desktop.
+As imagens integrais usam `object-fit: contain` para evitar cortes. Quando a proporção da imagem corresponde à do bloco, este fica totalmente preenchido; se diferir, pode ficar visível o fundo configurado no plugin. Em desktop, a caixa lateral ocupa exatamente uma das quatro colunas dos Destaques, e o Hero principal ajusta-se às outras três.
 
 Não guardar campanhas como Base64 no repositório. Usar:
 1. URL do CDN / R2 / `imagens.chavevertical.com`;

@@ -5689,3 +5689,57 @@ body .cvl-contact-page .cvl-contact-location-map iframe{
     display:none!important;
   }
 }
+
+/* Homepage: lateral com a mesma largura e altura de um dos 4 destaques inferiores.
+   O hero ocupa as outras 3 colunas. Imagens completas, sem cortes nem molduras. */
+@media (min-width:1200px){
+  .cvl-ref-hero-showcase .cvl-ref-hero-grid{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    align-items:stretch!important;
+    gap:14px!important;
+  }
+  .cvl-ref-hero-showcase .cvl-ref-hero-main{
+    grid-column:span 3!important;
+    align-self:stretch!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+  }
+  .cvl-ref-hero-showcase .cvl-ref-hero-side{
+    grid-column:span 1!important;
+    align-self:start!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    aspect-ratio:1/1!important;
+  }
+  .cvl-ref-hero-showcase .cvl-ref-hero-main.is-full-image,
+  .cvl-ref-hero-showcase .cvl-ref-hero-side.is-full-image{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+  }
+  .cvl-ref-hero-showcase .cvl-ref-hero-main.is-full-image .cvl-ref-hero-main-copy{
+    min-height:0!important;
+  }
+  .cvl-ref-hero-showcase .cvl-ref-hero-main.is-full-image.is-text-hidden .cvl-ref-hero-main-media,
+  .cvl-ref-hero-showcase .cvl-ref-hero-side.is-full-image .cvl-ref-hero-side-media{
+    position:absolute!important;
+    inset:0!important;
+    width:100%!important;
+    height:100%!important;
+  }
+  .cvl-ref-hero-showcase .cvl-ref-hero-main.is-full-image.is-text-hidden .cvl-ref-hero-main-media img,
+  .cvl-ref-hero-showcase .cvl-ref-hero-side.is-full-image .cvl-ref-hero-side-media img{
+    position:absolute!important;
+    inset:0!important;
+    width:100%!important;
+    height:100%!important;
+    object-fit:contain!important;
+    object-position:center!important;
+  }
+}
+
