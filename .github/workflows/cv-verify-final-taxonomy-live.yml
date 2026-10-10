@@ -1,0 +1,65 @@
+name: Verificar catalogo final de categorias contra backup
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/cv-verify-final-taxonomy-live.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Comparar todos os nomes, percursos e slugs dos dois sites
+        shell: bash
+        env:
+          CV_PUBLIC_CATEGORY_AUDIT_OUTPUT_DIR: ${{ runner.temp }}/cv-final-taxonomy-${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          python3 ops/compare-live-category-api.py > "$RUNNER_TEMP/cv-final-compare.log"
+          grep 'CV_PUBLIC_CAT_SUMMARY' "$RUNNER_TEMP/cv-final-compare.log"
+          AUDIT_RESULT="$CV_PUBLIC_CATEGORY_AUDIT_OUTPUT_DIR/comparacao-slugs-publica.json" python3 - <<'PY'
+          import json,os
+          d=json.load(open(os.environ['AUDIT_RESULT']))
+          s=d['summary']; counts=s['state_counts']
+          assert s['backup_categories']==894, 'O backup mudou de estrutura'
+          assert s['loja_categories']==895, 'Loja ainda não tem 895 categorias'
+          assert s['unique_backup_paths']==893
+          assert s['unique_loja_paths']==895
+          assert counts.get('slug_igual',0)==892, 'Existem slugs comerciais divergentes'
+          assert counts.get('duplicado_ou_ambiguo',0)==1, 'Esperado duplicado historico do backup'
+          assert counts.get('extra_na_loja',0)==2, 'Esperadas apenas categorias de sistema'
+          assert sum(counts.values())==895, 'Existem categorias sem correspondencia'
+          assert {x['path'] for x in d['comparison'] if x['state']=='extra_na_loja'}=={'predefinido','uncategorized'}
+          print('LIVE TAXONOMY OK: 893 percursos comerciais do backup, dois termos internos preservados.')
+          PY
+      - name: Testar redirecionamentos 301 de cinco categorias fundidas
+        shell: bash
+        run: |
+          set -euo pipefail
+          check() {
+            local previous="$1" current="$2" status location target
+            status=$(curl -sS --connect-timeout 10 --max-time 35 -D /tmp/cv-final-old -o /dev/null -w '%{http_code}' "https://loja.chavevertical.com$previous")
+            location=$(grep -i '^location:' /tmp/cv-final-old | tail -1 | sed -e 's/^[Ll]ocation: //' -e 's/\r$//' || true)
+            target=$(curl -sS --connect-timeout 10 --max-time 35 -o /dev/null -w '%{http_code}' "https://loja.chavevertical.com$current")
+            echo "OLD=$previous STATUS=$status TARGET_STATUS=$target LOCATION=$location"
+            test "$status" = "301"
+            test "$location" = "https://loja.chavevertical.com$current"
+            test "$target" = "200"
+          }
+          check /categoria-produto/equip-p-oficina-automovel/aquecedores-oficina-automovel/ /categoria-produto/equip-p-oficina-automovel/outros-equipamentos/
+          check /categoria-produto/ferramentas-pneumaticas/enroladores-de-mangueira-de-ar-comprimido-ferramentas-pneumaticas/ /categoria-produto/ferramentas-pneumaticas/enroladores-de-mangueira-de-ar-comprimido/
+          check /categoria-produto/maquinas-para-industria-metal/fresadoras-maquinas-p-industria-metal/ /categoria-produto/maquinas-para-industria-metal/frezadoras/
+          check /categoria-produto/maquinas-para-industria-metal/maquinas-combinadas-maquinas-p-industria-metal/ /categoria-produto/maquinas-para-industria-metal/maquinas-combinadas-maquinas-para-industria-metal/
+          check /categoria-produto/construcao-civil/rebitadoras/consumiveis/ /categoria-produto/construcao-civil/rebitadoras/consumiveis-rebitadoras/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cv-final-taxonomy-audit-${{ github.run_id }}
+          path: ${{ runner.temp }}/cv-final-taxonomy-${{ github.run_id }}/
+          retention-days: 30
+          if-no-files-found: warn
