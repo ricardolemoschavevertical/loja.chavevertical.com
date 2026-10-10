@@ -97,6 +97,7 @@ jobs:
           php -l ops/ensure-fiscal-before-billing.php
           node --check "$THEME/assets/js/checkout-billing-first.js"
           node --check "$THEME/assets/js/checkout-fiscal-radios.js"
+          node --check "$THEME/assets/js/checkout-full-name.js"
           node --check ops/test-checkout-billing-first.js
           node ops/test-checkout-billing-first.js
           php -l ops/test-checkout-vies-unit.php
