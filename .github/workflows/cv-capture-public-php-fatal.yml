@@ -17,7 +17,11 @@ jobs:
           set -euo pipefail
           WP=/home/chavevertical-loja/htdocs/loja.chavevertical.com
           PROBE="$WP/wp-content/mu-plugins/cv-one-request-fatal-probe.php"
-          test -d "$WP/wp-content/mu-plugins"
+          MU_CREATED=no
+          if [ ! -d "$WP/wp-content/mu-plugins" ]; then
+            mkdir -p "$WP/wp-content/mu-plugins"
+            MU_CREATED=yes
+          fi
           test ! -e "$PROBE"
           HEADER="$(openssl rand -hex 20)"
           export HEADER
@@ -46,6 +50,7 @@ jobs:
           chmod 0644 "$PROBE"
           cleanup() {
             rm -f "$PROBE"
+            if [ "$MU_CREATED" = yes ]; then rmdir "$WP/wp-content/mu-plugins" 2>/dev/null || true; fi
           }
           trap cleanup EXIT
           curl -sS --connect-timeout 10 --max-time 30 -H "X-CV-Fatal-Diag: $HEADER" \
