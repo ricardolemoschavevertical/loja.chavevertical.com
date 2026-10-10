@@ -1,0 +1,42 @@
+name: Simular realinhamento dos ramos de categorias
+on:
+  workflow_run:
+    workflows: ["Auditar categorias depois da fusao"]
+    types: [completed]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  plan:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.repository == 'ricardolemoschavevertical/loja.chavevertical.com'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: cv-category-after-merge-${{ github.event.workflow_run.id }}
+          repository: ricardolemoschavevertical/loja.chavevertical.com
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/cv-taxonomy-after-merge
+      - name: Simular 25 fusoes e 2 mudancas de pai (sem escrita)
+        shell: bash
+        env:
+          CV_MISPLACED_MODE: plan
+          CV_MISPLACED_SNAPSHOT: ${{ runner.temp }}/cv-taxonomy-after-merge/cv-category-full-inventory.json
+          CV_MISPLACED_DIR: ${{ runner.temp }}/cv-misplaced-plan-${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          php -l ops/cv-realign-backup-misplaced.php
+          mkdir -p "$CV_MISPLACED_DIR"
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval-file ops/cv-realign-backup-misplaced.php
+          test -s "$CV_MISPLACED_DIR/plano-reorganizar.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cv-misplaced-category-plan-${{ github.run_id }}
+          path: ${{ runner.temp }}/cv-misplaced-plan-${{ github.run_id }}/
+          retention-days: 30
+          if-no-files-found: error
