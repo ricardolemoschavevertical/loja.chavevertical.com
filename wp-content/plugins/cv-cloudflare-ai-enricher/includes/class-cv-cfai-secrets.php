@@ -34,10 +34,7 @@ final class CV_CFAI_Secrets {
         }
     }
 
-    public static function open() {
-        if (defined('CV_CFAI_TOKEN') && strlen((string) CV_CFAI_TOKEN) >= 40) {
-            return (string) CV_CFAI_TOKEN;
-        }
+    private static function open_saved() {
         $encoded = get_option(self::ENCRYPTED_OPTION, '');
         if (!is_string($encoded) || $encoded === '') return '';
         $key = self::key();
@@ -50,6 +47,40 @@ final class CV_CFAI_Secrets {
             $value = sodium_crypto_secretbox_open($cipher, $nonce, $key);
             return is_string($value) && strlen($value) >= 40 ? $value : '';
         } catch (Throwable $e) { return ''; }
+    }
+
+    public static function has_saved_worker_token() {
+        return self::open_saved() !== '';
+    }
+
+    public static function open() {
+        // Plugin credentials override legacy wp-config.php constants.
+        $saved = self::open_saved();
+        if ($saved !== '') return $saved;
+        if (defined('CV_CFAI_TOKEN') && strlen((string) CV_CFAI_TOKEN) >= 40) {
+            return (string) CV_CFAI_TOKEN;
+        }
+        return '';
+    }
+
+    public static function save_worker_token($token) {
+        if (!is_string($token) || strlen($token) < 40 || strlen($token) > 256
+            || preg_match('/[\x00-\x20\x7F]/', $token)) {
+            return new WP_Error('cv_cfai_token', 'O token de ligação deve conter entre 40 e 256 caracteres sem espaços.');
+        }
+        $cipher = self::seal($token);
+        if (is_wp_error($cipher)) return $cipher;
+        $previous = get_option(self::ENCRYPTED_OPTION, '');
+        update_option(self::ENCRYPTED_OPTION, $cipher, false);
+        if (!hash_equals($token, self::open_saved())) {
+            if (is_string($previous) && $previous !== '') {
+                update_option(self::ENCRYPTED_OPTION, $previous, false);
+            } else {
+                delete_option(self::ENCRYPTED_OPTION);
+            }
+            return new WP_Error('cv_cfai_save', 'Não foi possível guardar o token cifrado no WordPress.');
+        }
+        return true;
     }
 
     /**
@@ -86,19 +117,12 @@ final class CV_CFAI_Secrets {
     }
 
     public static function pair_worker($api_token) {
-        if (defined('CV_CFAI_TOKEN') && strlen((string) CV_CFAI_TOKEN) >= 40) {
-            return new WP_Error('cv_cfai_constant','A ligação é gerida pelo wp-config.php. Não é possível alterar a partir do painel.');
-        }
         $value = bin2hex(random_bytes(40));
         $cipher = self::seal($value);
         if (is_wp_error($cipher)) return $cipher;
         $sent = self::put_cloudflare_secret($api_token, 'CV_AI_TOKEN', $value);
         if (is_wp_error($sent)) return $sent;
-        update_option(self::ENCRYPTED_OPTION, $cipher, false);
-        if (!hash_equals($value, self::open())) {
-            return new WP_Error('cv_cfai_save','O Worker foi atualizado, mas não foi possível guardar o segredo cifrado no WordPress.');
-        }
-        return true;
+        return self::save_worker_token($value);
     }
 
     public static function mcp_token_ready() {
