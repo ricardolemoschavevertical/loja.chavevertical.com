@@ -1,0 +1,31 @@
+name: Confirmar 301 apos consolidacao de categorias
+on:
+  workflow_run:
+    workflows: ["Consolidar categorias duplicadas conforme backup"]
+    types: [completed]
+permissions:
+  contents: read
+jobs:
+  seo:
+    if: github.event.workflow_run.conclusion == 'success' && github.repository == 'ricardolemoschavevertical/loja.chavevertical.com'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Testar URLs antigos e categorias oficiais em producao
+        shell: bash
+        run: |
+          set -euo pipefail
+          verify() {
+            local old="$1" desired="$2" status location canonical
+            status=$(curl --retry 1 --connect-timeout 9 --max-time 45 -sS -D /tmp/cv-oldhead -o /dev/null -w '%{http_code}' "https://loja.chavevertical.com$old")
+            location=$(grep -i '^location:' /tmp/cv-oldhead | tail -1 | sed -e 's/^[Ll]ocation: //' -e 's/\r$//' || true)
+            canonical=$(curl --retry 1 --connect-timeout 9 --max-time 45 -sS -o /dev/null -w '%{http_code}' "https://loja.chavevertical.com$desired")
+            echo "OLD=$old STATUS=$status LOCATION=$location TARGET=$desired TARGET_STATUS=$canonical"
+            test "$status" = 301
+            test "$location" = "https://loja.chavevertical.com$desired"
+            test "$canonical" = 200
+          }
+          verify /categoria-produto/maquinas-para-industria-metal/engenhos-de-furar-furadoras/rosqueadeiras-maquinas-de-roscar-engenhos-de-furar-furadoras/ /categoria-produto/maquinas-para-industria-metal/engenhos-de-furar/rosqueadeiras/
+          verify /categoria-produto/maquinas-para-industria-metal/engenhos-de-furar-furadoras/ /categoria-produto/maquinas-para-industria-metal/engenhos-de-furar/
+          verify /categoria-produto/escadas-escadotes-e-andaimes/andaimes-e-torres-moveis/ /categoria-produto/escadas-escadotes-e-andaimes/andaimes-e-torres-moveis-escadas-escadotes-e-andaimes/
+          verify /categoria-produto/electricidade-e-electronica/multimetros-pincas-amperimetricas/ /categoria-produto/electricidade-e-electronica/multimetros-pincas-amperimetricas-electricidade-e-electronica/
