@@ -159,6 +159,32 @@ foreach ($target as $id=>$row) {
     $stats[$r['estado']]++;
     $rows[]=$r;
 }
+// Resolver dependencias seguras: uma categoria pode libertar o slug pedido por outra.
+// Não tocar em ocupantes sem correspondência unívoca com o backup.
+for ($pass=0; $pass<50; $pass++) {
+    $promoted=0;
+    foreach ($rows as &$r) {
+        if ($r['estado']!=='colisoes') continue;
+        $owners=array_values(array_filter(array_map('absint',explode(',',$r['slug_conflito_id']))));
+        if (!$owners) continue;
+        $can_free=true;
+        foreach ($owners as $owner) {
+            if (!isset($proposals[$owner]) || $proposals[$owner]===$r['backup_slug']) {
+                $can_free=false;break;
+            }
+        }
+        if (!$can_free || in_array($r['backup_slug'],$proposals,true)) continue;
+        $proposals[$r['loja_id']]=$r['backup_slug'];
+        $r['estado']='alterar';
+        $r['motivo']='Slug libertado por outra correcao segura anterior';
+        $r['slug_conflito_id']='';
+        $stats['colisoes']--;
+        $stats['alterar']++;
+        $promoted++;
+    }
+    unset($r);
+    if (!$promoted) break;
+}
 $stats['sem_destino_backup']=count($source)-count($matched_source);
 $stats['propostas_validas']=count($proposals);
 $stats['revisao_necessaria']=$stats['ambiguas']+$stats['colisoes']+$stats['sem_correspondencia']+$stats['hierarquias_invalidas'];
@@ -192,27 +218,47 @@ if (file_put_contents($backup_file,wp_json_encode($target,JSON_PRETTY_PRINT|JSON
     throw new RuntimeException('Falha ao preservar snapshot de destino');
 $oldlinks=[];
 foreach ($target as $id=>$row) $oldlinks[$id]=$row['link'];
-$results=[];$changed=0;$fails=0;
-foreach ($proposals as $id=>$newslug) {
-    $current=get_term($id,'product_cat');
-    if (!$current || is_wp_error($current) || $current->slug!==$target[$id]['slug']) {
-        $results[]=['id'=>$id,'estado'=>'ignorado','motivo'=>'Termo mudou desde o inventario'];continue;
+$results=[];$changed=0;$fails=0;$pending=$proposals;$iterations=0;
+while ($pending && $iterations++<=count($proposals)+2) {
+    $progress=false;
+    foreach ($pending as $id=>$newslug) {
+        $current=get_term($id,'product_cat');
+        if (!$current || is_wp_error($current) || $current->slug!==$target[$id]['slug']) {
+            $results[]=['id'=>$id,'estado'=>'ignorado','motivo'=>'Categoria mudou desde o inventario'];
+            unset($pending[$id]);$progress=true;continue;
+        }
+        $owners=get_terms(['taxonomy'=>'product_cat','slug'=>$newslug,'hide_empty'=>false,'fields'=>'ids']);
+        if (is_wp_error($owners)) {
+            $results[]=['id'=>$id,'estado'=>'falha','motivo'=>'Falha ao verificar disponibilidade do slug'];
+            $fails++;unset($pending[$id]);$progress=true;continue;
+        }
+        $busy=array_values(array_diff(array_map('intval',$owners),[$id]));
+        if ($busy) {
+            // Esperar pela operacao que ira libertar esse slug.
+            if (count(array_diff($busy,array_keys($pending)))===0) continue;
+            $results[]=['id'=>$id,'estado'=>'ignorado','motivo'=>'Slug ocupado por categoria que nao pode ser alterada'];
+            unset($pending[$id]);$progress=true;continue;
+        }
+        $updated=wp_update_term($id,'product_cat',['slug'=>$newslug]);
+        if (is_wp_error($updated)) {
+            $results[]=['id'=>$id,'estado'=>'falha','motivo'=>$updated->get_error_message()];
+            $fails++;unset($pending[$id]);$progress=true;continue;
+        }
+        $check=get_term($id,'product_cat');
+        if (is_wp_error($check) || !$check || $check->slug!==$newslug) {
+            $results[]=['id'=>$id,'estado'=>'falha','motivo'=>'Slug final nao corresponde ao backup'];
+            $fails++;unset($pending[$id]);$progress=true;continue;
+        }
+        $changed++;
+        $results[]=['id'=>$id,'estado'=>'atualizado','de'=>$target[$id]['slug'],'para'=>$newslug];
+        unset($pending[$id]);$progress=true;
     }
-    $owners=get_terms(['taxonomy'=>'product_cat','slug'=>$newslug,'hide_empty'=>false,'fields'=>'ids']);
-    if (is_wp_error($owners)) { $results[]=['id'=>$id,'estado'=>'falha','motivo'=>'Falha ao verificar slug'];$fails++;continue;}
-    if (array_diff(array_map('intval',$owners),[$id])) {
-        $results[]=['id'=>$id,'estado'=>'ignorado','motivo'=>'Colisao criada por outra alteracao'];continue;
+    if (!$progress) {
+        foreach ($pending as $id=>$newslug) {
+            $results[]=['id'=>$id,'estado'=>'ignorado','motivo'=>'Dependencia ciclica/colisao sem resolucao automatica'];
+        }
+        break;
     }
-    $updated=wp_update_term($id,'product_cat',['slug'=>$newslug]);
-    if (is_wp_error($updated)) {
-        $results[]=['id'=>$id,'estado'=>'falha','motivo'=>$updated->get_error_message()];$fails++;continue;
-    }
-    $check=get_term($id,'product_cat');
-    if (is_wp_error($check) || !$check || $check->slug!==$newslug) {
-        $results[]=['id'=>$id,'estado'=>'falha','motivo'=>'Slug final nao corresponde ao backup'];$fails++;continue;
-    }
-    $changed++;
-    $results[]=['id'=>$id,'estado'=>'atualizado','de'=>$target[$id]['slug'],'para'=>$newslug];
 }
 // Guardar redirecionamentos para todos os percursos alterados, inclusive descendentes.
 $redirects=get_option('cv_core_category_slug_redirects',[]);
