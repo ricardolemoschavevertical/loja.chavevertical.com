@@ -99,7 +99,7 @@ foreach($targetGroups as $key=>$ids) {
       $dups[]=[
         'name_key'=>$key,'source_ids'=>$s,'target_ids'=>$ids,
         'target_count'=>count($ids),'backup_count'=>count($s),'exact_backup_slug_id'=>$chosen,
-        'candidate_auto_merge'=count($s)===1 && $chosen!==null,
+        'candidate_auto_merge'=>count($s)===1 && $chosen!==null,
         'target_product_associations'=>array_sum(array_map(static fn($id)=>array_sum($target[$id]['product_status_counts']),$ids)),
         'target_children'=>array_sum(array_map(static function($id)use($target) {
              $n=0;foreach($target as $t)if($t['parent']===$id)$n++;return $n;
