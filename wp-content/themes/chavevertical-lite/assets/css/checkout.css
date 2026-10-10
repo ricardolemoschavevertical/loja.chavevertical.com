@@ -837,3 +837,35 @@ body.woocommerce-checkout .wc-block-checkout .cvl-postcode-block-help.is-invalid
   padding-left:11px;
 }
 
+
+/* Localidade sugerida automaticamente a partir do código postal. */
+body.woocommerce-checkout .cvl-postcode-locality-status {
+  display:block;
+  margin:5px 0 13px;
+  color:#526978;
+  font-size:11px;
+  line-height:1.5;
+  overflow-wrap:anywhere;
+}
+
+body.woocommerce-checkout .cvl-postcode-locality-status[hidden] {
+  display:none!important;
+}
+
+body.woocommerce-checkout .cvl-postcode-locality-status.is-loading {
+  color:#63788b;
+}
+
+body.woocommerce-checkout .cvl-postcode-locality-status.is-success {
+  color:#126347;
+}
+
+body.woocommerce-checkout .cvl-postcode-locality-status.is-notice {
+  color:#7b5d26;
+}
+
+/* Dentro dos Checkout Blocks, o campo continua totalmente editável. */
+body.woocommerce-checkout .wc-block-checkout .cvl-postcode-locality-status {
+  padding:0 3px;
+}
+
