@@ -230,6 +230,31 @@ jobs:
               throw new Error('Company name and NIPC fields must appear after choosing Empresa');
             }
 
+            const companyLayout=await page.evaluate(()=>{
+              const radios=document.getElementById('cvl-fiscal-customer-radio-group')?.getBoundingClientRect();
+              const company=document.getElementById('order-cvl-fiscal-company-name');
+              const nipc=document.getElementById('order-cvl-fiscal-nipc');
+              const nameRect=company?.getBoundingClientRect();
+              const nipcRect=nipc?.getBoundingClientRect();
+              return {
+                rightEdge:radios?.right??null,
+                companyX:nameRect?.x??null,
+                companyY:nameRect?.y??null,
+                nipcX:nipcRect?.x??null,
+                nipcY:nipcRect?.y??null,
+                requiredCompany:!!company?.required,
+                requiredNipc:!!nipc?.required
+              };
+            });
+            console.log('FISCAL_RADIO_COMPANY_LAYOUT='+JSON.stringify(companyLayout));
+            if(!companyLayout.rightEdge || !companyLayout.companyX || !companyLayout.nipcX ||
+              companyLayout.companyX < companyLayout.rightEdge-4 ||
+              companyLayout.nipcX < companyLayout.rightEdge-4 ||
+              companyLayout.nipcY <= companyLayout.companyY){
+              throw new Error('Company name and NIPC must appear beside radio group, in two rows');
+            }
+
+
             await particularRadio.check();
             await page.waitForTimeout(500);
             if(await typeField.inputValue()!=='particular'){
