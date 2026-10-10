@@ -188,6 +188,21 @@ for ($pass=0; $pass<50; $pass++) {
 $stats['sem_destino_backup']=count($source)-count($matched_source);
 $stats['propostas_validas']=count($proposals);
 $stats['revisao_necessaria']=$stats['ambiguas']+$stats['colisoes']+$stats['sem_correspondencia']+$stats['hierarquias_invalidas'];
+if ($mode === 'apply') {
+    if (!class_exists('CV_Core_Catalog_Rules')
+        || !method_exists('CV_Core_Catalog_Rules', 'redirect_old_category_urls')
+        || !has_action('template_redirect', ['CV_Core_Catalog_Rules','redirect_old_category_urls'])) {
+        throw new RuntimeException('Redirecionamento 301 ainda nao ativo; bloqueada a alteracao.');
+    }
+    $expect_backup=(int)getenv('CV_CATEGORY_EXPECTED_BACKUP_COUNT');
+    $expect_loja=(int)getenv('CV_CATEGORY_EXPECTED_LOJA_COUNT');
+    $max_changes=(int)getenv('CV_CATEGORY_MAX_CHANGES');
+    if (!$expect_backup || !$expect_loja || !$max_changes ||
+        count($source)!==$expect_backup || count($target)!==$expect_loja ||
+        count($proposals)>$max_changes || count($proposals)<1) {
+        throw new RuntimeException('Pre-condicoes alteradas no catalogo; requer novo planeamento.');
+    }
+}
 $stats['origem']='https://backup.chavevertical.com';
 $stats['destino']='https://loja.chavevertical.com';
 $stats['modo']=$mode;
@@ -251,6 +266,7 @@ while ($pending && $iterations++<=count($proposals)+2) {
         }
         $changed++;
         $results[]=['id'=>$id,'estado'=>'atualizado','de'=>$target[$id]['slug'],'para'=>$newslug];
+        file_put_contents($outdir.'/journal.ndjson',wp_json_encode(['id'=>$id,'old'=>$target[$id]['slug'],'new'=>$newslug,'time_utc'=>gmdate('c')],JSON_UNESCAPED_UNICODE)."\n",FILE_APPEND|LOCK_EX);
         unset($pending[$id]);$progress=true;
     }
     if (!$progress) {
@@ -273,6 +289,11 @@ foreach ($target as $id=>$before) {
     $redirects[$oldpath]=$newpath;
 }
 update_option('cv_core_category_slug_redirects',$redirects,false);
+$stored=get_option('cv_core_category_slug_redirects',[]);
+if (!is_array($stored) || $stored!==$redirects) {
+    throw new RuntimeException('Falha a registar redirecionamentos antigos');
+}
+
 $applied=['propostas'=>count($proposals),'alterados'=>$changed,'falhas'=>$fails,'redirecionamentos'=>count($redirects),'resultados'=>$results];
 file_put_contents($outdir.'/resultado-aplicacao.json',wp_json_encode($applied,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE));
 echo 'CV_BACKUP_APPLY_SUMMARY '.wp_json_encode([
