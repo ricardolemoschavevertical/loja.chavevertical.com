@@ -162,6 +162,16 @@
         }
     }
 
+    function clearPreviousAutofill(section, cityInput) {
+        var info = state[section];
+        if (cityInput && info.autoValue && String(cityInput.value || '').trim() === info.autoValue) {
+            updateTextValue(cityInput, '');
+        }
+        info.autoValue = '';
+        info.autoCode = '';
+        info.attemptsToRestore = 0;
+    }
+
     function cancel(section) {
         var status = state[section];
         status.request += 1;
@@ -250,10 +260,21 @@
         var cityField = field(section, 'city');
         var status = state[section];
 
-        if (!isVisible(postcodeField) || !isVisible(cityField) || !countryIsPortugal(section)) {
+        if (!isVisible(postcodeField) || !isVisible(cityField)) {
             if (status.code) {
                 cancel(section);
             }
+            status.code = '';
+            status.attempted = false;
+            showMessage(section, '', '');
+            return;
+        }
+
+        if (!countryIsPortugal(section)) {
+            if (status.code) {
+                cancel(section);
+            }
+            clearPreviousAutofill(section, cityField);
             status.code = '';
             status.attempted = false;
             showMessage(section, '', '');
@@ -265,18 +286,20 @@
             if (status.code) {
                 cancel(section);
             }
+            clearPreviousAutofill(section, cityField);
             status.code = '';
             status.attempted = false;
             showMessage(section, '', '');
             return;
         }
 
-        // Uma alteração do código postal invalida respostas antigas.
+        // Uma alteração de CP7 não pode deixar uma localidade anterior
+        // preenchida automaticamente num endereço diferente.
         if (code !== status.code) {
             cancel(section);
+            clearPreviousAutofill(section, cityField);
             status.code = code;
             status.attempted = false;
-            status.attemptsToRestore = 0;
         }
 
         if (status.attempted) {
