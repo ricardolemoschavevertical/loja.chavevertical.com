@@ -2,12 +2,14 @@
 /**
  * Plugin Name: CV AI Enricher - Cloudflare
  * Description: Ponte segura WooCommerce <-> Cloudflare Workers, com categorias obtidas em tempo real.
- * Version: 0.3.0
+ * Version: 0.4.0
  * Author: CHAVE VERTICAL
  * Requires Plugins: woocommerce, chavevertical-core
  * Requires PHP: 7.4
  */
 defined('ABSPATH') || exit;
+require_once __DIR__.'/includes/class-cv-cfai-secrets.php';
+require_once __DIR__.'/includes/class-cv-cfai-admin.php';
 
 final class CV_Cloudflare_AI_Enricher {
     const NS = 'cv-ai/v1';
@@ -17,10 +19,11 @@ final class CV_Cloudflare_AI_Enricher {
         add_action('rest_api_init', [__CLASS__, 'routes']);
         add_action('admin_menu', [__CLASS__, 'menu']);
         add_action('admin_post_cv_cfai_settings', [__CLASS__, 'save_settings']);
+        CV_CFAI_Admin::init();
     }
 
     public static function token() {
-        return defined('CV_CFAI_TOKEN') ? (string) CV_CFAI_TOKEN : '';
+        return CV_CFAI_Secrets::open();
     }
 
     public static function worker_url() {
@@ -174,11 +177,13 @@ final class CV_Cloudflare_AI_Enricher {
     }
 
     public static function menu() {
-        add_submenu_page('woocommerce','CV AI Enricher','CV AI Enricher','manage_woocommerce',
+        add_submenu_page('woocommerce','CV AI Enricher','CV AI Enricher','manage_options',
             'cv-cloudflare-ai',[__CLASS__,'page']);
     }
     public static function page() {
-        if(!current_user_can('manage_woocommerce'))return;
+        CV_CFAI_Admin::render();
+        return;
+        if(!current_user_can('manage_options'))return;
         $saved=get_option(self::SETTINGS,[]);
         $url=self::worker_url();
         echo '<div class="wrap"><h1>CV AI Enricher — Cloudflare</h1>';
@@ -192,7 +197,7 @@ final class CV_Cloudflare_AI_Enricher {
         echo '</form></div>';
     }
     public static function save_settings() {
-        if(!current_user_can('manage_woocommerce'))wp_die('Permissão insuficiente.');
+        if(!current_user_can('manage_options'))wp_die('Permissão insuficiente.');
         check_admin_referer('cv_cfai_settings');
         $url=esc_url_raw(trim((string)wp_unslash($_POST['worker_url']??'')));
         if($url && (!wp_http_validate_url($url)||wp_parse_url($url,PHP_URL_SCHEME)!=='https'))
