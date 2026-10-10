@@ -5,6 +5,14 @@ on:
     paths:
       - "wp-content/plugins/cv-cloudflare-ai-enricher/**"
       - "wp-content/plugins/cv-mcp-bridge/**"
+      - "ops/tests/cfai-worker-settings-test.php"
+      - ".github/workflows/cv-ai-mcp-upgrade-active.yml"
+  pull_request:
+    paths:
+      - "wp-content/plugins/cv-cloudflare-ai-enricher/**"
+      - "wp-content/plugins/cv-mcp-bridge/**"
+      - "ops/tests/cfai-worker-settings-test.php"
+      - ".github/workflows/cv-ai-mcp-upgrade-active.yml"
   workflow_dispatch:
 permissions:
   contents: read
@@ -23,10 +31,11 @@ jobs:
           set -euo pipefail
           find wp-content/plugins/cv-cloudflare-ai-enricher wp-content/plugins/cv-mcp-bridge \
             -type f -name '*.php' -print0 | xargs -0 -n1 php -l
-          grep -q "Version: 0.4.0" wp-content/plugins/cv-cloudflare-ai-enricher/cv-cloudflare-ai-enricher.php
+          grep -q "Version: 0.4.1" wp-content/plugins/cv-cloudflare-ai-enricher/cv-cloudflare-ai-enricher.php
           grep -q "Version: 0.4.0" wp-content/plugins/cv-mcp-bridge/cv-mcp-bridge.php
           test -s wp-content/plugins/cv-cloudflare-ai-enricher/includes/class-cv-cfai-admin.php
           test -s wp-content/plugins/cv-cloudflare-ai-enricher/includes/class-cv-cfai-secrets.php
+          php ops/tests/cfai-worker-settings-test.php
 
   upgrade:
     needs: validate
@@ -53,7 +62,7 @@ jobs:
             test ! -L "$DEST/$slug"
             wp --path="$WP" plugin is-active "$slug"
             current=$(wp --path="$WP" plugin get "$slug" --field=version)
-            test "$current" = "0.3.0" || test "$current" = "0.4.0"
+            test "$current" = "0.3.0" || test "$current" = "0.4.0" || test "$current" = "0.4.1"
             mkdir -p "$TMP/stage/$slug"
             rsync -r --no-perms --omit-dir-times "wp-content/plugins/$slug/" "$TMP/stage/$slug/"
             find "$TMP/stage/$slug" -name '*.php' -type f -print0 | xargs -0 -n1 php -l
@@ -85,10 +94,12 @@ jobs:
             find "$DEST/$slug" -type f -name '*.php' -exec chmod 0644 {} +
           done
           for slug in "${slugs[@]}"; do
-            test "$(wp --path="$WP" plugin get "$slug" --field=version)" = "0.4.0"
+            expected="0.4.0"
+            if test "$slug" = "cv-cloudflare-ai-enricher"; then expected="0.4.1"; fi
+            test "$(wp --path="$WP" plugin get "$slug" --field=version)" = "$expected"
             wp --path="$WP" plugin is-active "$slug"
             find "$DEST/$slug" -name '*.php' -type f -print0 | xargs -0 -n1 php -l
-            echo "ACTIVE_PLUGIN_UPDATED=$slug;version=0.4.0"
+            echo "ACTIVE_PLUGIN_UPDATED=$slug;version=$expected"
           done
           wp --path="$WP" eval '
             if(!class_exists("CV_CFAI_Admin") || !class_exists("CV_CFAI_Secrets")
