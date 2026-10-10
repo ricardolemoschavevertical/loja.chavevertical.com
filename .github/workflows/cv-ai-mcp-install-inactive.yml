@@ -1,0 +1,93 @@
+name: Install CV AI and MCP plugins (inactive)
+on:
+  push:
+    branches: [main]
+    paths:
+      - "wp-content/plugins/cv-cloudflare-ai-enricher/**"
+      - "wp-content/plugins/cv-mcp-bridge/**"
+      - ".github/workflows/cv-ai-mcp-install-inactive.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cv-install-ai-mcp-inactive
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate WordPress plugin PHP
+        run: |
+          set -euo pipefail
+          find wp-content/plugins/cv-cloudflare-ai-enricher wp-content/plugins/cv-mcp-bridge \
+            -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          test -f wp-content/plugins/cv-cloudflare-ai-enricher/cv-cloudflare-ai-enricher.php
+          test -f wp-content/plugins/cv-mcp-bridge/cv-mcp-bridge.php
+
+  install:
+    needs: validate
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install WITHOUT activation; preserve the existing WooCommerce MCP
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 0022
+          WP=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          DEST="$WP/wp-content/plugins"
+          test -f "$WP/wp-load.php"
+          test -d "$DEST"
+          test -w "$DEST"
+          test "$(id -un)" = codex1
+          test "$(realpath "$DEST")" = "$DEST"
+          for slug in cv-cloudflare-ai-enricher cv-mcp-bridge; do
+            source="wp-content/plugins/$slug"
+            target="$DEST/$slug"
+            test -d "$source"
+            test ! -L "$target"
+            test -z "$(find "$source" -type l -print -quit)"
+            if wp --path="$WP" plugin is-active "$slug"; then
+              echo "ERROR: $slug is already active: refusing to overwrite active plugin"
+              exit 1
+            fi
+            if test -d "$target"; then
+              backupdir=/home/codex1/backups/github-plugins
+              mkdir -p "$backupdir"
+              tar -czf "$backupdir/$slug-before-inactive-install-$(date -u +%Y%m%dT%H%M%SZ).tar.gz" -C "$DEST" "$slug"
+            fi
+            mkdir -p "$target"
+            rsync -r --delete --no-perms --omit-dir-times "$source/" "$target/"
+            find "$target" -type d -user "$(id -un)" -exec chmod 0755 {} +
+            find "$target" -type f -user "$(id -un)" -exec chmod 0644 {} +
+            find "$target" -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+            diff=$(rsync -rcn --delete --out-format='%i %n' "$source/" "$target/")
+            if test -n "$diff"; then echo "$diff"; exit 1; fi
+            wp --path="$WP" plugin is-installed "$slug"
+            wp --path="$WP" plugin is-inactive "$slug"
+            echo "INACTIVE_PLUGIN_INSTALLED=$slug"
+          done
+
+      - name: Verify old MCP unaffected and no activation
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          wp --path="$WP" plugin is-inactive cv-cloudflare-ai-enricher
+          wp --path="$WP" plugin is-inactive cv-mcp-bridge
+          wp --path="$WP" eval '
+            if (!class_exists("CV_Core_Catalog_Rules")) { fwrite(STDERR,"Live Woo category policy unavailable\n"); exit(1); }
+            $tree=CV_Core_Catalog_Rules::tree("enricher");
+            if (is_wp_error($tree)||($tree["total"]??0)<800) { fwrite(STDERR,"Woo category tree unavailable\n");exit(2); }
+            if (class_exists("CV_Cloudflare_AI_Enricher") || class_exists("CV_MCP_Bridge")) {
+                fwrite(STDERR,"New plugin became active unexpectedly\n");exit(3);
+            }
+            echo "LIVE_CATEGORIES=".$tree["total"]."; NEW_PLUGINS=INACTIVE\n";
+          '
