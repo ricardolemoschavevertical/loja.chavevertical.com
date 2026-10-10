@@ -1,0 +1,46 @@
+name: Auditar fusao Rosqueadeiras backup
+
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/cv-merge-rosqueadeiras-plan.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Planear fusao sem escrita (Woo e backup)
+        shell: bash
+        env:
+          CV_MERGE_MODE: plan
+          CV_MERGE_LIMIT: '20'
+          CV_MERGE_OUTPUT_DIR: ${{ runner.temp }}/cv-rosqueadeiras-plan-${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          php -l ops/cv-merge-rosqueadeiras-duplicates.php
+          mkdir -p "$CV_MERGE_OUTPUT_DIR"
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval-file ops/cv-merge-rosqueadeiras-duplicates.php
+          test -s "$CV_MERGE_OUTPUT_DIR/plan.json"
+          MERGE_PLAN_FILE="$CV_MERGE_OUTPUT_DIR/plan.json" python3 - <<'PY'
+          import json,os
+          d=json.load(open(os.environ['MERGE_PLAN_FILE']))
+          print("CANDIDATES", d["total_duplicates"],"ELIGIBLE",d["eligible"],"SKIPPED",d["skipped"])
+          if d["total_duplicates"] > 130 or d["canonical_slug"] != "rosqueadeiras" or d["eligible"] < 1:
+              raise SystemExit("Plano incoerente ou sem duplicados.")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cv-rosqueadeiras-plan-${{ github.run_id }}
+          path: ${{ runner.temp }}/cv-rosqueadeiras-plan-${{ github.run_id }}/
+          retention-days: 30
+          if-no-files-found: warn
