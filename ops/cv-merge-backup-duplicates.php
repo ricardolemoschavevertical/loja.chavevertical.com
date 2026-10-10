@@ -68,7 +68,7 @@ if (is_wp_error($now) || count($now)!==1067) {
 }
 foreach ($now as $term) {
     $id=(int)$term->term_id;
-    if (!isset($t[$id]) || (string)$term->name !== (string)$t[$id]['name'] ||
+    if (!isset($t[$id]) || html_entity_decode(wp_strip_all_tags((string)$term->name),ENT_QUOTES|ENT_HTML5,'UTF-8') !== (string)$t[$id]['name'] ||
         (string)$term->slug !== (string)$t[$id]['slug'] ||
         (int)$term->parent !== (int)$t[$id]['parent']) {
         throw new RuntimeException('Categoria alterada desde auditoria: '.$id);
