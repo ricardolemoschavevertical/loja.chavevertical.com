@@ -513,8 +513,7 @@ $homepage_highlights = function_exists( 'cvl_get_homepage_highlights' )
             $highlight_rotation_seconds = isset( $highlight['rotation_seconds'] )
                 ? max( 2, min( 60, absint( $highlight['rotation_seconds'] ) ) )
                 : 5;
-            $highlight_number = str_pad( (string) ( $highlight_index + 1 ), 2, '0', STR_PAD_LEFT );
-            $highlight_show_text = ! array_key_exists( 'show_text', $highlight ) || ! empty( $highlight['show_text'] );
+            $highlight_show_text = ( ! array_key_exists( 'show_text', $highlight ) || ! empty( $highlight['show_text'] ) ) && empty( $highlight['image_only'] );
             $highlight_has_text = $highlight_show_text && array_filter(
                 array(
                     $highlight['eyebrow'] ?? '',
@@ -526,10 +525,17 @@ $homepage_highlights = function_exists( 'cvl_get_homepage_highlights' )
                     return '' !== trim( (string) $value );
                 }
             );
-            $highlight_full_image = ! empty( $highlight['full_image'] ) || ! $highlight_has_text;
+            $highlight_has_image = ! empty( $highlight_images );
+            // Sem imagem e sem texto configurado, nao existe destaque a apresentar.
+            if ( ! $highlight_has_image && ! $highlight_has_text ) {
+                continue;
+            }
+            $highlight_full_image = $highlight_has_image && ( ! empty( $highlight['full_image'] ) || ! $highlight_has_text );
             $highlight_classes = 'cvl-solution-card cvl-homepage-highlight';
+            $highlight_classes .= $highlight_has_image ? ' has-image' : ' has-no-image';
             $highlight_classes .= $highlight_full_image ? ' is-full-image' : '';
-            $highlight_classes .= $highlight_has_text ? ' has-overlay-text' : ' is-text-hidden';
+            $highlight_classes .= $highlight_has_text ? ' has-text' : ' is-text-hidden';
+            $highlight_classes .= $highlight_full_image && $highlight_has_text ? ' has-overlay-text' : '';
 
             $highlight_style  = sprintf(
                 '--cvl-highlight-bg:%1$s;--cvl-highlight-color:%2$s;',
@@ -542,15 +548,14 @@ $homepage_highlights = function_exists( 'cvl_get_homepage_highlights' )
                 href="<?php echo esc_url( $highlight['url'] ); ?>"
                 style="<?php echo esc_attr( $highlight_style ); ?>"
             >
-                <span
-                    class="cvl-homepage-highlight-media<?php echo ! empty( $highlight_images ) ? '' : ' is-empty'; ?>"
+                <?php if ( $highlight_has_image ) : ?>
+                <span class="cvl-homepage-highlight-media"
                     <?php if ( count( $highlight_images ) > 1 ) : ?>
                         data-cvl-highlight-rotation
                         data-cvl-rotation-ms="<?php echo esc_attr( (string) ( $highlight_rotation_seconds * 1000 ) ); ?>"
                     <?php endif; ?>
                 >
-                    <?php if ( ! empty( $highlight_images ) ) : ?>
-                        <?php foreach ( $highlight_images as $highlight_image_index => $rotation_image ) : ?>
+                    <?php foreach ( $highlight_images as $highlight_image_index => $rotation_image ) : ?>
                             <img
                                 class="cvl-homepage-highlight-slide<?php echo 0 === $highlight_image_index ? ' is-active' : ''; ?>"
                                 src="<?php echo esc_url( $rotation_image ); ?>"
@@ -559,15 +564,12 @@ $homepage_highlights = function_exists( 'cvl_get_homepage_highlights' )
                                 decoding="async"
                                 aria-hidden="<?php echo 0 === $highlight_image_index ? 'false' : 'true'; ?>"
                             >
-                        <?php endforeach; ?>
-                    <?php else : ?>
-                        <span class="cvl-homepage-highlight-placeholder" aria-hidden="true">CV</span>
-                    <?php endif; ?>
+                    <?php endforeach; ?>
                 </span>
+                <?php endif; ?>
 
                 <?php if ( $highlight_has_text ) : ?>
                     <span class="cvl-homepage-highlight-content">
-                        <span class="cvl-solution-number" aria-hidden="true"><?php echo esc_html( $highlight_number ); ?></span>
                         <?php if ( ! empty( $highlight['eyebrow'] ) ) : ?><span class="cvl-kicker"><?php echo esc_html( $highlight['eyebrow'] ); ?></span><?php endif; ?>
                         <?php if ( ! empty( $highlight['title'] ) ) : ?><h2><?php echo esc_html( $highlight['title'] ); ?></h2><?php endif; ?>
                         <?php if ( ! empty( $highlight['description'] ) ) : ?><p><?php echo esc_html( $highlight['description'] ); ?></p><?php endif; ?>
