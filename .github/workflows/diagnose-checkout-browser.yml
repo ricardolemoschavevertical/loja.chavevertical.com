@@ -160,11 +160,39 @@ jobs:
 
 
             const typeField = page.locator('select[id*="cvl-fiscal-customer-type"]');
-            if(await typeField.count()!==1){
-              throw new Error('Native company/individual selector not visible in real checkout');
+            const choiceGroup = page.locator('#cvl-fiscal-customer-radio-group');
+            const empresaRadio = page.locator('#cvl-fiscal-customer-radio-group input[value="empresa"]');
+            const particularRadio = page.locator('#cvl-fiscal-customer-radio-group input[value="particular"]');
+            if(await typeField.count()!==1 || await choiceGroup.count()!==1
+              || await empresaRadio.count()!==1 || await particularRadio.count()!==1){
+              throw new Error('Required native fiscal select and both radio choices must be present');
             }
-            await typeField.selectOption('empresa');
+
+            const initialRadioState = await page.evaluate(()=>{
+              const native = document.getElementById('order-cvl-fiscal-customer-type');
+              const radios=Array.from(document.querySelectorAll('#cvl-fiscal-customer-radio-group input[type="radio"]'));
+              const group=document.getElementById('cvl-fiscal-customer-radio-group');
+              return {
+                nativeRequired:!!document.querySelector('#order-cvl-fiscal-customer-type'),
+                nativeValue:native?.value??null,
+                radioRequired:radios.every(r=>r.required),
+                radioValues:radios.map(r=>r.value),
+                legend:group?.querySelector('legend')?.textContent??'',
+                formRadioCount:radios.length
+              };
+            });
+            console.log('FISCAL_RADIO_INITIAL='+JSON.stringify(initialRadioState));
+            if(!initialRadioState.radioRequired || initialRadioState.formRadioCount!==2 ||
+              !initialRadioState.legend.includes('Tipo de cliente')){
+              throw new Error('Particular/Empresa radios and required group are missing');
+            }
+
+            await empresaRadio.check();
             await page.waitForTimeout(600);
+            const selectedCompany = await typeField.inputValue();
+            if(selectedCompany!=='empresa'){
+              throw new Error('Radio Empresa did not update the WooCommerce native field');
+            }
             const companyFields = await page.evaluate(()=>{
               return Array.from(document.querySelectorAll('input[id*="cvl-fiscal-"]')).map(e=>({
                 id:e.id,visible:e.getClientRects().length>0
@@ -186,8 +214,11 @@ jobs:
               throw new Error('Company name and NIPC fields must appear after choosing Empresa');
             }
 
-            await typeField.selectOption('particular');
+            await particularRadio.check();
             await page.waitForTimeout(500);
+            if(await typeField.inputValue()!=='particular'){
+              throw new Error('Radio Particular did not update the WooCommerce native field');
+            }
             const personFields = await page.evaluate(()=>{
               return Array.from(document.querySelectorAll('input[id*="cvl-fiscal-"]')).map(e=>({
                 id:e.id,visible:e.getClientRects().length>0
@@ -199,6 +230,28 @@ jobs:
               throw new Error('NIF only must appear for Particular');
             }
             console.log('REAL_BROWSER_FISCAL_FIELDS=PASS');
+
+            const layoutCompany = await page.evaluate(()=>{
+              const radio = document.getElementById('cvl-fiscal-customer-radio-group');
+              const input = document.getElementById('order-cvl-fiscal-nif');
+              const grid = document.getElementById('order');
+              const left = radio?.getBoundingClientRect();
+              const right = input?.getBoundingClientRect();
+              return {
+                left:left?{x:left.x,y:left.y,w:left.width}:null,
+                right:right?{x:right.x,y:right.y,w:right.width}:null,
+                display:getComputedStyle(grid).display,
+                columns:getComputedStyle(grid).gridTemplateColumns,
+                layoutClass:grid.classList.contains('cvl-fiscal-radio-layout'),
+              };
+            });
+            console.log('FISCAL_RADIO_DESKTOP_LAYOUT='+JSON.stringify(layoutCompany));
+            if(!layoutCompany.left||!layoutCompany.right||layoutCompany.display!=='grid'
+                ||!layoutCompany.layoutClass
+                ||!(layoutCompany.right.x>=layoutCompany.left.x+layoutCompany.left.w-4)){
+              throw new Error('Desktop NIF should appear to the right of radio choices');
+            }
+
 
             // Confirm that fiscal fields were moved next to Billing, before payment.
             const sectionOrder = await page.evaluate(()=>{
@@ -326,11 +379,23 @@ jobs:
             await page.waitForTimeout(320);
             const mobileOkay=await page.evaluate(()=>{
               const a=document.querySelector('#billing-address_1');
-              const type=document.querySelector('#order-cvl-fiscal-customer-type');
+              const type=document.querySelector('#cvl-fiscal-customer-radio-group');
               const delivery=document.querySelector('#order-cvl-fiscal-use-billing-for-shipping');
               return !!a?.getClientRects().length&&!!type?.getClientRects().length&&!!delivery?.getClientRects().length;
             });
             console.log('MOBILE_BILLING_FIRST='+mobileOkay);
+            const fiscalMobile=await page.evaluate(()=>{
+              const group=document.getElementById('cvl-fiscal-customer-radio-group')?.getBoundingClientRect();
+              const tax=document.getElementById('order-cvl-fiscal-nif')?.getBoundingClientRect();
+              return {groupY:group?.y??null,groupEnd:group?.bottom??null,taxY:tax?.y??null,
+                layout:getComputedStyle(document.getElementById('order')).gridTemplateColumns};
+            });
+            console.log('FISCAL_RADIO_MOBILE_LAYOUT='+JSON.stringify(fiscalMobile));
+            if(!fiscalMobile.taxY || !fiscalMobile.groupEnd ||
+              fiscalMobile.taxY < fiscalMobile.groupEnd-2){
+              throw new Error('Mobile NIF field must appear below radio group');
+            }
+
             if(!mobileOkay){
               throw new Error('Billing-first checkout is not fully visible on mobile');
             }
