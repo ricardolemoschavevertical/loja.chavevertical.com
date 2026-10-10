@@ -5646,3 +5646,46 @@ body .cvl-contact-page .cvl-contact-location-map iframe{
   .cvl-category-responsive-picture>img{object-fit:contain!important}
   .cvl-category-drawer-row>a .cvl-category-menu-thumb{flex-basis:30px;width:30px!important;height:30px!important;max-width:30px!important;max-height:30px!important}
 }
+
+/* Os cinco destaques ficam juntos, depois das promocoes, apenas em mobile. */
+@media(max-width:767.98px){
+  .cvl-homepage-highlights-section .cvl-homepage-highlights > .cvl-mobile-highlight-side{
+    width:100%!important;min-width:0!important;height:auto!important;min-height:0!important;
+    max-width:none!important;max-height:none!important;aspect-ratio:auto!important;
+    margin:0!important;padding:0!important;border:0!important;border-radius:0!important;
+    box-shadow:none!important;transform:none!important;overflow:hidden!important;
+    background:var(--cvl-hero-side-bg,#fff)!important;
+  }
+  .cvl-homepage-highlights-section .cvl-mobile-highlight-side::before,
+  .cvl-homepage-highlights-section .cvl-mobile-highlight-side::after{
+    display:none!important;content:none!important;
+  }
+  .cvl-homepage-highlights-section .cvl-mobile-highlight-side .cvl-ref-hero-side-media{
+    position:relative!important;inset:auto!important;display:block!important;
+    width:100%!important;height:auto!important;min-height:0!important;
+    margin:0!important;padding:0!important;overflow:hidden!important;
+  }
+  .cvl-homepage-highlights-section .cvl-mobile-highlight-side .cvl-ref-hero-side-media img{
+    position:relative!important;inset:auto!important;display:block!important;
+    width:100%!important;max-width:100%!important;height:auto!important;
+    max-height:none!important;object-fit:contain!important;box-shadow:none!important;
+    border:0!important;border-radius:0!important;background:transparent!important;
+  }
+  .cvl-homepage-highlights-section .cvl-mobile-highlight-side .cvl-ref-hero-side-copy{
+    position:relative!important;inset:auto!important;padding:16px!important;min-height:0!important;
+  }
+  .cvl-homepage-highlights-section .cvl-mobile-highlight-side.is-full-image.has-overlay-text{
+    display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+  }
+  .cvl-homepage-highlights-section .cvl-mobile-highlight-side.is-full-image.has-overlay-text .cvl-ref-hero-side-copy,
+  .cvl-homepage-highlights-section .cvl-mobile-highlight-side.is-full-image.has-overlay-text .cvl-ref-hero-side-media{
+    grid-area:1/1!important;
+  }
+  .cvl-homepage-highlights-section .cvl-mobile-highlight-side.is-full-image.has-overlay-text .cvl-ref-hero-side-copy{
+    z-index:3!important;align-self:end!important;
+  }
+  .cvl-homepage-highlights-section .cvl-mobile-highlight-side.is-text-hidden .cvl-ref-hero-side-copy,
+  .cvl-homepage-highlights-section .cvl-mobile-highlight-side.is-text-hidden .cvl-ref-hero-side-cta{
+    display:none!important;
+  }
+}
