@@ -1,0 +1,26 @@
+name: Validate live WooCommerce category policy
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "wp-content/plugins/chavevertical-core/**"
+      - "tests/cv-catalog-rules-smoke.php"
+      - ".github/workflows/cv-catalog-rules-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  policy-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate PHP syntax
+        run: |
+          php -l wp-content/plugins/chavevertical-core/chavevertical-core.php
+          php -l wp-content/plugins/chavevertical-core/includes/class-cv-core-catalog-rules.php
+      - name: Test hierarchy, scopes and fail-closed behaviour
+        run: php tests/cv-catalog-rules-smoke.php

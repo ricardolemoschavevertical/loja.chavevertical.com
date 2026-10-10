@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Chave Vertical Core
  * Description: Base comum dos plugins internos da Chave Vertical e menu central de administração.
- * Version: 0.2.2
+ * Version: 0.2.3
  * Author: Chave Vertical
  * Requires at least: 6.5
  * Requires PHP: 8.0
@@ -11,12 +11,13 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CV_CORE_VERSION', '0.2.2' );
+define( 'CV_CORE_VERSION', '0.2.3' );
 define( 'CV_CORE_MENU_SLUG', 'chave-vertical' );
 
 require_once __DIR__ . '/includes/class-cv-core-order-history.php';
 require_once __DIR__ . '/includes/cv-core-chatgpt-admin.php';
 require_once __DIR__ . '/includes/class-cv-core-brand-logo-webp.php';
+require_once __DIR__ . '/includes/class-cv-core-catalog-rules.php';
 
 function cv_admin_parent_slug(): string {
     return CV_CORE_MENU_SLUG;
@@ -109,6 +110,7 @@ add_action(
     static function (): void {
         if ( class_exists( 'WooCommerce' ) ) {
             CV_Core_Order_History::init();
+            CV_Core_Catalog_Rules::init();
         }
 
         if ( class_exists( 'CV_Core_Brand_Logo_WebP' ) ) {
