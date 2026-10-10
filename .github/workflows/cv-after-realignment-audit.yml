@@ -1,0 +1,40 @@
+name: Auditar taxonomia apos realinhamento
+on:
+  workflow_run:
+    workflows: ["Aplicar reorganizacao de categorias face ao backup"]
+    types: [completed]
+permissions:
+  contents: read
+jobs:
+  audit:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.event.workflow_run.head_branch == 'main'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Ler taxonomia atual, produtos e caminho de categorias sem escrita
+        shell: bash
+        env:
+          CV_TAXONOMY_AUDIT_DIR: ${{ runner.temp }}/cv-after-realignment-${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$CV_TAXONOMY_AUDIT_DIR"
+          php -l ops/cv-audit-backup-taxonomy.php
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval-file ops/cv-audit-backup-taxonomy.php
+          test -s "$CV_TAXONOMY_AUDIT_DIR/cv-category-full-inventory.json"
+          CV_AUDIT_FILE="$CV_TAXONOMY_AUDIT_DIR/cv-category-full-inventory.json" python3 - <<'PY'
+          import os,json
+          s=json.load(open(os.environ['CV_AUDIT_FILE']))['stats']
+          print('REALIGNMENT_AUDIT',json.dumps(s,ensure_ascii=False))
+          assert s['backup_total']==894
+          assert s['loja_total']>=894, 'Contagem abaixo da árvore de referência: inspecionar!'
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cv-after-realignment-${{ github.run_id }}
+          path: ${{ runner.temp }}/cv-after-realignment-${{ github.run_id }}/
+          retention-days: 30
+          if-no-files-found: warn
