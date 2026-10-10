@@ -339,6 +339,16 @@ add_action( 'wp_enqueue_scripts', function () {
             cvl_asset_version( 'assets/js/checkout-billing-first.js' ),
             true
         );
+
+        // Botões de opção acessíveis, com sincronização para o SELECT nativo
+        // obrigatório do WooCommerce Checkout Blocks (faturação).
+        wp_enqueue_script(
+            'cvl-checkout-fiscal-radios',
+            get_template_directory_uri() . '/assets/js/checkout-fiscal-radios.js',
+            array( 'cvl-checkout-billing-first' ),
+            cvl_asset_version( 'assets/js/checkout-fiscal-radios.js' ),
+            true
+        );
     }
 
     if ( is_front_page() ) {
