@@ -72,9 +72,54 @@ foreach($terms as $term) {
         throw new RuntimeException('Categoria modificada desde snapshot, ID '.$id);
     }
 }
+// Guardar conteúdo editorial e imagens antes de eliminar qualquer categoria.
+$metaCopies = [];
+$descriptionCopies = [];
+$metaConflicts = [];
+$volatileMeta = ['product_count_product_cat'=>true, 'order'=>true, 'display_type'=>true];
+foreach ($actions as $a) {
+    if ($a['mode'] !== 'merge') continue;
+    $oldId=(int)$a['old']; $keepId=(int)$a['keep'];
+    $oldTerm=get_term($oldId,'product_cat');
+    $keepTerm=get_term($keepId,'product_cat');
+    if (!$oldTerm || is_wp_error($oldTerm) || !$keepTerm || is_wp_error($keepTerm)) {
+        throw new RuntimeException('Categoria original/destino indisponível: '.$oldId);
+    }
+    if (trim($oldTerm->description)!=='') {
+        if (trim($keepTerm->description)!=='' && $keepTerm->description !== $oldTerm->description) {
+            $metaConflicts[]=['old'=>$oldId,'keep'=>$keepId,'field'=>'description'];
+        } else if (trim($keepTerm->description)==='') {
+            $descriptionCopies[$oldId]=['keep'=>$keepId,'value'=>$oldTerm->description];
+        }
+    }
+    $sourceMeta=get_term_meta($oldId);
+    foreach ($sourceMeta as $metaKey=>$rawValues) {
+        if (isset($volatileMeta[$metaKey])) continue;
+        if (count((array)$rawValues)!==1) {
+            $metaConflicts[]=['old'=>$oldId,'keep'=>$keepId,'field'=>$metaKey,'reason'=>'multivalue'];
+            continue;
+        }
+        $raw=(string)$rawValues[0];
+        if ($raw==='' || $raw==='0') continue;
+        $current=get_term_meta($keepId,$metaKey,true);
+        $currentRaw=maybe_serialize($current);
+        if ($currentRaw!=='' && $currentRaw!=='0' && $currentRaw!==$raw) {
+            $metaConflicts[]=['old'=>$oldId,'keep'=>$keepId,'field'=>$metaKey,'reason'=>'different_values'];
+            continue;
+        }
+        if ($currentRaw==='' || $currentRaw==='0') {
+            $metaCopies[]=['old'=>$oldId,'keep'=>$keepId,'key'=>$metaKey,'raw'=>$raw];
+        }
+    }
+}
+if ($metaConflicts) {
+    file_put_contents($dir.'/conflitos-metadados.json',wp_json_encode($metaConflicts,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE));
+    throw new RuntimeException('Imagens, descrição ou metadados diferentes: fusão impedida; rever conflitos.');
+}
 $plan=['mode'=>$mode,'backup_total'=>count($s),'loja_before'=>926,
     'merge'=>25,'reparent'=>2,'expected_after'=>901,'protected_ids'=>$excluded,
-    'actions'=>$actions,'created_at_utc'=>gmdate('c')];
+    'actions'=>$actions,'metadata_to_preserve'=>count($metaCopies),'descriptions_to_preserve'=>count($descriptionCopies),
+    'metadata_fields'=>array_values(array_unique(array_column($metaCopies,'key'))),'created_at_utc'=>gmdate('c')];
 file_put_contents($dir.'/plano-reorganizar.json',wp_json_encode($plan,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE));
 echo 'CV_MISPLACED_PLAN '.wp_json_encode([
     'mode'=>$mode,'merges'=>25,'reparents'=>2,'before'=>926,'after'=>901,'protected'=>$excluded
@@ -123,6 +168,32 @@ try {
         if(!$term||is_wp_error($term)||!$dest||is_wp_error($dest))
             throw new RuntimeException('Termo nao disponivel, origem '.$old);
         if($term->slug!==$slug)throw new RuntimeException('Slug historico mudou '.$old);
+        if($a['mode']==='merge') {
+            // Preservar imagens (thumbnail_id), SEO, descrições e restantes metadados
+            // antes de eliminar o termo antigo.
+            if (isset($descriptionCopies[$old])) {
+                $copy=$descriptionCopies[$old];
+                $res=wp_update_term($to,'product_cat',['description'=>$copy['value']]);
+                $verified=get_term($to,'product_cat');
+                if (is_wp_error($res) || !$verified || is_wp_error($verified)
+                    || $verified->description!==$copy['value']) {
+                    throw new RuntimeException('Falhou transferência da descrição '.$old);
+                }
+                $log(['op'=>'copy_description','from'=>$old,'to'=>$to]);
+            }
+            foreach ($metaCopies as $copy) {
+                if ($copy['old']!==$old) continue;
+                $raw=$copy['raw'];
+                if (maybe_serialize(get_term_meta($old,$copy['key'],true))!==$raw) {
+                    throw new RuntimeException('Metadado original mudou antes da fusão '.$old.':'.$copy['key']);
+                }
+                update_term_meta($to,$copy['key'],maybe_unserialize($raw));
+                if (maybe_serialize(get_term_meta($to,$copy['key'],true))!==$raw) {
+                    throw new RuntimeException('Falha ao preservar metadado '.$copy['key'].' da categoria '.$old);
+                }
+                $log(['op'=>'copy_meta','from'=>$old,'to'=>$to,'key'=>$copy['key']]);
+            }
+        }
         if($a['mode']==='reparent') {
             $res=wp_update_term($old,'product_cat',['parent'=>$to]);
             $check=get_term($old,'product_cat');
