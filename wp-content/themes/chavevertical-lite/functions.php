@@ -310,7 +310,7 @@ add_action( 'wp_enqueue_scripts', function () {
         wp_enqueue_script(
             'cvl-checkout-postcode-locality',
             get_template_directory_uri() . '/assets/js/checkout-postcode-locality.js',
-            array(),
+            array( 'wp-data', 'wc-blocks-data-store' ),
             cvl_asset_version( 'assets/js/checkout-postcode-locality.js' ),
             true
         );
