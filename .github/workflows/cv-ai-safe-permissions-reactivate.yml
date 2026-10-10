@@ -1,0 +1,78 @@
+name: Reparar permissoes CV AI e ativar com smoke seguro
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/cv-ai-safe-permissions-reactivate.yml"]
+permissions:
+  contents: read
+concurrency:
+  group: cv-ai-production-isolation
+  cancel-in-progress: false
+jobs:
+  repair:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 10
+    steps:
+      - name: Normalizar permissoes e testar front-end com rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          DEST="$WP/wp-content/plugins"
+          slugs=(cv-cloudflare-ai-enricher cv-mcp-bridge)
+          for slug in "${slugs[@]}"; do
+            test "$(wp --path="$WP" plugin get "$slug" --field=status)" = inactive
+            test "$(wp --path="$WP" plugin get "$slug" --field=version)" = 0.4.0
+          done
+          echo "BEFORE_INCLUDE_DIR_MODE=$(stat -c '%a' "$DEST/cv-cloudflare-ai-enricher/includes")"
+          echo "BEFORE_ADMIN_FILE_MODE=$(stat -c '%a' "$DEST/cv-cloudflare-ai-enricher/includes/class-cv-cfai-admin.php")"
+          # O deploy anterior usou umask 0077. PHP-FPM precisa de leitura.
+          for slug in "${slugs[@]}"; do
+            find "$DEST/$slug" -type d -exec chmod 0755 {} +
+            find "$DEST/$slug" -type f -name '*.php' -exec chmod 0644 {} +
+          done
+          test "$(stat -c '%a' "$DEST/cv-cloudflare-ai-enricher/includes")" = 755
+          test "$(stat -c '%a' "$DEST/cv-cloudflare-ai-enricher/includes/class-cv-cfai-admin.php")" = 644
+          test "$(stat -c '%a' "$DEST/cv-cloudflare-ai-enricher/includes/class-cv-cfai-secrets.php")" = 644
+          echo "PHP_FPM_FILE_PERMISSIONS=OK"
+          KEEP_ACTIVE=no
+          safety() {
+            if [ "$KEEP_ACTIVE" != yes ]; then
+              wp --path="$WP" plugin deactivate cv-cloudflare-ai-enricher cv-mcp-bridge >/dev/null 2>&1 || true
+            fi
+          }
+          trap safety EXIT
+          wp --path="$WP" plugin activate cv-cloudflare-ai-enricher cv-mcp-bridge
+          homepage=$(curl -sS --connect-timeout 10 --max-time 35 -H 'Cache-Control: no-store' \
+            -o /dev/null -w '%{http_code}' "https://loja.chavevertical.com/?cv_reactivate=${{ github.run_id }}")
+          core=$(curl -sS --connect-timeout 10 --max-time 35 -H 'Cache-Control: no-store' \
+            -o /dev/null -w '%{http_code}' "https://loja.chavevertical.com/wp-json/?cv_reactivate=${{ github.run_id }}")
+          enricher=$(curl -sS --connect-timeout 10 --max-time 35 -H 'Cache-Control: no-store' \
+            -o /dev/null -w '%{http_code}' "https://loja.chavevertical.com/wp-json/cv-ai/v1/catalog/categories")
+          mcp=$(curl -sS --connect-timeout 10 --max-time 35 -H 'Cache-Control: no-store' \
+            -X POST -H 'Content-Type: application/json' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"initialize"}' -o /dev/null -w '%{http_code}' \
+            "https://loja.chavevertical.com/wp-json/cv-mcp/v1/mcp")
+          echo "PUBLIC_HOME_HTTP=$homepage"
+          echo "PUBLIC_REST_ROOT_HTTP=$core"
+          echo "CV_AI_UNAUTH_HTTP=$enricher"
+          echo "CV_MCP_UNAUTH_HTTP=$mcp"
+          test "$homepage" = 200
+          test "$core" = 200
+          test "$enricher" = 401
+          test "$mcp" = 401
+          wp --path="$WP" eval '
+            if(!class_exists("CV_CFAI_Admin") || !class_exists("CV_CFAI_Secrets")
+              || !class_exists("CV_Cloudflare_AI_Enricher") || !class_exists("CV_MCP_Bridge"))
+              {fwrite(STDERR,"CV AI/MCP runtime incompleto\n");exit(1);}
+            if ((defined("CV_CFAI_ALLOW_PRODUCT_APPLY") && CV_CFAI_ALLOW_PRODUCT_APPLY===true) ||
+                (defined("CV_MCP_BRIDGE_ALLOW_WRITES") && CV_MCP_BRIDGE_ALLOW_WRITES===true))
+              {fwrite(STDERR,"CV AI/MCP automacao nao esta segura\n");exit(2);}
+            echo "CV_AI_ADMIN=ready;CV_MCP=ready;automatic_writes=off\n";
+          '
+          KEEP_ACTIVE=yes
+          trap - EXIT
+          for slug in "${slugs[@]}"; do
+            echo "FINAL_PLUGIN=$slug;STATUS=$(wp --path="$WP" plugin get "$slug" --field=status)"
+          done
