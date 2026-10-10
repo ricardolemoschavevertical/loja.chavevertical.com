@@ -132,6 +132,18 @@ $errors = new WP_Error();
 $validate( $errors, $personal, 'other' );
 check( !$errors->has_errors(), 'Portuguese personal NIF accepted' );
 
+$errors = new WP_Error();
+$validate( $errors, array(), 'other' );
+check( in_array( 'cvl_fiscal_customer_type_required', $errors->get_error_codes(), true ), 'Missing Particular / Empresa choice is blocked server-side' );
+
+$errors = new WP_Error();
+$validate( $errors, array( 'cvl-fiscal/customer-type' => '' ), 'other' );
+check( in_array( 'cvl_fiscal_customer_type_required', $errors->get_error_codes(), true ), 'Empty native select also blocked server-side' );
+
+$errors = new WP_Error();
+$validate( $errors, array( 'cvl-fiscal/customer-type' => 'invalido' ), 'other' );
+check( $errors->has_errors(), 'Invalid customer type blocked server-side' );
+
 $business = array(
     'cvl-fiscal/customer-type' => 'empresa',
     'cvl-fiscal/company-name' => 'Chave Vertical Lda',
