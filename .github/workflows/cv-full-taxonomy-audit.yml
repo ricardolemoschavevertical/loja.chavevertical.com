@@ -2,7 +2,7 @@ name: Auditoria completa categorias backup e loja
 on:
   push:
     branches: [main]
-    paths: [".github/workflows/cv-full-taxonomy-audit.yml"]
+    paths: [".github/workflows/cv-full-taxonomy-audit.yml", "ops/cv-audit-backup-taxonomy.php"]
   workflow_dispatch:
 permissions:
   contents: read
