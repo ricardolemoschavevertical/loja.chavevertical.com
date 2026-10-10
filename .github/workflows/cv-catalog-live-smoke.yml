@@ -1,0 +1,36 @@
+name: Verify live WooCommerce category tree
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cv-catalog-live-smoke.yml"
+      - "wp-content/plugins/chavevertical-core/includes/class-cv-core-catalog-rules.php"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 5
+    steps:
+      - name: Read real WooCommerce categories from the running WordPress
+        shell: bash
+        run: |
+          set -euo pipefail
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval '
+            if (!class_exists("CV_Core_Catalog_Rules")) { fwrite(STDERR,"Policy class not loaded\n"); exit(1); }
+            foreach (["mcp", "enricher"] as $scope) {
+              $tree=CV_Core_Catalog_Rules::tree($scope);
+              if (is_wp_error($tree) || ($tree["source"]??"")!=="woocommerce_live_product_cat" || ($tree["total"]??0)<1) {
+                fwrite(STDERR, "Live categories unavailable: ".$scope."\n"); exit(2);
+              }
+              echo "scope=".$scope.";source=".$tree["source"].";categories=".$tree["total"].";revision=".substr($tree["version"],0,12)."\n";
+            }
+            $invalid=CV_Core_Catalog_Rules::check_ids([999999999],"mcp");
+            if (is_wp_error($invalid) || $invalid["ok"]) { fwrite(STDERR,"Unknown category not blocked\n"); exit(3); }
+            echo "unknown-category-validation=blocked\n";
+          '
