@@ -1,0 +1,50 @@
+name: Reparar permissoes do CV AI apos deploy 0.4
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/cv-ai-fix-php-read-permissions.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  repair:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 5
+    steps:
+      - name: Verificar e corrigir apenas leitura dos includes do CV AI
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          INC="$WP/wp-content/plugins/cv-cloudflare-ai-enricher/includes"
+          test "$(id -un)" = "codex1"
+          test -d "$INC" && test ! -L "$INC"
+          for name in class-cv-cfai-admin.php class-cv-cfai-secrets.php; do
+            test -f "$INC/$name" && test ! -L "$INC/$name"
+          done
+          before=$(curl -sS -L --connect-timeout 8 --max-time 20 -o /dev/null -w '%{http_code}' https://loja.chavevertical.com/ || true)
+          echo "HOME_BEFORE=$before"
+          echo "PERMISSIONS_BEFORE"
+          stat -c '%a %U:%G %n' "$INC" "$INC/class-cv-cfai-admin.php" "$INC/class-cv-cfai-secrets.php"
+          if [ "$before" = "200" ]; then
+            echo "SITE_ALREADY_OK; no change needed"
+            exit 0
+          fi
+          # 755 directories and 644 PHP files are standard WordPress deployment permissions.
+          chmod 755 "$INC"
+          chmod 644 "$INC/class-cv-cfai-admin.php" "$INC/class-cv-cfai-secrets.php"
+          echo "PERMISSIONS_AFTER"
+          stat -c '%a %U:%G %n' "$INC" "$INC/class-cv-cfai-admin.php" "$INC/class-cv-cfai-secrets.php"
+          for attempt in 1 2 3; do
+            home=$(curl -sS -L --connect-timeout 8 --max-time 20 -o /dev/null -w '%{http_code}' https://loja.chavevertical.com/ || true)
+            api=$(curl -sS --connect-timeout 8 --max-time 20 -o /dev/null -w '%{http_code}' https://loja.chavevertical.com/wp-json/ || true)
+            echo "CHECK_RESULT attempt=$attempt home=$home api=$api"
+            if [ "$home" = "200" ] && [ "$api" = "200" ]; then
+              echo "SITE_RECOVERED; plugin files unchanged; only mode bits adjusted"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "SITE_NOT_FULLY_RECOVERED; inspect PHP-FPM logs and active plugin ownership"
+          exit 1
