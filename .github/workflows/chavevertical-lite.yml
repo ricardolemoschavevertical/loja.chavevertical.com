@@ -15,6 +15,7 @@ on:
       - "ops/ensure-termos-e-condicoes-page.php"
       - "ops/ensure-politica-de-privacidade-page.php"
       - "ops/ensure-pretty-permalinks.php"
+      - "ops/verify-checkout-customer-type.php"
   workflow_dispatch:
 
 permissions:
@@ -73,6 +74,8 @@ jobs:
           test -f "$THEME/functions.php"
           test -f "$THEME/index.php"
           find "$THEME" -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          php -l ops/verify-checkout-customer-type.php
+          node --check "$THEME/assets/js/checkout-customer-type.js"
           php -l ops/ensure-brands-page.php
           php -l ops/ensure-contactos-page.php
           php -l ops/ensure-quem-somos-page.php
@@ -155,6 +158,13 @@ jobs:
         env:
           THEME_ZIP: ${{ runner.temp }}/chavevertical-lite-${{ github.run_id }}-${{ github.run_attempt }}/chavevertical-lite.zip
         run: bash ops/deploy-theme.sh "$THEME_ZIP"
+
+      - name: Verify checkout fiscal fields (read-only)
+        if: steps.latest.outputs.should_deploy == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          php ops/verify-checkout-customer-type.php
 
       - name: Ensure brands page
         if: steps.latest.outputs.should_deploy == 'true'
