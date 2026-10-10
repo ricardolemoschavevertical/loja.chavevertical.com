@@ -291,6 +291,15 @@ add_action( 'wp_enqueue_scripts', function () {
             cvl_asset_version( 'assets/js/checkout-postcodes.js' ),
             true
         );
+
+        // WooCommerce Blocks: apenas apresentação e alertas, sem tocar no React.
+        wp_enqueue_script(
+            'cvl-checkout-postcodes-blocks',
+            get_template_directory_uri() . '/assets/js/checkout-postcodes-blocks.js',
+            array(),
+            cvl_asset_version( 'assets/js/checkout-postcodes-blocks.js' ),
+            true
+        );
     }
 
     if ( is_front_page() ) {
