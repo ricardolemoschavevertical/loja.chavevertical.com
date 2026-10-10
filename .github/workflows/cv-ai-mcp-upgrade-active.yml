@@ -1,0 +1,100 @@
+name: Atualizar CV AI e MCP ativos com backup
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cv-ai-mcp-upgrade-active.yml"
+      - "wp-content/plugins/cv-cloudflare-ai-enricher/**"
+      - "wp-content/plugins/cv-mcp-bridge/**"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cv-ai-mcp-active-safe-upgrade
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate all PHP and expected files
+        shell: bash
+        run: |
+          set -euo pipefail
+          find wp-content/plugins/cv-cloudflare-ai-enricher wp-content/plugins/cv-mcp-bridge \
+            -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          grep -q "Version: 0.4.0" wp-content/plugins/cv-cloudflare-ai-enricher/cv-cloudflare-ai-enricher.php
+          grep -q "Version: 0.4.0" wp-content/plugins/cv-mcp-bridge/cv-mcp-bridge.php
+          test -s wp-content/plugins/cv-cloudflare-ai-enricher/includes/class-cv-cfai-admin.php
+          test -s wp-content/plugins/cv-cloudflare-ai-enricher/includes/class-cv-cfai-secrets.php
+
+  upgrade:
+    needs: validate
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Backup and update only two known active CV plugins
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 0077
+          WP=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          DEST="$WP/wp-content/plugins"
+          TMP="/home/codex1/backups/github-plugins/cv-ai-mcp-$(date -u +%Y%m%dT%H%M%SZ)-${{ github.run_id }}"
+          mkdir -p "$TMP/archives" "$TMP/stage"
+          test "$(id -un)" = codex1
+          test "$(realpath "$DEST")" = "$DEST"
+          slugs=(cv-cloudflare-ai-enricher cv-mcp-bridge)
+          for slug in "${slugs[@]}"; do
+            test ! -L "$DEST/$slug"
+            wp --path="$WP" plugin is-active "$slug"
+            current=$(wp --path="$WP" plugin get "$slug" --field=version)
+            test "$current" = "0.3.0" || test "$current" = "0.4.0"
+            mkdir -p "$TMP/stage/$slug"
+            rsync -r --no-perms --omit-dir-times "wp-content/plugins/$slug/" "$TMP/stage/$slug/"
+            find "$TMP/stage/$slug" -name '*.php' -type f -print0 | xargs -0 -n1 php -l
+            tar -czf "$TMP/archives/$slug.tar.gz" -C "$DEST" "$slug"
+            test -s "$TMP/archives/$slug.tar.gz"
+            echo "PREFLIGHT_OK=$slug;original_version=$current;backup=yes"
+          done
+          rollback() {
+            echo "ROLLBACK: restoring only the two plugin directories from archives"
+            for slug in "${slugs[@]}"; do
+              if test -s "$TMP/archives/$slug.tar.gz"; then
+                tar -xzf "$TMP/archives/$slug.tar.gz" -C "$DEST"
+                echo "RESTORED=$slug"
+              fi
+            done
+          }
+          trap rollback ERR
+          # Admin helpers are added first; only then is the active main PHP
+          # replaced. No activation/deactivation, no edits to other plugins.
+          mkdir -p "$DEST/cv-cloudflare-ai-enricher/includes"
+          rsync -r --no-perms --omit-dir-times "$TMP/stage/cv-cloudflare-ai-enricher/includes/" "$DEST/cv-cloudflare-ai-enricher/includes/"
+          rsync --no-perms "$TMP/stage/cv-cloudflare-ai-enricher/cv-cloudflare-ai-enricher.php" "$DEST/cv-cloudflare-ai-enricher/cv-cloudflare-ai-enricher.php"
+          rsync --no-perms "$TMP/stage/cv-mcp-bridge/cv-mcp-bridge.php" "$DEST/cv-mcp-bridge/cv-mcp-bridge.php"
+          for slug in "${slugs[@]}"; do
+            test "$(wp --path="$WP" plugin get "$slug" --field=version)" = "0.4.0"
+            wp --path="$WP" plugin is-active "$slug"
+            find "$DEST/$slug" -name '*.php' -type f -print0 | xargs -0 -n1 php -l
+            echo "ACTIVE_PLUGIN_UPDATED=$slug;version=0.4.0"
+          done
+          wp --path="$WP" eval '
+            if(!class_exists("CV_CFAI_Admin") || !class_exists("CV_CFAI_Secrets")
+                || !class_exists("CV_Cloudflare_AI_Enricher") || !class_exists("CV_MCP_Bridge")
+                || !class_exists("CV_Core_Catalog_Rules")) {
+              fwrite(STDERR,"Missing runtime class.\n");exit(1);
+            }
+            if((defined("CV_CFAI_ALLOW_PRODUCT_APPLY") && CV_CFAI_ALLOW_PRODUCT_APPLY===true) ||
+              (defined("CV_MCP_BRIDGE_ALLOW_WRITES") && CV_MCP_BRIDGE_ALLOW_WRITES===true)) {
+              fwrite(STDERR,"Unsafe write flags in WP config.\n");exit(2);
+            }
+            echo "CV_AI_ADMIN_CLASSES=loaded;new_mcp=loaded;autoapply=disabled\n";
+          '
+          trap - ERR
+          echo "SAFE_UPGRADE_SUCCESS;BACKUP_PATH=$TMP"
