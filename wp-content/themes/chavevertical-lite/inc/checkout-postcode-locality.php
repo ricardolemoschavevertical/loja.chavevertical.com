@@ -36,7 +36,7 @@ function cvl_postcode_locality_clean_name( $raw ): string {
         ! is_string( $name )
         || '' === $name
         || strlen( $name ) > 180
-        || preg_match( '/^(?:n[\/.]?a|unknown|null|not found|indispon[ií]vel|[-*]+)$/iu', $name )
+        || preg_match( '/^(?:n[\/.]?a|unknown|null|not found|n[aã]o dispon[ií]vel|indispon[ií]vel|[-*]+)$/iu', $name )
         || preg_match( '/[<>{}]/', $name )
     ) {
         return '';
