@@ -17,6 +17,11 @@ function cvl_asset_version( $relative_path = '' ) {
     return CVL_VERSION;
 }
 
+$cvl_category_images_file = get_template_directory() . '/inc/category-images.php';
+if ( file_exists( $cvl_category_images_file ) ) {
+    require_once $cvl_category_images_file;
+}
+
 $cvl_homepage_highlights_file = get_template_directory() . '/inc/homepage-highlights.php';
 if ( file_exists( $cvl_homepage_highlights_file ) ) {
     require_once $cvl_homepage_highlights_file;
@@ -1644,23 +1649,13 @@ function cvl_shop_root_category_grid() {
             continue;
         }
 
-        $thumbnail_id = absint( get_term_meta( $term->term_id, 'thumbnail_id', true ) );
+        $category_picture = cvl_category_picture( $term, 'medium' );
 
         echo '<a class="cvl-category-card" href="' . esc_url( $url ) . '">';
         echo '<span class="cvl-category-image">';
 
-        if ( $thumbnail_id ) {
-            echo wp_kses_post(
-                wp_get_attachment_image(
-                    $thumbnail_id,
-                    'medium',
-                    false,
-                    array(
-                        'loading' => 'lazy',
-                        'alt'     => $term->name,
-                    )
-                )
-            );
+        if ( $category_picture ) {
+            echo wp_kses_post( $category_picture );
         } else {
             echo '<span class="cvl-category-placeholder" aria-hidden="true">⚙</span>';
         }
@@ -1797,7 +1792,7 @@ function cvl_render_category_drawer_items( array $tree, int $parent = 0, int $de
 
         echo '<li class="cvl-category-drawer-item' . ( $has_children ? ' has-children' : '' ) . '" data-depth="' . esc_attr( (string) $depth ) . '">';
         echo '<div class="cvl-category-drawer-row">';
-        echo '<a href="' . esc_url( $term_url ) . '"><span>' . esc_html( $term->name ) . '</span></a>';
+        echo '<a href="' . esc_url( $term_url ) . '">' . wp_kses_post( cvl_category_menu_image( $term ) ) . '<span>' . esc_html( $term->name ) . '</span></a>';
 
         if ( $has_children ) {
             echo '<button class="cvl-category-expand" type="button" aria-expanded="false" aria-label="' . esc_attr( sprintf( __( 'Mostrar subcategorias de %s', 'chavevertical-lite' ), $term->name ) ) . '">';
@@ -1978,23 +1973,13 @@ function cvl_backup_category_subcategory_grid() {
             continue;
         }
 
-        $thumbnail_id = absint( get_term_meta( $child->term_id, 'thumbnail_id', true ) );
+        $category_picture = cvl_category_picture( $child, 'woocommerce_thumbnail' );
 
         echo '<li class="product-category product-col" role="listitem">';
         echo '<a href="' . esc_url( $url ) . '" aria-label="' . esc_attr( sprintf( __( 'Abrir categoria %s', 'chavevertical-lite' ), $child->name ) ) . '">';
 
-        if ( $thumbnail_id ) {
-            echo wp_kses_post(
-                wp_get_attachment_image(
-                    $thumbnail_id,
-                    'woocommerce_thumbnail',
-                    false,
-                    array(
-                        'loading' => 'lazy',
-                        'alt'     => $child->name,
-                    )
-                )
-            );
+        if ( $category_picture ) {
+            echo wp_kses_post( $category_picture );
         } else {
             echo '<img src="' . esc_url( cvl_product_placeholder_url() ) . '" alt="' . esc_attr( $child->name ) . '" loading="lazy">';
         }
@@ -2585,18 +2570,16 @@ function cvl_product_category_search_layout(): void {
                             $term_url = add_query_arg( 'vista', 'categorias', $term_url );
                         }
 
-                        $thumbnail_id = absint( get_term_meta( $term_id, 'thumbnail_id', true ) );
-                        $image_url    = $thumbnail_id
-                            ? wp_get_attachment_image_url( $thumbnail_id, 'woocommerce_thumbnail' )
+                        $category_picture = cvl_category_picture( $term, 'woocommerce_thumbnail' );
+                        $image_url = ! $category_picture && function_exists( 'wc_placeholder_img_src' )
+                            ? wc_placeholder_img_src( 'woocommerce_thumbnail' )
                             : '';
-
-                        if ( ! $image_url && function_exists( 'wc_placeholder_img_src' ) ) {
-                            $image_url = wc_placeholder_img_src( 'woocommerce_thumbnail' );
-                        }
                         ?>
                         <a class="cvl-category-browser-card" href="<?php echo esc_url( $term_url ); ?>">
                             <span class="cvl-category-browser-image">
-                                <?php if ( $image_url ) : ?>
+                                <?php if ( $category_picture ) : ?>
+                                    <?php echo wp_kses_post( $category_picture ); ?>
+                                <?php elseif ( $image_url ) : ?>
                                     <img src="<?php echo esc_url( $image_url ); ?>" alt="<?php echo esc_attr( $term->name ); ?>" loading="lazy" decoding="async">
                                 <?php endif; ?>
                             </span>
@@ -2749,18 +2732,19 @@ function cvl_product_category_search_layout(): void {
                                 continue;
                             }
 
-                            $thumbnail_id = absint( get_term_meta( $term->term_id, 'thumbnail_id', true ) );
-                            $image_url = $thumbnail_id ? wp_get_attachment_image_url( $thumbnail_id, 'woocommerce_thumbnail' ) : '';
-                            if ( ! $image_url && function_exists( 'wc_placeholder_img_src' ) ) {
-                                $image_url = wc_placeholder_img_src( 'woocommerce_thumbnail' );
-                            }
+                            $category_picture = cvl_category_picture( $term, 'woocommerce_thumbnail' );
+                            $image_url = ! $category_picture && function_exists( 'wc_placeholder_img_src' )
+                                ? wc_placeholder_img_src( 'woocommerce_thumbnail' )
+                                : '';
 
                             $active = $selected_category instanceof WP_Term && (int) $selected_category->term_id === (int) $term->term_id;
                             $url = $filter_url( array( 'categoria' => $term->slug ) );
                             ?>
                             <a class="cvl-category-carousel-card<?php echo $active ? ' is-active' : ''; ?>" href="<?php echo esc_url( $url ); ?>">
                                 <span class="cvl-category-carousel-image">
-                                    <?php if ( $image_url ) : ?>
+                                    <?php if ( $category_picture ) : ?>
+                                        <?php echo wp_kses_post( $category_picture ); ?>
+                                    <?php elseif ( $image_url ) : ?>
                                         <img src="<?php echo esc_url( $image_url ); ?>" alt="<?php echo esc_attr( $term->name ); ?>" loading="lazy" decoding="async">
                                     <?php endif; ?>
                                 </span>
