@@ -23,6 +23,8 @@ on:
       - "ops/test-checkout-postcode-locality-blocks.js"
       - "ops/test-checkout-blocks-fiscal-unit.php"
       - "ops/move-checkout-fiscal-block.php"
+      - "ops/checkout-billing-before-shipping.php"
+      - "ops/test-checkout-billing-first.js"
   workflow_dispatch:
 
 permissions:
@@ -87,6 +89,10 @@ jobs:
           php -l ops/test-checkout-blocks-fiscal-unit.php
           php ops/test-checkout-blocks-fiscal-unit.php
           php -l ops/move-checkout-fiscal-block.php
+          php -l ops/checkout-billing-before-shipping.php
+          node --check "$THEME/assets/js/checkout-billing-first.js"
+          node --check ops/test-checkout-billing-first.js
+          node ops/test-checkout-billing-first.js
           php -l ops/test-checkout-vies-unit.php
           php ops/test-checkout-vies-unit.php
           php -l ops/test-checkout-postcodes-unit.php
@@ -197,6 +203,14 @@ jobs:
           set -euo pipefail
           php ops/move-checkout-fiscal-block.php
           php ops/move-checkout-fiscal-block.php --apply
+
+      - name: Move billing and fiscal data before delivery (guarded)
+        if: steps.latest.outputs.should_deploy == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          php ops/checkout-billing-before-shipping.php
+          php ops/checkout-billing-before-shipping.php --apply
 
       - name: Ensure brands page
         if: steps.latest.outputs.should_deploy == 'true'
