@@ -275,3 +275,22 @@ jobs:
             }
           }
           PHP
+
+      - name: Verify native fiscal checkout field registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          php <<'PHP'
+          <?php
+          require_once '/home/chavevertical-loja/htdocs/loja.chavevertical.com/wp-load.php';
+          $container = \Automattic\WooCommerce\Blocks\Package::container();
+          $registry = $container->get(\Automattic\WooCommerce\Blocks\Domain\Services\CheckoutFields::class);
+          $all = $registry->get_fields_for_location('order');
+          echo "registered_order_fields_count=".count($all)."\n";
+          foreach($all as $id=>$entry) {
+             if(str_starts_with($id,'cvl-fiscal/')) {
+                echo "registered_fiscal_field=$id;type=".($entry['type']??'none').";required=".json_encode($entry['required']??null).";hidden=".json_encode($entry['hidden']??null)."\n";
+             }
+          }
+          echo "native_company_field_ready=".(isset($all['cvl-fiscal/company-name'])?'yes':'no')."\n";
+          PHP
