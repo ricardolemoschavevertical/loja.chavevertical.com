@@ -253,3 +253,25 @@ jobs:
             echo "woocommerce_blocks_package=present\n";
           }
           PHP
+
+      - name: Inspect checkout block positioning (read-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          php <<'PHP'
+          <?php
+          require_once '/home/chavevertical-loja/htdocs/loja.chavevertical.com/wp-load.php';
+          $page = get_post( wc_get_page_id('checkout') );
+          if (!$page) {
+             echo "checkout_page_missing\n";
+             exit(1);
+          }
+          $content = (string) $page->post_content;
+          echo "checkout_content_bytes=" . strlen($content) . "\n";
+          // Only the block names and attrs; never output checkout form data.
+          foreach (explode("\n", $content) as $line) {
+            if (preg_match('/<!--\s*\/?wp:woocommerce\/checkout[^>]*-->/i',$line)) {
+               echo 'structural=' . trim(substr($line,0,700)) . "\n";
+            }
+          }
+          PHP
