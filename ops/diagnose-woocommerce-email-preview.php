@@ -11,9 +11,14 @@ if (PHP_SAPI !== 'cli' || ! is_readable($root . '/wp-load.php')) {
 }
 defined('WP_ADMIN') || define('WP_ADMIN', true);
 require_once $root . '/wp-load.php';
-if (rtrim((string) home_url(), '/') !== 'https://loja.chavevertical.com'
-    || rtrim((string) site_url(), '/') !== 'https://loja.chavevertical.com') {
-    fwrite(STDERR, "Unexpected WordPress origin.\n");
+$home_host = wp_parse_url(home_url(), PHP_URL_HOST);
+$site_host = wp_parse_url(site_url(), PHP_URL_HOST);
+echo 'home_host=' . (string) $home_host . "\n";
+echo 'site_host=' . (string) $site_host . "\n";
+$allowed_hosts = array('loja.chavevertical.com', 'chavevertical.com');
+if (! in_array($home_host, $allowed_hosts, true)
+    || ! in_array($site_host, $allowed_hosts, true)) {
+    fwrite(STDERR, "Unexpected WordPress origin; diagnostic refused.\n");
     exit(1);
 }
 // No test message may be sent during diagnosis.
