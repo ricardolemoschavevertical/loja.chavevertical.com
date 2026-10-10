@@ -1,0 +1,26 @@
+name: Confirmar progresso de categorias Woo
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/cv-category-progress-check.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ler contagem e categoria Rosqueadeiras sem escrita
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "=== Loja taxonomy ==="
+          curl --retry 2 --connect-timeout 8 --max-time 25 -sSI "https://loja.chavevertical.com/wp-json/wp/v2/product_cat?per_page=1" | grep -i -E 'HTTP/|x-wp-total|x-wp-totalpages' || true
+          for id in 1900 2059 35188 1683; do
+            echo -n "category-$id: "
+            curl --connect-timeout 8 --max-time 25 -sS -o /tmp/cv-term-$id -w '%{http_code}' "https://loja.chavevertical.com/wp-json/wp/v2/product_cat/$id?_fields=id,slug,parent"
+            echo
+            head -c 250 /tmp/cv-term-$id
+            echo
+          done
