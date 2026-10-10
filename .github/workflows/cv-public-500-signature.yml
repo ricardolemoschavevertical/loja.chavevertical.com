@@ -1,0 +1,42 @@
+name: Identificar assinatura erro geral WordPress
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/cv-public-500-signature.yml"]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 8
+    steps:
+      - name: Ler apenas titulos das paginas WordPress em erro
+        shell: bash
+        run: |
+          set -euo pipefail
+          for url in / /wp-admin/ /wp-json/; do
+            curl -sS --connect-timeout 8 --max-time 35 -o /tmp/cv-http-body -w "REQUEST=$url;HTTP=%{http_code}\n" "https://loja.chavevertical.com$url"
+            python3 - <<'PY'
+          import re,html
+          raw=open('/tmp/cv-http-body','r',encoding='utf-8',errors='replace').read()
+          for tag in ['h1','h2','p']:
+              values=re.findall(r'<'+tag+r'\b[^>]*>(.*?)</'+tag+r'>',raw,flags=re.I|re.S)
+              for v in values[:3]:
+                  v=html.unescape(re.sub('<[^>]+>','',v))
+                  v=re.sub(r'\s+',' ',v).strip()
+                  print(tag.upper()+'_MESSAGE=',v[:230])
+          PY
+          done
+      - name: Verificar somente estado basico da BD e plugins
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          wp --path="$WP" db check --quiet
+          echo 'WORDPRESS_DB=connected'
+          wp --path="$WP" eval '
+            echo "WP_DEBUG=".(defined("WP_DEBUG")&&(WP_DEBUG)?"yes":"no")."\n";
+            echo "WP_DEBUG_LOG=".(defined("WP_DEBUG_LOG")&&(WP_DEBUG_LOG)?"yes":"no")."\n";
+            echo "ACTIVE_CV_AI=".((class_exists("CV_Cloudflare_AI_Enricher"))?"yes":"no")."\n";
+            echo "ACTIVE_CV_MCP=".((class_exists("CV_MCP_Bridge"))?"yes":"no")."\n";
+          '
