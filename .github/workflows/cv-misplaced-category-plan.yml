@@ -34,6 +34,7 @@ jobs:
           mkdir -p "$CV_MISPLACED_DIR"
           wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval-file ops/cv-realign-backup-misplaced.php
           test -s "$CV_MISPLACED_DIR/plano-reorganizar.json"
+          cp "$CV_MISPLACED_SNAPSHOT" "$CV_MISPLACED_DIR/snapshot-after-merge.json"
       - uses: actions/upload-artifact@v4
         with:
           name: cv-misplaced-category-plan-${{ github.run_id }}
