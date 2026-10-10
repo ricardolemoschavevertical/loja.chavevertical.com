@@ -286,12 +286,17 @@
 
         if (isBlocks) {
             if (record.autoPostcode && record.autoPostcode !== code) {
+                var wasAutoFilled = String(cityValue || '').trim() === record.autoCity;
                 blocksClearOldCity(section, rawAddress, record);
+                if (wasAutoFilled) {
+                    cityValue = '';
+                }
             }
         } else if (record.autoPostcode && record.autoPostcode !== code) {
             var city = classicField(section, 'city');
             if (city && city.value === record.autoCity) {
                 city.value = '';
+                cityValue = '';
                 city.dispatchEvent(new Event('change', { bubbles: true }));
             }
             record.autoCity = '';
@@ -338,6 +343,9 @@
                     cancel(section);
                     state[section].postcode = '';
                 }
+                if (state[section].autoCity) {
+                    blocksClearOldCity(section, address, state[section]);
+                }
                 return;
             }
             schedule(section, address.postcode, true, address.city, address);
@@ -365,6 +373,13 @@
             if (country.value !== 'PT') {
                 cancel(section);
                 state[section].postcode = '';
+                var record = state[section];
+                if (record.autoCity && city.value === record.autoCity) {
+                    city.value = '';
+                    city.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                record.autoCity = '';
+                record.autoPostcode = '';
                 return;
             }
             schedule(section, postcode.value, false, city.value, null);
@@ -375,7 +390,7 @@
         if (!blocksInitialized && document.querySelector('.wc-block-checkout, .wp-block-woocommerce-checkout')) {
             if (window.wp && window.wp.data && typeof window.wp.data.subscribe === 'function') {
                 blocksInitialized = true;
-                window.wp.data.subscribe(checkBlocks, blockStore);
+                window.wp.data.subscribe(checkBlocks);
                 checkBlocks();
             }
         }
