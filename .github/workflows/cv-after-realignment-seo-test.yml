@@ -1,0 +1,32 @@
+name: Validar URLs apos realinhamento categorias
+on:
+  workflow_run:
+    workflows: ["Aplicar reorganizacao de categorias face ao backup"]
+    types: [completed]
+permissions:
+  contents: read
+jobs:
+  seo:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com'
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Verificar redirecionamentos de categorias antigas e destinos atuais
+        shell: bash
+        run: |
+          set -euo pipefail
+          check() {
+            local path="$1" dest="$2" code location final
+            code=$(curl -sS --retry 1 --connect-timeout 10 --max-time 40 -D /tmp/cv-category-old-headers -o /dev/null -w '%{http_code}' "https://loja.chavevertical.com$path")
+            location=$(grep -i '^location:' /tmp/cv-category-old-headers | tail -1 | sed -e 's/^[Ll]ocation: //' -e 's/\r$//' || true)
+            final=$(curl -sS --retry 1 --connect-timeout 10 --max-time 40 -o /dev/null -w '%{http_code}' "https://loja.chavevertical.com$dest")
+            echo "OLD=$path CODE=$code LOCATION=$location EXPECTED=$dest TARGET=$final"
+            test "$code" = "301"
+            test "$location" = "https://loja.chavevertical.com$dest"
+            test "$final" = "200"
+          }
+          check /categoria-produto/equip-p-oficina-automovel/bateria-alternador/acessorios-bateria-alternador/outros/suporte-para-bicicletas/ /categoria-produto/outros/suporte-para-bicicletas/
+          check /categoria-produto/equip-p-oficina-automovel/bateria-alternador/acessorios-bateria-alternador/outros/aquecimento/ /categoria-produto/outros/aquecimento/
+          check /categoria-produto/equip-p-oficina-automovel/bateria-alternador/acessorios-bateria-alternador/outros/consumiveis-rebitadoras/ /categoria-produto/construcao-civil/rebitadoras/consumiveis-rebitadoras/
+          check /categoria-produto/equip-p-oficina-automovel/bateria-alternador/acessorios-bateria-alternador/outros/equipamentos-sanitarios/ /categoria-produto/outros/equipamentos-sanitarios/
+          check /categoria-produto/equip-p-oficina-automovel/bateria-alternador/acessorios-bateria-alternador/prensas-para-maquinas/ /categoria-produto/maquinas-para-industria-metal/acessorios/prensas-para-maquinas/
