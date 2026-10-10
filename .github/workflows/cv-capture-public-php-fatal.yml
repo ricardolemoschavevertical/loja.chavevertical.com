@@ -1,0 +1,60 @@
+name: Capturar fatal especifico WordPress no acesso publico
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/cv-capture-public-php-fatal.yml"]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 8
+    steps:
+      - name: Registar temporariamente o erro apenas numa chamada com header secreto
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          PROBE="$WP/wp-content/mu-plugins/cv-one-request-fatal-probe.php"
+          test -d "$WP/wp-content/mu-plugins"
+          test ! -e "$PROBE"
+          HEADER="$(openssl rand -hex 20)"
+          export HEADER
+          # Source is local to this CI job and is deleted by an EXIT trap.
+          cat > "$PROBE" <<'PHP'
+          <?php
+          defined('ABSPATH') || exit;
+          if (empty($_SERVER['HTTP_X_CV_FATAL_DIAG'])) return;
+          if (!defined('CV_DIAG_EXPECTED') || !hash_equals(CV_DIAG_EXPECTED,(string)$_SERVER['HTTP_X_CV_FATAL_DIAG'])) return;
+          register_shutdown_function(function () {
+              $e=error_get_last();
+              if (!$e || !in_array($e['type'],[E_ERROR,E_PARSE,E_CORE_ERROR,E_COMPILE_ERROR,E_USER_ERROR],true)) return;
+              if (!function_exists('update_option')) return;
+              $message=(string)$e['message'];
+              $message=preg_replace('/(AIza|sk-|Bearer\s+)[A-Za-z0-9_.-]+/','[REDACTED]',$message);
+              update_option('cv_one_request_fatal_probe',[
+                  'type'=>(int)$e['type'],
+                  'basename'=>basename((string)$e['file']),
+                  'line'=>(int)$e['line'],
+                  'message'=>substr($message,0,350)
+              ],false);
+          });
+          PHP
+          # Header is checked by mu-plugin; never show the one-time value.
+          sed -i "2a define('CV_DIAG_EXPECTED', '$HEADER');" "$PROBE"
+          chmod 0644 "$PROBE"
+          cleanup() {
+            rm -f "$PROBE"
+          }
+          trap cleanup EXIT
+          curl -sS --connect-timeout 10 --max-time 30 -H "X-CV-Fatal-Diag: $HEADER" \
+            -H 'Cache-Control: no-store' -o /dev/null \
+            -w 'PROBED_HTTP=%{http_code}\n' "https://loja.chavevertical.com/?cv-diag=${{ github.run_id }}" || true
+          wp --path="$WP" eval '
+            $row=get_option("cv_one_request_fatal_probe",null);
+            if(is_array($row))echo "CAPTURED_FATAL=".wp_json_encode($row,JSON_UNESCAPED_UNICODE)."\n";
+            else echo "CAPTURED_FATAL=none\n";
+            delete_option("cv_one_request_fatal_probe");
+          '
+          test ! -e "$PROBE" || rm -f "$PROBE"
