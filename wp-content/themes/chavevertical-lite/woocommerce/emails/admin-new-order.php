@@ -36,6 +36,7 @@ $shipping       = $order->needs_shipping_address()
     : 'Não aplicável';
 $order_status   = wc_get_order_status_name( $order->get_status() );
 $order_link     = $order->get_edit_order_url();
+$published_products_label = cvl_order_email_published_products_label();
 ?>
 <div class="cvl-email-new-order" style="color:#192330;font-family:Arial,Helvetica,sans-serif;line-height:1.5">
     <table class="cvl-email-intro" role="presentation" cellpadding="0" cellspacing="0" width="100%" style="width:100%;background-color:#fff4f4;border-left:4px solid #d71920;margin:0 0 20px">
@@ -46,6 +47,24 @@ $order_link     = $order->get_edit_order_url();
                     <?php echo esc_html( sprintf( 'Encomenda #%s', $order_number ) ); ?>
                 </p>
                 <p style="font-size:13px;color:#4b5563;margin:0">Recebemos uma nova encomenda na loja online. Consulte os dados e confirme o processamento no painel.</p>
+            </td>
+        </tr>
+    </table>
+
+
+    <table class="cvl-email-store-intro" role="presentation" cellpadding="0" cellspacing="0" width="100%" style="width:100%;background-color:#f5f7f9;border:1px solid #e6e9ed;margin:0 0 20px">
+        <tr>
+            <td style="padding:16px 20px;text-align:left">
+                <p style="font-size:15px;line-height:1.45;font-weight:800;color:#15202b;margin:0 0 7px">
+                    CHAVE VERTICAL ONLINE — MAIS DE
+                    <span style="color:#d71920"><?php echo esc_html( $published_products_label ); ?></span>
+                    PRODUTOS À DISTÂNCIA DE UM CLIQUE
+                </p>
+                <p style="font-size:12px;line-height:1.55;color:#566170;margin:0">
+                    <strong style="color:#15202b">CHAVE VERTICAL LDA</strong>
+                    <span style="color:#9aa3af">&nbsp;·&nbsp;</span>
+                    NIPC: 509514502
+                </p>
             </td>
         </tr>
     </table>
