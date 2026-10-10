@@ -112,6 +112,27 @@ jobs:
             }
             console.log('REAL_BROWSER_FISCAL_FIELDS=PASS');
 
+            // Confirm that fiscal fields were moved next to Billing, before payment.
+            const sectionOrder = await page.evaluate(()=>{
+              const classes = [
+                'wp-block-woocommerce-checkout-billing-address-block',
+                'wp-block-woocommerce-checkout-additional-information-block',
+                'wp-block-woocommerce-checkout-payment-block'
+              ];
+              return Array.from(document.querySelectorAll('.wc-block-checkout *'))
+                .filter(el=>classes.some(cl=>el.classList?.contains(cl)))
+                .map(el=>classes.find(cl=>el.classList.contains(cl)));
+            });
+            console.log('checkout_fiscal_section_order='+JSON.stringify(sectionOrder));
+            const billingIndex=sectionOrder.indexOf('wp-block-woocommerce-checkout-billing-address-block');
+            const fiscalIndex=sectionOrder.indexOf('wp-block-woocommerce-checkout-additional-information-block');
+            const paymentIndex=sectionOrder.indexOf('wp-block-woocommerce-checkout-payment-block');
+            if(billingIndex<0 || fiscalIndex<0 || paymentIndex<0 || !(billingIndex<fiscalIndex && fiscalIndex<paymentIndex)){
+              throw new Error('Fiscal checkout section is not placed between Billing Address and Payment');
+            }
+            console.log('REAL_BROWSER_FISCAL_PLACEMENT=PASS');
+
+
 
             if(!before.script||!before.cartStore||!before.config){
               throw new Error('Required checkout script/store/config missing');
