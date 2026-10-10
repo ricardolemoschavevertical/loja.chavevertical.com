@@ -135,6 +135,70 @@ foreach($desiredSlugs as $id=>$slug) {
     if(isset($usedSlugs[$slug]))throw new RuntimeException('Novo slug duplicado entre termos alvo '.$slug);
     $usedSlugs[$slug]=$id;
 }
+// Confirmar que o conjunto de percursos comerciais já coincide, antes de escrever.
+$referencePathKeys=[];$currentPathKeys=[];
+foreach($source as $sid=>$row) {
+    $key=$pathKey($sid,$source);
+    if(!$key)throw new RuntimeException('Percurso inválido no backup.');
+    $referencePathKeys[$key]=true;
+}
+foreach($target as $tid=>$term) {
+    if(in_array($tid,$protected,true))continue;
+    $key=$pathKey($tid,$target);
+    if(!$key)throw new RuntimeException('Percurso inválido na loja: '.$tid);
+    $currentPathKeys[$key]=true;
+}
+if(count($referencePathKeys)!==893 || count($currentPathKeys)!==893 ||
+    array_diff_key($referencePathKeys,$currentPathKeys) ||
+    array_diff_key($currentPathKeys,$referencePathKeys)) {
+    throw new RuntimeException('Os 893 percursos comerciais não estão todos presentes; nenhuma escrita permitida.');
+}
+
+// Simular o futuro URL de todas as categorias para evitar colisões e
+// redirecionamentos para uma página que se tornará canónica de outro termo.
+$projectedPath = static function($id,$afterChange) use($target,$toDelete,$desiredSlugs) {
+    $seen=[];$parts=[];$cursor=(int)$id;
+    while($cursor) {
+        if(isset($seen[$cursor]) || !isset($target[$cursor]))return null;
+        $seen[$cursor]=true;
+        $row=$target[$cursor];
+        $parts[]=($afterChange && isset($desiredSlugs[$cursor]))?$desiredSlugs[$cursor]:$row->slug;
+        $parent=(int)$row->parent;
+        if($afterChange && isset($toDelete[$parent]))$parent=$toDelete[$parent];
+        $cursor=$parent;
+        if(count($parts)>25)return null;
+    }
+    return '/categoria-produto/'.implode('/',array_reverse($parts)).'/';
+};
+$futureCanonicalPaths=[];$oldPaths=[];
+foreach($target as $tid=>$term) {
+    $oldURL=$oldLinks[$tid]??'';
+    $oldPath=wp_parse_url($oldURL,PHP_URL_PATH);
+    $expectedOld=$projectedPath($tid,false);
+    if(!is_string($oldPath) || $oldPath!==$expectedOld)
+        throw new RuntimeException('O URL da categoria não obedece à estrutura prevista: '.$tid);
+    $oldPaths[$tid]=$oldPath;
+    if(isset($toDelete[$tid]))continue;
+    $nextPath=$projectedPath($tid,true);
+    if(!$nextPath || isset($futureCanonicalPaths[$nextPath]))
+        throw new RuntimeException('Colisão entre futuros URLs canónicos: '.$tid);
+    $futureCanonicalPaths[$nextPath]=$tid;
+}
+foreach($oldPaths as $id=>$oldPath) {
+    $newId=$toDelete[$id]??$id;
+    $newPath=$projectedPath($newId,true);
+    if($oldPath!==$newPath && isset($futureCanonicalPaths[$oldPath])
+       && $futureCanonicalPaths[$oldPath]!==$newId) {
+        throw new RuntimeException('URL antigo será canónico de categoria diferente: '.$id);
+    }
+}
+$existing301=get_option('cv_core_category_slug_redirects',[]);
+if(!is_array($existing301))throw new RuntimeException('Tabela de 301 existente inválida.');
+foreach($existing301 as $oldPath=>$destPath) {
+    if(isset($futureCanonicalPaths[$oldPath]) && $destPath!==$oldPath) {
+        throw new RuntimeException('Redirecionamento pré-existente aponta para um futuro URL canónico: '.$oldPath);
+    }
+}
 $plan=[
     'mode'=>$mode,'generated_utc'=>gmdate('c'),'backup_categories'=>894,'loja_before'=>901,
     'groups'=>$planned,'auxiliary_renames'=>$desiredSlugs,
