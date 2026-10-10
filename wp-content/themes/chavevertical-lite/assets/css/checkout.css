@@ -757,3 +757,44 @@ body.woocommerce-checkout:not(.woocommerce-order-received)
   margin-bottom:0;
 }
 
+
+/* Códigos postais PT: leitura imediata, separados por faturação e entrega. */
+body.woocommerce-checkout:not(.woocommerce-order-received)
+  form.checkout #billing_postcode_field .cvl-postcode-help,
+body.woocommerce-checkout:not(.woocommerce-order-received)
+  form.checkout #shipping_postcode_field .cvl-postcode-help {
+  display:block;
+  margin:8px 0 0;
+  color:#6a7885;
+  font-size:11px;
+  line-height:1.55;
+}
+
+body.woocommerce-checkout:not(.woocommerce-order-received)
+  form.checkout .cvl-postcode-help a {
+  color:var(--cvl-teal,#00776b);
+  font-weight:750;
+  text-decoration:underline;
+  text-underline-offset:2px;
+}
+
+body.woocommerce-checkout:not(.woocommerce-order-received)
+  form.checkout .cvl-postcode-error {
+  display:block;
+  margin-top:6px;
+  color:#b42336;
+  font-size:11px;
+  line-height:1.5;
+}
+
+body.woocommerce-checkout:not(.woocommerce-order-received)
+  form.checkout .cvl-postcode-error:empty {
+  display:none;
+}
+
+body.woocommerce-checkout:not(.woocommerce-order-received)
+  form.checkout .cvl-postcode-invalid input.input-text {
+  border-color:#b42336!important;
+  background:#fff9fa!important;
+}
+
