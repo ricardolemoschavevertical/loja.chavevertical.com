@@ -71,6 +71,40 @@ jobs:
             });
             console.log('checkout_inspection='+JSON.stringify(before));
 
+            // Read-only diagnosis of native Woo Blocks address ordering and actions.
+            const addressDetails=await page.evaluate(()=>{
+              const data=window.wp?.data;
+              const checkout=data?.select('wc/store/checkout');
+              const actions=data?.dispatch('wc/store/checkout');
+              const selectors=Object.keys(actions??{}).filter(k=>/shipping|billing|editing|address/i.test(k));
+              const checkbox=Array.from(document.querySelectorAll('input[type="checkbox"]')).map(el=>({
+                id:el.id,checked:el.checked,
+                label:el.labels?.[0]?.textContent?.trim()?.slice(0,110)??'',
+                parent:el.closest('[class*="checkout"]')?.className?.toString()?.slice(0,100)??''
+              }));
+              const classes=[
+                'wp-block-woocommerce-checkout-contact-information-block',
+                'wp-block-woocommerce-checkout-shipping-method-block',
+                'wp-block-woocommerce-checkout-shipping-address-block',
+                'wp-block-woocommerce-checkout-billing-address-block',
+                'wp-block-woocommerce-checkout-additional-information-block',
+                'wp-block-woocommerce-checkout-payment-block'
+              ];
+              const order=Array.from(document.querySelectorAll('.wc-block-checkout *'))
+                .filter(el=>classes.some(cl=>el.classList?.contains(cl)))
+                .map(el=>classes.find(cl=>el.classList.contains(cl)));
+              return {
+                actions:selectors,
+                checkbox,
+                order,
+                useShippingAsBilling:checkout?.getUseShippingAsBilling?.()??null,
+                billingFieldVisible:!!document.querySelector('#billing-address_1'),
+                shippingFieldVisible:!!document.querySelector('#shipping-address_1')
+              };
+            });
+            console.log('address_details='+JSON.stringify(addressDetails));
+
+
             // Fiscal fields created by the WooCommerce Blocks native API.
             const fiscalSelectors = await page.evaluate(()=>{
               return Array.from(document.querySelectorAll('input,select')).filter(el=>/cvl-fiscal|customer-type|nipc|nif/i.test(el.id)).map(el=>({
