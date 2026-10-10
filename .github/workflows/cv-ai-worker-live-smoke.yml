@@ -1,0 +1,46 @@
+name: Smoke test CV AI Cloudflare (read only)
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cv-ai-worker-live-smoke.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Worker health, safe defaults, unauthenticated requests denied
+        shell: bash
+        run: |
+          set -euo pipefail
+          url=https://cv-ai-enricher.chavevertical.workers.dev
+          code=$(curl -sS --connect-timeout 10 --max-time 30 -o /tmp/cv-ai-health.json -w '%{http_code}' "$url/health")
+          echo "WORKER_HEALTH_HTTP=$code"
+          cat /tmp/cv-ai-health.json
+          test "$code" = "200"
+          python3 - <<'PY'
+          import json
+          d=json.load(open('/tmp/cv-ai-health.json'))
+          assert d['ok'] is True
+          assert d['bindings_ready'] is True
+          assert d['auth_ready'] is True
+          assert d['processing_enabled'] is False
+          assert d['product_apply_enabled'] is False
+          print('Worker DB, Queue, AI and auth configured; writes and processing disabled.')
+          PY
+          unauthorized=$(curl -sS --connect-timeout 10 --max-time 30 -o /tmp/cv-ai-unauth.json -w '%{http_code}' "$url/v1/lists")
+          echo "WORKER_UNAUTH_HTTP=$unauthorized"
+          test "$unauthorized" = "401"
+
+      - name: Confirmar que os novos plugins WordPress não expõem endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          for route in cv-ai/v1/catalog/categories cv-mcp/v1/mcp; do
+            code=$(curl -sS --connect-timeout 10 --max-time 30 -o /tmp/cv-wp-plugin-response -w '%{http_code}' "https://loja.chavevertical.com/wp-json/$route")
+            echo "INACTIVE_REST=$route;HTTP=$code"
+            test "$code" = "404"
+          done
