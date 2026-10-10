@@ -298,14 +298,9 @@ add_action( 'wp_enqueue_scripts', function () {
             true
         );
 
-        // WooCommerce Blocks: apenas apresentação e alertas, sem tocar no React.
-        wp_enqueue_script(
-            'cvl-checkout-postcodes-blocks',
-            get_template_directory_uri() . '/assets/js/checkout-postcodes-blocks.js',
-            array(),
-            cvl_asset_version( 'assets/js/checkout-postcodes-blocks.js' ),
-            true
-        );
+        // O WooCommerce Blocks já valida o CP7 pela Store API.
+        // Evitar injetar avisos no DOM gerido pelo React (risco de erro).
+        // A localidade é aplicada pelo store oficial, mais abaixo.
 
         wp_enqueue_script(
             'cvl-checkout-postcode-locality',
