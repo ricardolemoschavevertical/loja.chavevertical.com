@@ -8,6 +8,27 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
+ * Devolve o número de produtos pai com estado publicado, truncado para o
+ * milhar inferior. Não inclui rascunhos, privados ou variações individuais.
+ *
+ * Exemplo: 38 900 publicados -> 38 000. O contador é sempre lido do WP.
+ */
+function cvl_order_email_published_products_thousands(): int {
+    $counts = wp_count_posts( 'product' );
+    $published = is_object( $counts ) ? max( 0, (int) ( $counts->publish ?? 0 ) ) : 0;
+
+    return intdiv( $published, 1000 ) * 1000;
+}
+
+/**
+ * Número formatado em PT-PT para leitura no email (38.000).
+ */
+function cvl_order_email_published_products_label(): string {
+    return number_format( cvl_order_email_published_products_thousands(), 0, ',', '.' );
+}
+
+
+/**
  * Estilos do resumo de nova encomenda, isolados do restante email WooCommerce.
  */
 add_filter(
@@ -102,14 +123,14 @@ add_action(
             return;
         }
         ?>
-        <table class="cvl-email-order-support" role="presentation" cellpadding="0" cellspacing="0" width="100%" style="width:100%;border-top:2px solid #d71920;margin-top:22px">
+        <table class="cvl-email-order-support" role="presentation" cellpadding="0" cellspacing="0" width="100%" style="width:100%;background-color:#fff4f4;border:1px solid #f2d5d7;border-radius:7px;margin-top:20px">
             <tr>
-                <td style="padding:18px 0 8px;font-family:Arial,Helvetica,sans-serif;text-align:left">
-                    <p style="margin:0 0 7px;font-size:11px;letter-spacing:1px;color:#556170;font-weight:800">INFORMAÇÕES SOBRE ENCOMENDAS</p>
+                <td style="padding:18px;font-family:Arial,Helvetica,sans-serif;text-align:left">
+                    <p style="margin:0 0 7px;font-size:15px;line-height:1.35;color:#15202b;font-weight:800">Informação sobre encomendas online:</p>
                     <p style="margin:0;font-size:13px;line-height:1.7;color:#15202b">
-                        <a href="tel:+351914580410" style="color:#15202b;text-decoration:none;font-weight:700">914 580 410</a>
-                        <span style="color:#a2aab4">&nbsp;|&nbsp;</span>
-                        <a href="mailto:encomendas@chavevertical.com" style="color:#b81d26;text-decoration:none;font-weight:700">encomendas@chavevertical.com</a>
+                        Telefone: <a href="tel:+351914580410" style="color:#d71920;text-decoration:none;font-weight:700">914 580 410</a>
+                        <span style="color:#8993a1">&nbsp;/&nbsp;</span>
+                        E-mail: <a href="mailto:encomendas@chavevertical.com" style="color:#d71920;text-decoration:none;font-weight:700;word-break:break-word">encomendas@chavevertical.com</a>
                     </p>
                 </td>
             </tr>
