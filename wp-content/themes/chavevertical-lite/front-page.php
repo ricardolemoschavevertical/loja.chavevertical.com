@@ -296,10 +296,12 @@ $hero_side_full_image = ! empty( $hero_side['full_image'] ) || ! $hero_side_has_
 $hero_main_classes = 'cvl-ref-hero-main';
 $hero_main_classes .= $hero_main_full_image ? ' is-full-image' : '';
 $hero_main_classes .= $hero_main_has_text ? ' has-overlay-text' : ' is-text-hidden';
+$hero_main_classes .= $hero_main_image ? ' has-image' : ' has-no-image';
 
 $hero_side_classes = 'cvl-ref-hero-side';
 $hero_side_classes .= $hero_side_full_image ? ' is-full-image' : '';
 $hero_side_classes .= $hero_side_has_text ? ' has-overlay-text' : ' is-text-hidden';
+$hero_side_classes .= $hero_side_image ? ' has-image' : ' has-no-image';
 
 $hero_main_style = sprintf(
     '--cvl-hero-main-bg:%1$s;--cvl-hero-main-text:%2$s;--cvl-hero-main-accent:%3$s;',
@@ -324,12 +326,14 @@ $hero_side_style = sprintf(
                     <span class="cvl-ref-kicker"><?php echo esc_html( $hero_main['eyebrow'] ); ?></span>
                 <?php endif; ?>
 
+                <?php if ( ! empty( $hero_main['title'] ) || ! empty( $hero_main['title_accent'] ) ) : ?>
                 <h1>
                     <?php echo esc_html( $hero_main['title'] ?? '' ); ?>
                     <?php if ( ! empty( $hero_main['title_accent'] ) ) : ?>
                         <br><span><?php echo esc_html( $hero_main['title_accent'] ); ?></span>
                     <?php endif; ?>
                 </h1>
+                <?php endif; ?>
 
                 <?php if ( ! empty( $hero_main['description'] ) ) : ?>
                     <p><?php echo esc_html( $hero_main['description'] ); ?></p>
@@ -338,13 +342,13 @@ $hero_side_style = sprintf(
                 <div class="cvl-ref-hero-actions">
                     <?php if ( ! empty( $hero_main['cta'] ) ) : ?>
                         <a class="cvl-ref-button cvl-ref-button-primary" href="<?php echo esc_url( $hero_main_url ); ?>">
-                            <?php echo esc_html( $hero_main['cta'] ); ?> <span aria-hidden="true">→</span>
+                            <?php echo esc_html( $hero_main['cta'] ); ?>
                         </a>
                     <?php endif; ?>
 
                     <?php if ( ! empty( $hero_main['secondary_cta'] ) ) : ?>
                         <a class="cvl-ref-hero-help" href="<?php echo esc_url( $hero_secondary_url ); ?>">
-                            <?php echo esc_html( $hero_main['secondary_cta'] ); ?> <span aria-hidden="true">→</span>
+                            <?php echo esc_html( $hero_main['secondary_cta'] ); ?>
                         </a>
                     <?php endif; ?>
                 </div>
@@ -352,11 +356,8 @@ $hero_side_style = sprintf(
             <?php endif; ?>
 
             <a class="cvl-ref-hero-main-media" href="<?php echo esc_url( $hero_main_url ); ?>" aria-label="<?php echo esc_attr( $hero_main['cta'] ?? __( 'Explorar equipamento profissional', 'chavevertical-lite' ) ); ?>">
-                <span class="cvl-ref-hero-orbit" aria-hidden="true"></span>
                 <?php if ( $hero_main_image ) : ?>
                     <img src="<?php echo esc_url( $hero_main_image ); ?>" alt="<?php echo esc_attr( $hero_main['title'] ?? '' ); ?>" loading="eager" decoding="async" fetchpriority="high">
-                <?php else : ?>
-                    <span class="cvl-ref-hero-media-fallback" aria-hidden="true">CV</span>
                 <?php endif; ?>
 
                 <?php if ( $hero_main_has_text && ! empty( $hero_main['badge'] ) ) : ?>
@@ -364,9 +365,6 @@ $hero_side_style = sprintf(
                 <?php endif; ?>
             </a>
 
-            <?php if ( $hero_main_has_text ) : ?>
-                <span class="cvl-ref-hero-signature" aria-hidden="true">CHAVE VERTICAL — 01</span>
-            <?php endif; ?>
         </article>
 
         <a class="<?php echo esc_attr( $hero_side_classes ); ?>" href="<?php echo esc_url( $hero_side_url ); ?>" style="<?php echo esc_attr( $hero_side_style ); ?>">
@@ -376,12 +374,14 @@ $hero_side_style = sprintf(
                     <small><?php echo esc_html( $hero_side['eyebrow'] ); ?></small>
                 <?php endif; ?>
 
+                <?php if ( ! empty( $hero_side['title'] ) || ! empty( $hero_side['title_accent'] ) ) : ?>
                 <strong>
                     <?php echo esc_html( $hero_side['title'] ?? '' ); ?>
                     <?php if ( ! empty( $hero_side['title_accent'] ) ) : ?>
                         <br><span><?php echo esc_html( $hero_side['title_accent'] ); ?></span>
                     <?php endif; ?>
                 </strong>
+                <?php endif; ?>
 
                 <?php if ( ! empty( $hero_side['description'] ) ) : ?>
                     <span><?php echo esc_html( $hero_side['description'] ); ?></span>
@@ -392,15 +392,12 @@ $hero_side_style = sprintf(
             <span class="cvl-ref-hero-side-media">
                 <?php if ( $hero_side_image ) : ?>
                     <img src="<?php echo esc_url( $hero_side_image ); ?>" alt="<?php echo esc_attr( $hero_side['title'] ?? '' ); ?>" loading="eager" decoding="async">
-                <?php else : ?>
-                    <span class="cvl-ref-hero-media-fallback" aria-hidden="true">CV</span>
                 <?php endif; ?>
             </span>
 
             <?php if ( $hero_side_has_text && ! empty( $hero_side['cta'] ) ) : ?>
                 <span class="cvl-ref-hero-side-cta" aria-hidden="true">
                     <span><?php echo esc_html( $hero_side['cta'] ); ?></span>
-                    <b>→</b>
                 </span>
             <?php endif; ?>
         </a>
