@@ -47,6 +47,12 @@ if ( file_exists( $cvl_checkout_customer_type_file ) ) {
     require_once $cvl_checkout_customer_type_file;
 }
 
+// VIES é opcional, apenas para faturação Empresa; sem ligação à entrega.
+$cvl_checkout_vies_file = get_template_directory() . '/inc/checkout-vies.php';
+if ( file_exists( $cvl_checkout_vies_file ) ) {
+    require_once $cvl_checkout_vies_file;
+}
+
 $cvl_order_email_design_file = get_template_directory() . '/inc/order-email-design.php';
 if ( file_exists( $cvl_order_email_design_file ) ) {
     require_once $cvl_order_email_design_file;
@@ -254,6 +260,22 @@ add_action( 'wp_enqueue_scripts', function () {
             array( 'jquery' ),
             cvl_asset_version( 'assets/js/checkout-customer-type.js' ),
             true
+        );
+
+        wp_enqueue_script(
+            'cvl-checkout-vies',
+            get_template_directory_uri() . '/assets/js/checkout-vies.js',
+            array( 'jquery', 'cvl-checkout-customer-type' ),
+            cvl_asset_version( 'assets/js/checkout-vies.js' ),
+            true
+        );
+        wp_localize_script(
+            'cvl-checkout-vies',
+            'CVLCheckoutVies',
+            array(
+                'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+                'nonce'   => wp_create_nonce( 'cvl_vies_checkout' ),
+            )
         );
     }
 
