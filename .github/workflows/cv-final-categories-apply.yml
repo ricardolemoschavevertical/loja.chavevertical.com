@@ -27,6 +27,52 @@ jobs:
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/cv-stage2-proof
 
+      - name: Recuperar inventário anterior de 926 categorias (somente para auditoria)
+        uses: actions/download-artifact@v4
+        with:
+          name: cv-category-after-merge-38054294512
+          repository: ricardolemoschavevertical/loja.chavevertical.com
+          run-id: 38054294512
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/cv-stage2-original-snapshot
+
+      - name: Reparar apenas 301 caso a fase anterior tenha terminado por timeout
+        shell: bash
+        env:
+          CV_STAGE2_RESULT: ${{ runner.temp }}/cv-stage2-proof/resultado-final.json
+          CV_MISPLACED_RECOVER_MODE: plan
+          CV_MISPLACED_RECOVER_SNAPSHOT: ${{ runner.temp }}/cv-stage2-original-snapshot/cv-category-full-inventory.json
+          CV_MISPLACED_RECOVER_PLAN: ${{ runner.temp }}/cv-stage2-proof/plano-reorganizar.json
+          CV_MISPLACED_RECOVER_JOURNAL: ${{ runner.temp }}/cv-stage2-proof/journal.ndjson
+          CV_MISPLACED_RECOVER_DIR: ${{ runner.temp }}/cv-final-category-${{ github.run_id }}/recovery
+        run: |
+          set -euo pipefail
+          if [ -s "$CV_STAGE2_RESULT" ]; then
+            echo "Fase anterior tem resultado-final.json; recuperação não necessária"
+            exit 0
+          fi
+          echo "Resultado anterior ausente. Revalidar as 25 fusões e reparar SOMENTE redirecionamentos."
+          if ps -eo args= | grep -E 'wp .*eval-file .*cv-realign-backup-misplaced.php' | grep -v grep; then
+            echo "WordPress ainda está a processar a fase anterior; bloqueado"
+            exit 1
+          fi
+          php -l ops/cv-recover-misplaced-redirects.php
+          mkdir -p "$CV_MISPLACED_RECOVER_DIR"
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval-file ops/cv-recover-misplaced-redirects.php
+          RECOVERY_PLAN="$CV_MISPLACED_RECOVER_DIR/recovery-plan.json" python3 - <<'PY'
+          import json,os
+          p=json.load(open(os.environ['RECOVERY_PLAN']))
+          assert p['mode']=='plan' and p['source_categories']==926 and p['live_categories']==901
+          assert p['merged']==25 and p['reparented']==2
+          assert p['redirects_required']>=25 and p['redirects_missing']>=0
+          print('Preflight recuperação:',p['redirects_required'],'301 necessários,',p['redirects_missing'],'em falta')
+          PY
+          CV_MISPLACED_RECOVER_MODE=apply \
+          CV_MISPLACED_RECOVER_CONFIRM=RESTORE_ONLY_VERIFIED_CATEGORY_REDIRECTS \
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval-file ops/cv-recover-misplaced-redirects.php
+          test -s "$CV_MISPLACED_RECOVER_DIR/resultado-final.json"
+          cp "$CV_MISPLACED_RECOVER_DIR/resultado-final.json" "$CV_STAGE2_RESULT"
+
       - name: Validar resultado completo da reorganização anterior
         shell: bash
         env:
