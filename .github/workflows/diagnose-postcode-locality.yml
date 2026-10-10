@@ -142,3 +142,77 @@ jobs:
           else
             echo "asset_contains_blocks_store_logic=no"
           fi
+
+      - name: Inspect populated guest checkout (no order)
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="/home/chavevertical-loja/htdocs/loja.chavevertical.com"
+          COOKIE_JAR=$(mktemp)
+          TEMP_CART=$(mktemp)
+          TEMP_CHECKOUT=$(mktemp)
+          trap 'rm -f "$COOKIE_JAR" "$TEMP_CART" "$TEMP_CHECKOUT"' EXIT
+
+          # Select a published, priced, in-stock SIMPLE product for a guest cart.
+          # The add-to-cart operation does not reserve stock or create an order.
+          PRODUCT_ID=$(cd "$ROOT" && php <<'PHP'
+          <?php
+          error_reporting(0);
+          require_once '/home/chavevertical-loja/htdocs/loja.chavevertical.com/wp-load.php';
+          if (!function_exists('wc_get_products')) exit(1);
+          $products = wc_get_products(array(
+              'status' => 'publish',
+              'type' => 'simple',
+              'stock_status' => 'instock',
+              'limit' => 60,
+              'orderby' => 'ID',
+              'order' => 'ASC',
+          ));
+          foreach ($products as $product) {
+              if ($product->is_purchasable()
+                  && $product->is_in_stock()
+                  && '' !== (string) $product->get_price()
+                  && $product->get_price() > 0
+                  && !$product->is_sold_individually()) {
+                  echo $product->get_id();
+                  exit(0);
+              }
+          }
+          exit(2);
+          PHP
+          ) || {
+            echo "visitor_cart_test=skipped:no-simple-product"
+            exit 0
+          }
+
+          echo "visitor_selected_published_product_id=$PRODUCT_ID"
+          HOME_META=$(curl --silent --show-error --max-time 20 --location \
+            --cookie-jar "$COOKIE_JAR" --cookie "$COOKIE_JAR" \
+            --output "$TEMP_CART" \
+            --write-out 'http=%{http_code};final_url=%{url_effective}' \
+            "https://loja.chavevertical.com/?add-to-cart=$PRODUCT_ID" || true)
+          echo "visitor_add_to_cart=$HOME_META"
+
+          CHECKOUT_META=$(curl --silent --show-error --location --max-time 20 \
+            --cookie-jar "$COOKIE_JAR" --cookie "$COOKIE_JAR" \
+            --header 'Cache-Control: no-cache' \
+            --output "$TEMP_CHECKOUT" \
+            --write-out 'http=%{http_code};final_url=%{url_effective};bytes=%{size_download}' \
+            'https://loja.chavevertical.com/checkout/' || true)
+          echo "visitor_checkout=$CHECKOUT_META"
+
+          for target in 'checkout-postcode-locality.js' 'CVLPostcodeLocality' 'wc-block-checkout' 'wc-blocks-data-store' 'checkout-customer-type.js' 'checkout-vies.js'; do
+            if grep -q "$target" "$TEMP_CHECKOUT"; then
+              echo "visitor_checkout_contains[$target]=yes"
+            else
+              echo "visitor_checkout_contains[$target]=no"
+            fi
+          done
+
+          if grep -q 'cvl-checkout-postcode-locality-js' "$TEMP_CHECKOUT"; then
+            echo "visitor_locality_enqueue=yes"
+          else
+            echo "visitor_locality_enqueue=no"
+          fi
+
+          echo "visitor_cookies_count=$(grep -c 'woocommerce\|wp_woocommerce' "$COOKIE_JAR" || true)"
