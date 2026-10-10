@@ -127,8 +127,13 @@ jobs:
             const billingIndex=sectionOrder.indexOf('wp-block-woocommerce-checkout-billing-address-block');
             const fiscalIndex=sectionOrder.indexOf('wp-block-woocommerce-checkout-additional-information-block');
             const paymentIndex=sectionOrder.indexOf('wp-block-woocommerce-checkout-payment-block');
-            if(billingIndex<0 || fiscalIndex<0 || paymentIndex<0 || !(billingIndex<fiscalIndex && fiscalIndex<paymentIndex)){
-              throw new Error('Fiscal checkout section is not placed between Billing Address and Payment');
+            // Woo Blocks unmounts billing address fields when "Same as shipping" is
+            // selected; in that mode its wrapper is absent from the DOM.
+            // Verify the fiscal step always precedes payment, and its position
+            // relative to Billing when that section is actually rendered.
+            if(fiscalIndex<0 || paymentIndex<0 || fiscalIndex>=paymentIndex
+              || (billingIndex>=0 && billingIndex>=fiscalIndex)){
+              throw new Error('Fiscal section must precede payment and follow Billing when rendered');
             }
             console.log('REAL_BROWSER_FISCAL_PLACEMENT=PASS');
 
