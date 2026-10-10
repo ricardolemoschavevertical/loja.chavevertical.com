@@ -1,0 +1,129 @@
+name: Finalizar alinhamento comercial categorias Woo
+on:
+  workflow_run:
+    workflows: ["Ultimos cinco grupos de categorias - plano"]
+    types: [completed]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: cv-category-production-merge
+  cancel-in-progress: false
+jobs:
+  finalize:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Recuperar plano auditado sem permissões de escrita
+        uses: actions/download-artifact@v4
+        with:
+          name: cv-last-five-category-plan-${{ github.event.workflow_run.id }}
+          repository: ricardolemoschavevertical/loja.chavevertical.com
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/cv-final-category-reviewed
+
+      - name: Validar cinco grupos e conflito circular conhecido
+        shell: bash
+        env:
+          CV_REVIEWED_PLAN: ${{ runner.temp }}/cv-final-category-reviewed/five-groups-plan.json
+          CV_FINAL_MERGE_MODE: plan
+          CV_FINAL_MERGE_DIR: ${{ runner.temp }}/cv-final-category-${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os
+          p=json.load(open(os.environ['CV_REVIEWED_PLAN']))
+          s=p['summary']
+          assert s['backup_total']==894 and s['loja_total']==901
+          assert s['groups']==5 and s['potential_duplicates_to_merge']==6
+          assert s['conflict_count']==1
+          c=s['conflicts'][0]
+          assert c['group']=='ferramentas-pneumaticas>enroladores-de-mangueira-de-ar-comprimido'
+          assert c['id']==[23106]
+          print('Plano preliminar aprovado: cinco grupos, seis duplicados e troca controlada de slugs')
+          PY
+          php -l ops/cv-finalize-backup-categories.php
+          mkdir -p "$CV_FINAL_MERGE_DIR"
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval-file ops/cv-finalize-backup-categories.php
+          CV_FINAL_PLAN="$CV_FINAL_MERGE_DIR/plan.json" python3 - <<'PY'
+          import os,json
+          p=json.load(open(os.environ['CV_FINAL_PLAN']))
+          assert p['mode']=='plan' and p['loja_before']==901
+          assert p['expected_final_total']==895 and p['expected_commercial_unique_paths']==893
+          assert len(p['groups'])==5 and len(p['category_ids_to_delete'])==6
+          assert set(p['protected_term_ids'])=={15,2248}
+          assert p['total_alternate_images_to_preserve']>=4
+          print('Preflight WooCommerce completo; imagens alternativas protegidas.')
+          PY
+
+      - name: Backup SQL da taxonomia imediatamente antes da operação
+        shell: bash
+        env:
+          CV_FINAL_MERGE_DIR: ${{ runner.temp }}/cv-final-category-${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          umask 0077
+          ROOT=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          prefix=$(wp --path="$ROOT" db prefix)
+          wp --path="$ROOT" db export "$CV_FINAL_MERGE_DIR/taxonomia-antes-ultima-fase.sql" --tables="${prefix}terms,${prefix}term_taxonomy,${prefix}term_relationships,${prefix}termmeta" --single-transaction
+          test -s "$CV_FINAL_MERGE_DIR/taxonomia-antes-ultima-fase.sql"
+          test "$(stat -c '%s' "$CV_FINAL_MERGE_DIR/taxonomia-antes-ultima-fase.sql")" -gt 10000
+
+      - name: Fundir os seis duplicados e corrigir slugs historicos
+        shell: bash
+        env:
+          CV_FINAL_MERGE_MODE: apply
+          CV_FINAL_MERGE_CONFIRM: CV_APLICAR_5_GRUPOS_AUDITADOS
+          CV_FINAL_MERGE_DIR: ${{ runner.temp }}/cv-final-category-${{ github.run_id }}
+          CV_FINAL_MERGE_SQL_BACKUP: ${{ runner.temp }}/cv-final-category-${{ github.run_id }}/taxonomia-antes-ultima-fase.sql
+        run: |
+          set -euo pipefail
+          ROOT=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          set +e
+          timeout --signal=TERM --kill-after=9s 900s \
+            wp --path="$ROOT" eval-file ops/cv-finalize-backup-categories.php \
+            > "$CV_FINAL_MERGE_DIR/wp-final-run.log" 2>&1
+          exit_code=$?
+          set -e
+          grep -E 'CV_FINAL_CATEGORY_PLAN|CV_FINAL_CATEGORY_DONE' "$CV_FINAL_MERGE_DIR/wp-final-run.log" || true
+          if [ "$exit_code" -ne 0 ]; then
+            # A operação só pode ser considerada se o resultado persistido comprovar
+            # todas as alterações e a própria script tiver emitido a conclusão.
+            if [ "$exit_code" -ne 124 ] || ! grep -q 'CV_FINAL_CATEGORY_DONE' "$CV_FINAL_MERGE_DIR/wp-final-run.log"; then
+              tail -n 60 "$CV_FINAL_MERGE_DIR/wp-final-run.log"
+              exit "$exit_code"
+            fi
+          fi
+          RESULT="$CV_FINAL_MERGE_DIR/result.json" python3 - <<'PY'
+          import os,json
+          d=json.load(open(os.environ['RESULT']))
+          assert d['status']=='success' and d['before']==901 and d['after']==895
+          assert d['removed']==6 and d['groups']==5
+          assert d['commercial_unique_paths']==893 and d['matched_backup_unique_paths']==893
+          assert set(d['system_terms'])=={15,2248}
+          print('FINAL RESULTADO',json.dumps(d,ensure_ascii=False))
+          PY
+
+      - name: Confirmar contagem e categorias de sistema na WooCommerce ativa
+        shell: bash
+        run: |
+          set -euo pipefail
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval '
+            $terms=get_terms(["taxonomy"=>"product_cat","hide_empty"=>false,"fields"=>"ids"]);
+            if (is_wp_error($terms) || count($terms)!==895) { fwrite(STDERR,"Contagem final incorreta\n");exit(1); }
+            foreach([15,2248] as $id)if(!term_exists($id,"product_cat")){fwrite(STDERR,"Termo WooCommerce protegido ausente\n");exit(2);}
+            echo "woo_categories=".count($terms).";protected=15,2248\n";
+          '
+      - name: Arquivar SQL e journal (reversão auditável)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cv-final-category-merge-${{ github.run_id }}
+          path: ${{ runner.temp }}/cv-final-category-${{ github.run_id }}/
+          retention-days: 30
+          if-no-files-found: warn
