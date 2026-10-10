@@ -70,6 +70,31 @@ jobs:
               }
           }
 
+          // AJAX HTTP com nonce de visitante: valida o percurso do checkout
+          // sem criar sessão, encomendas ou enviar dados do cliente.
+          $ajax_url = admin_url('admin-ajax.php');
+          $ajax_result = wp_remote_post($ajax_url, array(
+              'timeout' => 12,
+              'redirection' => 0,
+              'sslverify' => true,
+              'body' => array(
+                  'action' => 'cvl_postcode_locality',
+                  'nonce' => wp_create_nonce('cvl_postcode_locality'),
+                  'country' => 'PT',
+                  'postcode' => '1000-098',
+              ),
+          ));
+          if (is_wp_error($ajax_result)) {
+              echo "checkout_ajax_status=WP_ERROR;code=".$ajax_result->get_error_code()."\n";
+          } else {
+              $ajax_status = wp_remote_retrieve_response_code($ajax_result);
+              $ajax_json = json_decode(wp_remote_retrieve_body($ajax_result), true);
+              echo "checkout_ajax_http=$ajax_status\n";
+              echo "checkout_ajax_success=".(is_array($ajax_json) && !empty($ajax_json['success']) ? 'yes':'no')."\n";
+              $info = is_array($ajax_json) ? ($ajax_json['data'] ?? array()) : array();
+              echo "checkout_ajax_result=".json_encode(array_intersect_key((array) $info,array_flip(array('status','localidade'))),JSON_UNESCAPED_UNICODE)."\n";
+          }
+
           $path = get_template_directory().'/assets/js/checkout-postcode-locality.js';
           echo "javascript_file=".(is_file($path)?'present':'missing')."\n";
           echo "javascript_bytes=".(is_file($path)?filesize($path):0)."\n";
