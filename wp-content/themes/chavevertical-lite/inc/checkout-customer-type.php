@@ -66,7 +66,8 @@ add_filter(
         $fields['billing']['billing_nipc'] = array(
             'type'        => 'text',
             'label'       => 'NIPC',
-            'placeholder' => 'Número de identificação de pessoa coletiva',
+            'placeholder' => 'NIPC português com 9 dígitos',
+            'description' => 'Em Portugal, os NIPC começam por 5, 6, 8 ou 9. Entidades com NIF fiscal 7 também são aceites.',
             'required'    => false,
             'priority'    => 32,
             'class'       => array( 'form-row-wide', 'cvl-fiscal-conditional' ),
@@ -77,7 +78,8 @@ add_filter(
         $fields['billing']['billing_nif'] = array(
             'type'        => 'text',
             'label'       => 'NIF',
-            'placeholder' => 'Número de identificação fiscal',
+            'placeholder' => 'NIF português com 9 dígitos',
+            'description' => 'Em Portugal, o NIF de pessoa singular começa por 1, 2, 3 ou 4.',
             'required'    => false,
             'priority'    => 33,
             'class'       => array( 'form-row-wide', 'cvl-fiscal-conditional' ),
@@ -107,7 +109,8 @@ function cvl_checkout_customer_clean_data( $data ) {
     $country = strtoupper( (string) ( $data['billing_country'] ?? 'PT' ) );
     foreach ( array( 'billing_nif', 'billing_nipc' ) as $key ) {
         $value = sanitize_text_field( (string) ( $data[ $key ] ?? '' ) );
-        if ( 'PT' === $country || '' === $country ) {
+        // Validar PT mesmo se a morada de faturação for estrangeira.
+        if ( 'PT' === $country || '' === $country || preg_match( '/^PT[\s.\-]*[0-9]/i', $value ) ) {
             $compact = strtoupper( preg_replace( '/[\s.\-]+/', '', $value ) );
             if ( str_starts_with( $compact, 'PT' ) ) {
                 $compact = substr( $compact, 2 );
@@ -131,7 +134,7 @@ function cvl_checkout_valid_pt_tax_id( string $value ): bool {
         $clean = substr( $clean, 2 );
     }
 
-    if ( ! preg_match( '/^[0-9]{9}$/D', $clean ) ) {
+    if ( ! preg_match( '/^[1-9][0-9]{8}$/D', $clean ) ) {
         return false;
     }
 
@@ -142,6 +145,63 @@ function cvl_checkout_valid_pt_tax_id( string $value ): bool {
 
     $digit = 11 - ( $sum % 11 );
     return ( $digit >= 10 ? 0 : $digit ) === (int) $clean[8];
+}
+
+/**
+ * Tipo legal da identificação fiscal portuguesa (o dígito de controlo deve
+ * estar correto antes de classificar). Art. 4.º e 11.º DL 14/2013;
+ * art. 13.º DL 129/98. Um prefixo não prova titularidade ou atividade.
+ *
+ * Pessoas singulares: 1–4 (inclui gama 45 para situações especiais).
+ * NIPC do RNPC: 5, 6, 8, 9.
+ * NIF de outras entidades atribuído pela AT: 7 (não é NIPC).
+ */
+function cvl_checkout_pt_tax_id_kind( string $value ): string {
+    if ( ! cvl_checkout_valid_pt_tax_id( $value ) ) {
+        return '';
+    }
+
+    $clean = strtoupper( preg_replace( '/[\\s.\\-]+/', '', trim( $value ) ) );
+    if ( str_starts_with( $clean, 'PT' ) ) {
+        $clean = substr( $clean, 2 );
+    }
+
+    if ( in_array( $clean[0], array( '1', '2', '3', '4' ), true ) ) {
+        return 'singular';
+    }
+    if ( in_array( $clean[0], array( '5', '6', '8', '9' ), true ) ) {
+        return 'nipc';
+    }
+    if ( '7' === $clean[0] ) {
+        return 'entidade_at';
+    }
+
+    return '';
+}
+
+/** As entidades com NIF 7 podem faturar como Empresa sem NIPC do RNPC. */
+function cvl_checkout_tax_kind_allowed( string $kind, string $customer_type ): bool {
+    if ( 'particular' === $customer_type ) {
+        return 'singular' === $kind;
+    }
+    if ( 'empresa' === $customer_type ) {
+        return in_array( $kind, array( 'nipc', 'entidade_at' ), true );
+    }
+
+    return false;
+}
+
+/**
+ * Categoria do número para impressão em emails e no administrador.
+ * NIF 7 é designado NIF da entidade, nunca falsamente NIPC.
+ */
+function cvl_checkout_company_tax_label( string $value, string $country ): string {
+    if ( 'PT' !== strtoupper( $country ) && ! preg_match( '/^PT[\\s.\\-]*[0-9]/i', $value ) ) {
+        return 'N.º fiscal / VAT';
+    }
+    return 'entidade_at' === cvl_checkout_pt_tax_id_kind( $value )
+        ? 'NIF da entidade'
+        : 'NIPC';
 }
 
 /**
@@ -184,17 +244,33 @@ function cvl_checkout_customer_validate( $data, $errors ): void {
         return;
     }
 
-    $country = strtoupper( (string) ( $data['billing_country'] ?? 'PT' ) );
-    if ( 'PT' === $country || '' === $country ) {
-        if ( ! cvl_checkout_valid_pt_tax_id( $tax ) ) {
+    $country = strtoupper( trim( (string) ( $data['billing_country'] ?? 'PT' ) ) );
+    $is_pt_identifier = 'PT' === $country
+        || '' === $country
+        || (bool) preg_match( '/^PT[\\s.\\-]*[0-9]/i', $tax );
+
+    if ( $is_pt_identifier ) {
+        $kind = cvl_checkout_pt_tax_id_kind( $tax );
+        if ( '' === $kind ) {
             $errors->add(
                 $field . '_invalid',
-                'Introduza um ' . $label . ' português válido (9 dígitos).',
+                'O ' . $label . ' português deve ter 9 dígitos e um dígito de controlo válido.',
                 array( 'id' => $field )
             );
+        } elseif ( ! cvl_checkout_tax_kind_allowed( $kind, $type ) ) {
+            $message = 'particular' === $type
+                ? 'O NIF de particular deve começar por 1, 2, 3 ou 4.'
+                : 'O NIPC deve começar por 5, 6, 8 ou 9. Entidades com NIF atribuído pela AT iniciado por 7 também são aceites. Se é empresário em nome individual e usa NIF pessoal, selecione Particular.';
+            $errors->add( $field . '_wrong_kind', $message, array( 'id' => $field ) );
         }
     } elseif ( strlen( $tax ) > 32 ) {
-        $errors->add( $field . '_too_long', 'O ' . $label . ' é demasiado longo.', array( 'id' => $field ) );
+        // Outros países têm regras diferentes. Não aplicar o algoritmo PT
+        // nem bloquear porque VIES está offline ou não tem o contribuinte.
+        $errors->add(
+            $field . '_too_long',
+            'O número fiscal estrangeiro não pode ultrapassar 32 caracteres.',
+            array( 'id' => $field )
+        );
     }
 }
 add_action( 'woocommerce_after_checkout_validation', 'cvl_checkout_customer_validate', 10, 2 );
@@ -273,7 +349,10 @@ add_action(
 
         $value = $is_company ? $nipc : $nif;
         if ( $value ) {
-            echo '<p><strong>' . esc_html( $is_company ? 'NIPC' : 'NIF' ) . ':</strong> ' . esc_html( $value ) . '</p>';
+            $label = $is_company
+                ? cvl_checkout_company_tax_label( $value, $order->get_billing_country() )
+                : 'NIF';
+            echo '<p><strong>' . esc_html( $label ) . ':</strong> ' . esc_html( $value ) . '</p>';
         }
     },
     15
@@ -296,7 +375,10 @@ add_filter(
 
         if ( 'empresa' === $type || ( ! $type && '' !== $nipc ) ) {
             if ( $nipc ) {
-                $fields['cvl_billing_nipc'] = array( 'label' => 'NIPC', 'value' => esc_html( $nipc ) );
+                $fields['cvl_billing_nipc'] = array(
+                    'label' => cvl_checkout_company_tax_label( $nipc, $order->get_billing_country() ),
+                    'value' => esc_html( $nipc ),
+                );
             }
         } elseif ( $nif ) {
             $fields['cvl_billing_nif'] = array( 'label' => 'NIF', 'value' => esc_html( $nif ) );
