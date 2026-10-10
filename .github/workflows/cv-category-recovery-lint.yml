@@ -1,0 +1,17 @@
+name: Validar recuperação 301 categoria
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ops/cv-recover-misplaced-redirects.php"
+      - ".github/workflows/cv-category-recovery-lint.yml"
+permissions:
+  contents: read
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar sintaxe sem alterar WooCommerce
+        run: php -l ops/cv-recover-misplaced-redirects.php
