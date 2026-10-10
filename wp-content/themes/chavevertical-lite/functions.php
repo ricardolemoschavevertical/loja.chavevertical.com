@@ -42,6 +42,11 @@ if ( file_exists( $cvl_brand_archive_file ) ) {
     require_once $cvl_brand_archive_file;
 }
 
+$cvl_checkout_customer_type_file = get_template_directory() . '/inc/checkout-customer-type.php';
+if ( file_exists( $cvl_checkout_customer_type_file ) ) {
+    require_once $cvl_checkout_customer_type_file;
+}
+
 $cvl_order_email_design_file = get_template_directory() . '/inc/order-email-design.php';
 if ( file_exists( $cvl_order_email_design_file ) ) {
     require_once $cvl_order_email_design_file;
@@ -240,6 +245,15 @@ add_action( 'wp_enqueue_scripts', function () {
             get_template_directory_uri() . '/assets/css/checkout.css',
             array( 'cvl-v13' ),
             cvl_asset_version( 'assets/css/checkout.css' )
+        );
+
+        // Alternância entre Particular/NIF e Empresa/NIPC. Só no checkout.
+        wp_enqueue_script(
+            'cvl-checkout-customer-type',
+            get_template_directory_uri() . '/assets/js/checkout-customer-type.js',
+            array( 'jquery' ),
+            cvl_asset_version( 'assets/js/checkout-customer-type.js' ),
+            true
         );
     }
 
