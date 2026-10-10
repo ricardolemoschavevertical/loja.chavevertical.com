@@ -1133,3 +1133,90 @@ body.woocommerce-checkout .wc-block-checkout
   }
 }
 
+
+/* ============================================================
+   Nome completo único — faturação e entrega, WooCommerce Blocks.
+   Esconde o par nativo apenas quando o substituto foi montado.
+   Os dois campos obrigatórios continuam sincronizados no store.
+   ============================================================ */
+body.woocommerce-checkout .wc-block-checkout
+  #billing.cvl-full-name-enabled > .wc-block-components-address-form__first_name,
+body.woocommerce-checkout .wc-block-checkout
+  #billing.cvl-full-name-enabled > .wc-block-components-address-form__last_name,
+body.woocommerce-checkout .wc-block-checkout
+  #shipping.cvl-full-name-enabled > .wc-block-components-address-form__first_name,
+body.woocommerce-checkout .wc-block-checkout
+  #shipping.cvl-full-name-enabled > .wc-block-components-address-form__last_name {
+  display:none!important;
+}
+
+body.woocommerce-checkout .wc-block-checkout
+  .cvl-full-name-field {
+  display:flex;
+  flex-direction:column;
+  grid-column:1 / -1!important;
+  min-width:0;
+  width:100%;
+  margin:0 0 15px;
+  padding:0;
+}
+
+body.woocommerce-checkout .wc-block-checkout
+  .cvl-full-name-label {
+  margin:0 0 7px;
+  color:#283740;
+  font-size:13px;
+  font-weight:650;
+  line-height:1.4;
+}
+
+body.woocommerce-checkout .wc-block-checkout
+  .cvl-full-name-required {
+  color:#c22138;
+  font-weight:800;
+}
+
+body.woocommerce-checkout .wc-block-checkout
+  .cvl-full-name-input {
+  box-sizing:border-box;
+  width:100%!important;
+  min-width:0;
+  height:48px;
+  padding:10px 14px;
+  background:#fff;
+  color:#273943;
+  border:1px solid #909ca5;
+  border-radius:5px;
+  box-shadow:none;
+  font-family:inherit;
+  font-size:14px;
+  line-height:1.4;
+  transition:border-color .15s ease,box-shadow .15s ease;
+}
+
+body.woocommerce-checkout .wc-block-checkout
+  .cvl-full-name-input:focus-visible {
+  border-color:var(--cvl-teal,#08776e);
+  box-shadow:0 0 0 2px rgba(8,119,110,.15);
+  outline:none;
+}
+
+body.woocommerce-checkout .wc-block-checkout
+  .cvl-full-name-invalid .cvl-full-name-input {
+  border-color:#bb233a;
+}
+
+body.woocommerce-checkout .wc-block-checkout
+  .cvl-full-name-message {
+  display:block;
+  color:#bb233a;
+  font-size:12px;
+  line-height:1.5;
+  margin-top:6px;
+}
+
+body.woocommerce-checkout .wc-block-checkout
+  .cvl-full-name-message:empty {
+  display:none;
+}
+
