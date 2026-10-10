@@ -504,3 +504,109 @@ body.woocommerce-checkout:not(.woocommerce-order-received) .woocommerce-terms-an
     min-height:54px;
   }
 }
+
+/* =========================================================
+   Dados de faturacao: Particular (NIF) ou Empresa (NIPC)
+   Este desenho aplica-se apenas ao checkout classico.
+   ========================================================= */
+
+body.woocommerce-checkout:not(.woocommerce-order-received)
+  form.checkout #billing_customer_type_field {
+  width:100%;
+  margin:0 0 23px;
+  padding:0 6px 20px;
+  border-bottom:1px solid #e7eaee;
+}
+
+body.woocommerce-checkout:not(.woocommerce-order-received)
+  form.checkout #billing_customer_type_field > label {
+  display:block;
+  margin:0 0 12px;
+  color:#26343c;
+  font-size:12px;
+  font-weight:800;
+}
+
+body.woocommerce-checkout:not(.woocommerce-order-received)
+  form.checkout #billing_customer_type_field .woocommerce-input-wrapper {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:11px;
+  position:relative;
+}
+
+body.woocommerce-checkout:not(.woocommerce-order-received)
+  form.checkout #billing_customer_type_field input[type="radio"] {
+  position:absolute;
+  opacity:0;
+  width:1px;
+  height:1px;
+  margin:0;
+}
+
+body.woocommerce-checkout:not(.woocommerce-order-received)
+  form.checkout #billing_customer_type_field label.radio {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:53px;
+  margin:0!important;
+  padding:13px 16px;
+  border:1px solid #cfd7db;
+  border-radius:8px;
+  background:#fff;
+  color:#273841;
+  font-size:13px;
+  font-weight:800;
+  letter-spacing:0;
+  cursor:pointer;
+  transition:background .15s ease,border-color .15s ease,box-shadow .15s ease;
+}
+
+body.woocommerce-checkout:not(.woocommerce-order-received)
+  form.checkout #billing_customer_type_field label.radio .required {
+  display:none;
+}
+
+body.woocommerce-checkout:not(.woocommerce-order-received)
+  form.checkout #billing_customer_type_field input[type="radio"]:checked + label.radio {
+  border-color:var(--cvl-teal,#08776e);
+  background:#eef9f7;
+  color:#065a52;
+  box-shadow:inset 0 0 0 1px var(--cvl-teal,#08776e);
+}
+
+body.woocommerce-checkout:not(.woocommerce-order-received)
+  form.checkout #billing_customer_type_field input[type="radio"]:focus-visible + label.radio {
+  outline:3px solid rgba(0,126,112,.32);
+  outline-offset:2px;
+}
+
+body.woocommerce-checkout:not(.woocommerce-order-received)
+  form.checkout .cvl-fiscal-conditional .optional {
+  display:none!important;
+}
+
+body.woocommerce-checkout:not(.woocommerce-order-received)
+  form.checkout .cvl-fiscal-conditional.cvl-fiscal-required > label:first-child::after {
+  content:" *";
+  color:var(--cvl-red,#d71920);
+}
+
+body.woocommerce-checkout:not(.woocommerce-order-received)
+  form.checkout.cvl-customer-fields-ready .cvl-fiscal-conditional.cvl-fiscal-hidden {
+  display:none!important;
+}
+
+@media (max-width:420px) {
+  body.woocommerce-checkout:not(.woocommerce-order-received)
+    form.checkout #billing_customer_type_field .woocommerce-input-wrapper {
+    gap:8px;
+  }
+
+  body.woocommerce-checkout:not(.woocommerce-order-received)
+    form.checkout #billing_customer_type_field label.radio {
+    min-height:49px;
+    padding:10px 9px;
+  }
+}
