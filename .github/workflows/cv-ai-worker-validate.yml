@@ -1,0 +1,42 @@
+name: Validate CV AI Worker
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ops/cloudflare/cv-ai-enricher/**"
+      - ".github/workflows/cv-ai-worker-validate.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Worker JS syntax
+        run: node --check ops/cloudflare/cv-ai-enricher/worker.mjs
+      - name: Fail-closed health and authentication tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import worker from './ops/cloudflare/cv-ai-enricher/worker.mjs';
+          const req=new Request('https://example.test/health');
+          const noBindings=await worker.fetch(req,{});
+          assert.equal(noBindings.status,503);
+          const body=await noBindings.json();
+          assert.equal(body.ok,false);
+          const denied=await worker.fetch(new Request('https://example.test/v1/lists'),{});
+          assert.equal(denied.status,503);
+          const fake={DB:{},JOBS:{},AI:{},CV_AI_TOKEN:'z'.repeat(64)};
+          const healthy=await worker.fetch(req,fake);
+          assert.equal(healthy.status,200);
+          const h=await healthy.json();
+          assert.equal(h.processing_enabled,false);
+          assert.equal(h.product_apply_enabled,false);
+          const unauthorized=await worker.fetch(new Request('https://example.test/v1/lists'),fake);
+          assert.equal(unauthorized.status,401);
+          console.log('Worker health/auth and safety defaults: PASS');
+          JS
