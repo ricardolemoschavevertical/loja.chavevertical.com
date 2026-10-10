@@ -1655,7 +1655,7 @@ function cvl_shop_root_category_grid() {
         echo '<span class="cvl-category-image">';
 
         if ( $category_picture ) {
-            echo wp_kses_post( $category_picture );
+            echo $category_picture;
         } else {
             echo '<span class="cvl-category-placeholder" aria-hidden="true">⚙</span>';
         }
@@ -1979,7 +1979,7 @@ function cvl_backup_category_subcategory_grid() {
         echo '<a href="' . esc_url( $url ) . '" aria-label="' . esc_attr( sprintf( __( 'Abrir categoria %s', 'chavevertical-lite' ), $child->name ) ) . '">';
 
         if ( $category_picture ) {
-            echo wp_kses_post( $category_picture );
+            echo $category_picture;
         } else {
             echo '<img src="' . esc_url( cvl_product_placeholder_url() ) . '" alt="' . esc_attr( $child->name ) . '" loading="lazy">';
         }
@@ -2578,7 +2578,7 @@ function cvl_product_category_search_layout(): void {
                         <a class="cvl-category-browser-card" href="<?php echo esc_url( $term_url ); ?>">
                             <span class="cvl-category-browser-image">
                                 <?php if ( $category_picture ) : ?>
-                                    <?php echo wp_kses_post( $category_picture ); ?>
+                                    <?php echo $category_picture; ?>
                                 <?php elseif ( $image_url ) : ?>
                                     <img src="<?php echo esc_url( $image_url ); ?>" alt="<?php echo esc_attr( $term->name ); ?>" loading="lazy" decoding="async">
                                 <?php endif; ?>
@@ -2743,7 +2743,7 @@ function cvl_product_category_search_layout(): void {
                             <a class="cvl-category-carousel-card<?php echo $active ? ' is-active' : ''; ?>" href="<?php echo esc_url( $url ); ?>">
                                 <span class="cvl-category-carousel-image">
                                     <?php if ( $category_picture ) : ?>
-                                        <?php echo wp_kses_post( $category_picture ); ?>
+                                        <?php echo $category_picture; ?>
                                     <?php elseif ( $image_url ) : ?>
                                         <img src="<?php echo esc_url( $image_url ); ?>" alt="<?php echo esc_attr( $term->name ); ?>" loading="lazy" decoding="async">
                                     <?php endif; ?>
