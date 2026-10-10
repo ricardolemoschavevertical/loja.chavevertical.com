@@ -19,6 +19,7 @@ on:
       - "ops/test-checkout-tax-validation-unit.php"
       - "ops/test-checkout-vies-unit.php"
       - "ops/test-checkout-postcodes-unit.php"
+      - "ops/test-checkout-postcode-locality-unit.php"
   workflow_dispatch:
 
 permissions:
@@ -87,6 +88,9 @@ jobs:
           node --check "$THEME/assets/js/checkout-customer-type.js"
           node --check "$THEME/assets/js/checkout-vies.js"
           node --check "$THEME/assets/js/checkout-postcodes.js"
+          php -l ops/test-checkout-postcode-locality-unit.php
+          php ops/test-checkout-postcode-locality-unit.php
+          node --check "$THEME/assets/js/checkout-postcode-locality.js"
           node --check "$THEME/assets/js/checkout-postcodes-blocks.js"
           php -l ops/ensure-brands-page.php
           php -l ops/ensure-contactos-page.php
