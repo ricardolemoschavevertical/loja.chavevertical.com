@@ -1,0 +1,106 @@
+name: Aplicar reorganizacao de categorias face ao backup
+on:
+  workflow_run:
+    workflows: ["Simular realinhamento dos ramos de categorias"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: cv-category-production-merge
+  cancel-in-progress: false
+
+jobs:
+  realign:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Recuperar snapshot e plano auditado
+        uses: actions/download-artifact@v4
+        with:
+          name: cv-misplaced-category-plan-${{ github.event.workflow_run.id }}
+          repository: ricardolemoschavevertical/loja.chavevertical.com
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/cv-category-verified-plan
+
+      - name: Preflight da base atual (sem alteracoes)
+        shell: bash
+        env:
+          CV_MISPLACED_MODE: plan
+          CV_MISPLACED_SNAPSHOT: ${{ runner.temp }}/cv-category-verified-plan/snapshot-after-merge.json
+          CV_MISPLACED_DIR: ${{ runner.temp }}/cv-misplaced-apply-${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          umask 0077
+          php -l ops/cv-realign-backup-misplaced.php
+          test -s "$CV_MISPLACED_SNAPSHOT"
+          mkdir -p "$CV_MISPLACED_DIR"
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval-file ops/cv-realign-backup-misplaced.php
+          CV_CHECK="$CV_MISPLACED_DIR/plano-reorganizar.json" python3 - <<'PY'
+          import json,os
+          d=json.load(open(os.environ['CV_CHECK']))
+          assert d['mode']=='plan' and d['merge']==25 and d['reparent']==2
+          assert d['expected_after']==901 and len(d['protected_ids'])==2
+          print("PRE-FLIGHT 25 fusoes, 2 mudancas de pai, 2 categorias de sistema protegidas")
+          PY
+
+      - name: Backup SQL das quatro tabelas de categorias
+        shell: bash
+        env:
+          CV_MISPLACED_DIR: ${{ runner.temp }}/cv-misplaced-apply-${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          umask 0077
+          ROOT=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          prefix=$(wp --path="$ROOT" db prefix)
+          wp --path="$ROOT" db export "$CV_MISPLACED_DIR/taxonomia-antes-segunda-fase.sql" --tables="${prefix}terms,${prefix}term_taxonomy,${prefix}term_relationships,${prefix}termmeta" --single-transaction
+          test -s "$CV_MISPLACED_DIR/taxonomia-antes-segunda-fase.sql"
+          test "$(stat -c '%s' "$CV_MISPLACED_DIR/taxonomia-antes-segunda-fase.sql")" -gt 10000
+
+      - name: Corrigir exclusivamente categorias com correspondencia unica
+        shell: bash
+        env:
+          CV_MISPLACED_MODE: apply
+          CV_MISPLACED_CONFIRM: ALINHAR_CATEGORIAS_AO_BACKUP
+          CV_MISPLACED_SNAPSHOT: ${{ runner.temp }}/cv-category-verified-plan/snapshot-after-merge.json
+          CV_MISPLACED_DIR: ${{ runner.temp }}/cv-misplaced-apply-${{ github.run_id }}
+          CV_MISPLACED_SQL_BACKUP: ${{ runner.temp }}/cv-misplaced-apply-${{ github.run_id }}/taxonomia-antes-segunda-fase.sql
+        run: |
+          set -euo pipefail
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval-file ops/cv-realign-backup-misplaced.php
+          CV_OUTPUT="$CV_MISPLACED_DIR/resultado-final.json" python3 - <<'PY'
+          import json,os
+          d=json.load(open(os.environ['CV_OUTPUT']))
+          assert d['status']=='success' and d['before']==926 and d['after']==901
+          assert d['merges']==25 and d['reparented']==2
+          print('Fusoes',d['merges'],'movidos',d['reparented'],'produtos associados',d['product_assignments_transferred'],'301',d['redirects'])
+          PY
+
+      - name: Verificar contagem final Woo sem apagar fallbacks
+        shell: bash
+        run: |
+          set -euo pipefail
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval '
+            $terms=get_terms(["taxonomy"=>"product_cat","hide_empty"=>false,"fields"=>"ids"]);
+            if (is_wp_error($terms)||count($terms)!==901) {fwrite(STDERR,"Contagem errada\n");exit(1);}
+            foreach ([15,2248] as $id) {
+              if (!term_exists($id,"product_cat")) {fwrite(STDERR,"Categoria protegida em falta\n");exit(2);}
+            }
+            echo "categorias=".count($terms).";fallbacks=15,2248\n";
+          '
+
+      - name: Preservar backup, journal e relatorio
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cv-misplaced-migracao-${{ github.run_id }}
+          path: ${{ runner.temp }}/cv-misplaced-apply-${{ github.run_id }}/
+          retention-days: 30
+          if-no-files-found: warn
