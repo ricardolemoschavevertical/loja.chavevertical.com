@@ -142,6 +142,23 @@ jobs:
             });
             console.log('native_fiscal_fields='+JSON.stringify(fiscalSelectors));
 
+            const fiscalMarkup=await page.evaluate(()=>{
+              const ids=['order-cvl-fiscal-customer-type','order-cvl-fiscal-nif','order-cvl-fiscal-company-name','order-cvl-fiscal-nipc','order-cvl-fiscal-use-billing-for-shipping'];
+              return ids.map(id=>{
+                const e=document.getElementById(id);
+                if(!e)return{id,missing:true};
+                const parents=[];
+                let p=e;
+                for(let i=0;i<5&&p;i++,p=p.parentElement){
+                  parents.push({tag:p.tagName,cls:p.className?.toString()?.slice(0,130)??'',
+                    id:p.id||'',label:p.tagName==='LABEL'?p.textContent?.trim()?.slice(0,100):''});
+                }
+                return {id,parents,outer:e.parentElement?.outerHTML?.slice(0,1050)};
+              });
+            });
+            console.log('FISCAL_MARKUP='+JSON.stringify(fiscalMarkup));
+
+
             const typeField = page.locator('select[id*="cvl-fiscal-customer-type"]');
             if(await typeField.count()!==1){
               throw new Error('Native company/individual selector not visible in real checkout');
