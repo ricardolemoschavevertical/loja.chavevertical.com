@@ -350,6 +350,17 @@ add_action( 'wp_enqueue_scripts', function () {
             true
         );
 
+        // Checkout Blocks: pagamento, termos e submissao na coluna direita
+        // abaixo do resumo, apenas quando existe espaco para duas colunas.
+        // Nao move os componentes React nem altera os meios de pagamento.
+        wp_enqueue_script(
+            'cvl-checkout-payment-aside',
+            get_template_directory_uri() . '/assets/js/checkout-payment-aside.js',
+            array( 'cvl-checkout-fiscal-radios' ),
+            cvl_asset_version( 'assets/js/checkout-payment-aside.js' ),
+            true
+        );
+
         // Apresentar apenas Nome completo na faturação e entrega, sem
         // alterar o first_name / last_name interno exigido pelo WooCommerce.
         wp_enqueue_script(

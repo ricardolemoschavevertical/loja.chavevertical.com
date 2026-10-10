@@ -98,6 +98,7 @@ jobs:
           node --check "$THEME/assets/js/checkout-billing-first.js"
           node --check "$THEME/assets/js/checkout-fiscal-radios.js"
           node --check "$THEME/assets/js/checkout-full-name.js"
+          node --check "$THEME/assets/js/checkout-payment-aside.js"
           node --check ops/test-checkout-billing-first.js
           node ops/test-checkout-billing-first.js
           php -l ops/test-checkout-vies-unit.php

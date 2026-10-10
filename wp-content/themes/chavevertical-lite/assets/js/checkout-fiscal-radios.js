@@ -15,6 +15,7 @@
 
     var FIELD_ID = 'order-cvl-fiscal-customer-type';
     var GROUP_ID = 'cvl-fiscal-customer-radio-group';
+    var DETAILS_TITLE_ID = 'cvl-fiscal-fields-heading';
     var ROOT_CLASS = 'cvl-fiscal-radio-layout';
     var HIDE_CLASS = 'cvl-fiscal-native-select-hidden';
     var OPTIONS = [
@@ -54,7 +55,7 @@
         fieldset.id = GROUP_ID;
         fieldset.setAttribute('aria-required', 'true');
 
-        var legend = makeElement('legend', 'cvl-fiscal-customer-radios__legend', 'Tipo de cliente');
+        var legend = makeElement('legend', 'cvl-fiscal-customer-radios__legend', 'Tipo de cliente para faturação');
         var required = makeElement('span', 'cvl-fiscal-customer-radios__required', ' *');
         required.setAttribute('aria-hidden', 'true');
         legend.appendChild(required);
@@ -152,6 +153,25 @@
 
         var value = String(select.value || '');
         var valid = value === 'particular' || value === 'empresa';
+
+        // Titulos acessiveis e alinhados entre as duas colunas fiscais.
+        // O WooCommerce continua responsavel pelos campos e pela validacao.
+        var detailsTitle = document.getElementById(DETAILS_TITLE_ID);
+        if (!detailsTitle || detailsTitle.parentElement !== parent) {
+            if (detailsTitle) {
+                detailsTitle.remove();
+            }
+            detailsTitle = makeElement('p', 'cvl-fiscal-fields-heading');
+            detailsTitle.id = DETAILS_TITLE_ID;
+            detailsTitle.setAttribute('role', 'heading');
+            detailsTitle.setAttribute('aria-level', '3');
+            parent.insertBefore(detailsTitle, wrapper);
+        }
+        var title = value === 'empresa' ? 'Dados da empresa' : 'Identificação fiscal';
+        if (detailsTitle.textContent !== title) {
+            detailsTitle.textContent = title;
+        }
+        detailsTitle.hidden = !valid;
         group.querySelectorAll('input[type="radio"]').forEach(function (radio) {
             if (radio.checked !== (radio.value === value)) {
                 radio.checked = radio.value === value;

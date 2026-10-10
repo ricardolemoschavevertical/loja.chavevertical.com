@@ -1220,3 +1220,97 @@ body.woocommerce-checkout .wc-block-checkout
   display:none;
 }
 
+
+/* CV checkout Blocks: alinhamento fiscal e pagamento na coluna direita. */
+/* Titulos dos dois grupos na mesma linha, com opcoes alinhadas aos inputs. */
+@media (min-width:701px){
+  body.woocommerce-checkout .wc-block-checkout #order.cvl-fiscal-radio-layout {
+    grid-template-rows:auto auto auto auto!important;
+    gap:10px 22px!important;
+  }
+  body.woocommerce-checkout .wc-block-checkout #order.cvl-fiscal-radio-layout
+    > .cvl-fiscal-customer-radios {
+    grid-column:1!important;
+    grid-row:1 / span 3!important;
+  }
+  body.woocommerce-checkout .wc-block-checkout #order.cvl-fiscal-radio-layout
+    > .cvl-fiscal-fields-heading {
+    grid-column:2!important;
+    grid-row:1!important;
+    display:block;
+    margin:0;
+    padding:0;
+    color:#263842;
+    font-size:13px;
+    font-weight:800;
+    line-height:1.4;
+  }
+  body.woocommerce-checkout .wc-block-checkout #order.cvl-fiscal-radio-layout
+    > .cvl-fiscal-fields-heading[hidden] {
+    display:none!important;
+  }
+  body.woocommerce-checkout .wc-block-checkout #order.cvl-fiscal-radio-layout
+    > .wc-block-components-text-input.wc-block-components-address-form__cvl-fiscal-company-name,
+  body.woocommerce-checkout .wc-block-checkout #order.cvl-fiscal-radio-layout
+    > .wc-block-components-text-input.wc-block-components-address-form__cvl-fiscal-nif {
+    grid-column:2!important;
+    grid-row:2!important;
+  }
+  body.woocommerce-checkout .wc-block-checkout #order.cvl-fiscal-radio-layout
+    > .wc-block-components-text-input.wc-block-components-address-form__cvl-fiscal-nipc {
+    grid-column:2!important;
+    grid-row:3!important;
+  }
+  body.woocommerce-checkout .wc-block-checkout #order.cvl-fiscal-radio-layout
+    > .wc-block-components-checkbox.wc-block-components-address-form__cvl-fiscal-use-billing-for-shipping {
+    grid-column:1 / -1!important;
+    grid-row:4!important;
+  }
+}
+@media (max-width:700px){
+  /* Na vista de uma coluna, o titulo redundante desaparece. */
+  body.woocommerce-checkout .wc-block-checkout #order.cvl-fiscal-radio-layout
+    > .cvl-fiscal-fields-heading {
+    display:none!important;
+  }
+}
+
+/* Apenas reposicionamento VISUAL: o WooCommerce mantem os componentes React,
+   os meios de pagamento, os termos e o botao dentro do formulario original. */
+@media (min-width:1100px){
+  body.cvl-checkout-payment-right.woocommerce-checkout
+    .wc-block-components-sidebar-layout.wc-block-checkout {
+    position:relative!important;
+    min-height:var(--cvl-payment-side-min-height,auto)!important;
+  }
+  body.cvl-checkout-payment-right.woocommerce-checkout
+    .wc-block-components-sidebar-layout.wc-block-checkout > .wc-block-checkout__sidebar {
+    position:static!important;
+  }
+  body.cvl-checkout-payment-right.woocommerce-checkout
+    .wc-block-components-sidebar-layout.wc-block-checkout #payment-method,
+  body.cvl-checkout-payment-right.woocommerce-checkout
+    .wc-block-components-sidebar-layout.wc-block-checkout .wc-block-checkout__terms,
+  body.cvl-checkout-payment-right.woocommerce-checkout
+    .wc-block-components-sidebar-layout.wc-block-checkout .wc-block-checkout__actions {
+    position:absolute!important;
+    box-sizing:border-box!important;
+    left:var(--cvl-payment-side-left)!important;
+    width:var(--cvl-payment-side-width)!important;
+    max-width:var(--cvl-payment-side-width)!important;
+    min-width:0!important;
+    margin:0!important;
+  }
+  body.cvl-checkout-payment-right.woocommerce-checkout
+    .wc-block-components-sidebar-layout.wc-block-checkout #payment-method {
+    top:var(--cvl-payment-side-top)!important;
+  }
+  body.cvl-checkout-payment-right.woocommerce-checkout
+    .wc-block-components-sidebar-layout.wc-block-checkout .wc-block-checkout__terms {
+    top:var(--cvl-payment-terms-top)!important;
+  }
+  body.cvl-checkout-payment-right.woocommerce-checkout
+    .wc-block-components-sidebar-layout.wc-block-checkout .wc-block-checkout__actions {
+    top:var(--cvl-payment-actions-top)!important;
+  }
+}
