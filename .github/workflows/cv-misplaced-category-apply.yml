@@ -18,21 +18,39 @@ jobs:
     runs-on: [self-hosted, Linux, X64, loja-chavevertical]
     timeout-minutes: 30
     steps:
-      - name: Verificar sucesso da primeira fusao antes de qualquer escrita
+      - uses: actions/download-artifact@v4
+        with:
+          name: cv-category-merge-auditoria-38053903679
+          repository: ricardolemoschavevertical/loja.chavevertical.com
+          run-id: 38053903679
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/cv-first-stage-validated
+
+      - name: Validar prova da primeira fusao e auditoria independente
         env:
           GH_TOKEN: ${{ github.token }}
+          CV_STAGE1_RESULT: ${{ runner.temp }}/cv-first-stage-validated/resultado-final.json
         shell: bash
         run: |
           set -euo pipefail
-          summary=$(curl --fail --silent --show-error --retry 2 \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/ricardolemoschavevertical/loja.chavevertical.com/actions/runs/38053903679")
-          status=$(printf '%s' "$summary" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("status",""))')
-          conclusion=$(printf '%s' "$summary" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("conclusion",""))')
-          echo "first-stage-status=$status first-stage-conclusion=$conclusion"
-          test "$status" = completed
-          test "$conclusion" = success
+          python3 - <<'PY'
+          import json,os
+          d=json.load(open(os.environ['CV_STAGE1_RESULT']))
+          assert d['status']=='success' and d['before']==1067 and d['after']==926
+          assert d['deleted']==141 and d['groups']==34
+          assert d['products_reassigned']==420 and d['redirects_total']>=141
+          print('Primeira etapa comprovada pelo resultado persistido:', d['deleted'],'categorias')
+          PY
+          for pair in 38053903679:cancelled 38054294512:success 38055945411:success; do
+            rid="${pair%:*}"; expected="${pair#*:}"
+            response=$(curl --fail --silent --show-error --retry 2 \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/ricardolemoschavevertical/loja.chavevertical.com/actions/runs/$rid")
+            actual=$(printf '%s' "$response" | python3 -c 'import sys,json; o=json.load(sys.stdin); print(o.get("conclusion","")) if o.get("status")=="completed" else print("NOT_COMPLETE")')
+            echo "Workflow $rid expected=$expected actual=$actual"
+            test "$actual" = "$expected"
+          done
 
       - uses: actions/checkout@v4
         with:
@@ -63,6 +81,7 @@ jobs:
           import json,os
           d=json.load(open(os.environ['CV_CHECK']))
           assert d['mode']=='plan' and d['merge']==25 and d['reparent']==2
+          assert d['metadata_to_preserve']>=21, 'Categorias perderiam imagens/metadados sem transferencia'
           assert d['expected_after']==901 and len(d['protected_ids'])==2
           print("PRE-FLIGHT 25 fusoes, 2 mudancas de pai, 2 categorias de sistema protegidas")
           PY
