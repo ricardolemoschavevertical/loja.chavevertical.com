@@ -1,0 +1,56 @@
+name: Isolar plugins CV AI de erro 500 em producao
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/cv-ai-safe-isolation-500.yml"]
+permissions:
+  contents: read
+concurrency:
+  group: cv-ai-production-isolation
+  cancel-in-progress: false
+jobs:
+  isolate:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 8
+    steps:
+      - name: Isolamento reversivel dos dois plugins novos
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          for slug in cv-cloudflare-ai-enricher cv-mcp-bridge; do
+            wp --path="$WP" plugin is-active "$slug"
+          done
+          status() {
+            local route="$1"
+            curl -sS --connect-timeout 8 --max-time 30 -H 'Cache-Control: no-cache' \
+              -o /dev/null -w '%{http_code}' "https://loja.chavevertical.com$route" || echo unknown
+          }
+          before=$(status "/?cv_isolate=${{ github.run_id }}")
+          echo "BEFORE_PLUGIN_ISOLATION_HTTP=$before"
+          wp --path="$WP" plugin deactivate cv-cloudflare-ai-enricher cv-mcp-bridge
+          restore() {
+            if [ "${KEEP_INACTIVE:-no}" != yes ]; then
+              wp --path="$WP" plugin activate cv-cloudflare-ai-enricher cv-mcp-bridge || true
+            fi
+          }
+          trap restore EXIT
+          sleep 2
+          after_home=$(status "/?cv_isolate=${{ github.run_id }}-off")
+          after_rest=$(status "/wp-json/?cv_isolate=${{ github.run_id }}-off")
+          echo "AFTER_DISABLE_HOME_HTTP=$after_home"
+          echo "AFTER_DISABLE_REST_HTTP=$after_rest"
+          if [ "$before" = 500 ] && [ "$after_home" != 500 ] && [ "$after_rest" != 500 ]; then
+            echo "CV_NEW_PLUGIN_SUSPECT=yes;KEEP_INACTIVE_FOR_SITE_SAFETY=yes"
+            KEEP_INACTIVE=yes
+          else
+            echo "CV_NEW_PLUGIN_SUSPECT=no_or_uncertain;restoring_original_state=yes"
+          fi
+          trap - EXIT
+          restore
+          for slug in cv-cloudflare-ai-enricher cv-mcp-bridge; do
+            echo "FINAL_PLUGIN=$slug;STATE=$(wp --path="$WP" plugin get "$slug" --field=status)"
+          done
+          final=$(status "/?cv_isolate=${{ github.run_id }}-final")
+          echo "FINAL_HOME_HTTP=$final"
