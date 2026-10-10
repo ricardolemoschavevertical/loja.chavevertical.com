@@ -99,3 +99,46 @@ jobs:
           echo "javascript_file=".(is_file($path)?'present':'missing')."\n";
           echo "javascript_bytes=".(is_file($path)?filesize($path):0)."\n";
           PHP
+
+      - name: Inspect public checkout HTML and script availability
+        shell: bash
+        run: |
+          set -euo pipefail
+          TMP_HTML=$(mktemp)
+          TMP_JS=$(mktemp)
+          trap 'rm -f "$TMP_HTML" "$TMP_JS"' EXIT
+
+          echo "CHECKOUT_FRONTEND:"
+          CHECKOUT_META=$(curl --silent --show-error --location --max-time 15 \
+            --header "Cache-Control: no-cache" \
+            --output "$TMP_HTML" \
+            --write-out 'http=%{http_code};final_url=%{url_effective};bytes=%{size_download}' \
+            'https://loja.chavevertical.com/checkout/' || true)
+          echo "$CHECKOUT_META"
+          if grep -q 'checkout-postcode-locality.js' "$TMP_HTML"; then
+            echo "frontend_contains_locality_script=yes"
+          else
+            echo "frontend_contains_locality_script=no"
+          fi
+          if grep -q 'wp-block-woocommerce-checkout' "$TMP_HTML"; then
+            echo "frontend_contains_checkout_block=yes"
+          else
+            echo "frontend_contains_checkout_block=no"
+          fi
+          if grep -q 'wc-block-checkout' "$TMP_HTML"; then
+            echo "frontend_contains_checkout_form=yes"
+          else
+            echo "frontend_contains_checkout_form=no"
+          fi
+          echo "PUBLIC_ASSET:"
+          ASSET_META=$(curl --silent --show-error --location --max-time 15 \
+            --header "Cache-Control: no-cache" \
+            --output "$TMP_JS" \
+            --write-out 'http=%{http_code};bytes=%{size_download};content_type=%{content_type}' \
+            'https://loja.chavevertical.com/wp-content/themes/chavevertical-lite/assets/js/checkout-postcode-locality.js' || true)
+          echo "$ASSET_META"
+          if grep -q "getCustomerData" "$TMP_JS"; then
+            echo "asset_contains_blocks_store_logic=yes"
+          else
+            echo "asset_contains_blocks_store_logic=no"
+          fi
