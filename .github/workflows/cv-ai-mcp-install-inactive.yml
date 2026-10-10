@@ -1,11 +1,5 @@
 name: Install CV AI and MCP plugins (inactive)
 on:
-  push:
-    branches: [main]
-    paths:
-      - "wp-content/plugins/cv-cloudflare-ai-enricher/**"
-      - "wp-content/plugins/cv-mcp-bridge/**"
-      - ".github/workflows/cv-ai-mcp-install-inactive.yml"
   workflow_dispatch:
 permissions:
   contents: read
