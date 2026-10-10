@@ -104,6 +104,33 @@ jobs:
             });
             console.log('address_details='+JSON.stringify(addressDetails));
 
+            // Experiment only within this temporary guest visitor session:
+            // open the native billing address without any order/cart submission.
+            const billingProbe=await page.evaluate(()=>{
+              const store=window.wp?.data;
+              const before=store?.select('wc/store/checkout')?.getUseShippingAsBilling?.()??null;
+              const action=store?.dispatch('wc/store/checkout')?.__internalSetUseShippingAsBilling;
+              if (typeof action === 'function') {
+                action(false);
+              }
+              return {before,action:typeof action};
+            });
+            await page.waitForTimeout(450);
+            const probeAfter=await page.evaluate(()=>{
+              const data=window.wp?.data;
+              return {
+                useShippingAsBilling:data?.select('wc/store/checkout')?.getUseShippingAsBilling?.()??null,
+                billingVisible:!!document.querySelector('#billing-address_1'),
+                shippingVisible:!!document.querySelector('#shipping-address_1'),
+                billingHeaders:Array.from(document.querySelectorAll('h2,h3'))
+                  .map(el=>el.textContent?.trim()).filter(s=>/fatur|entreg|envio|ship|billing/i.test(s)).slice(0,14),
+                checkbox:Array.from(document.querySelectorAll('.wc-block-checkout__use-address-for-billing input[type="checkbox"]'))
+                  .map(el=>el.checked)
+              };
+            });
+            console.log('billing_probe='+JSON.stringify({before:billingProbe,after:probeAfter}));
+
+
 
             // Fiscal fields created by the WooCommerce Blocks native API.
             const fiscalSelectors = await page.evaluate(()=>{
