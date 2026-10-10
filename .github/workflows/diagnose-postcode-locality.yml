@@ -1,0 +1,76 @@
+name: Diagnose postcode locality integration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/diagnose-postcode-locality.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  postcode-locality-diagnostic:
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 5
+    steps:
+      - name: Check live theme and postcode provider without changing orders
+        shell: bash
+        run: |
+          set -euo pipefail
+          php <<'PHP'
+          <?php
+          error_reporting(E_ALL);
+          ini_set('display_errors', '1');
+
+          $root = '/home/chavevertical-loja/htdocs/loja.chavevertical.com';
+          if (!is_readable($root.'/wp-load.php')) {
+              echo "wp_load=unavailable\n";
+              exit(1);
+          }
+          require_once $root . '/wp-load.php';
+          echo "site_ok=" . (parse_url(home_url(), PHP_URL_HOST) === 'loja.chavevertical.com' ? 'yes' : 'no') . "\n";
+          echo "theme=" . get_stylesheet() . "\n";
+          echo "locality_function=" . (function_exists('cvl_postcode_locality_resolve') ? 'present' : 'missing') . "\n";
+          echo "checkout_page_mode=";
+          $page = wc_get_page_id('checkout');
+          $markup = (string) get_post_field('post_content', $page);
+          echo str_contains($markup,'wp:woocommerce/checkout') ? 'blocks' : 'other';
+          echo "\n";
+
+          foreach (array('1000-098', '6160-152') as $postcode) {
+              $url = 'https://moradas.dev/cp/'.$postcode;
+              $http = wp_remote_get($url, array(
+                  'timeout' => 8,
+                  'redirection' => 0,
+                  'sslverify' => true,
+                  'headers' => array('Accept' => 'application/json'),
+              ));
+              echo "postcode_test=$postcode\n";
+              if (is_wp_error($http)) {
+                  echo "external_status=WP_ERROR;code=".$http->get_error_code().";message=".substr($http->get_error_message(),0,140)."\n";
+                  continue;
+              }
+              $code = (int) wp_remote_retrieve_response_code($http);
+              $type = (string) wp_remote_retrieve_header($http,'content-type');
+              $body = (string) wp_remote_retrieve_body($http);
+              echo "external_http=$code;type=$type;length=".strlen($body)."\n";
+              $decoded = json_decode($body,true);
+              if (is_array($decoded)) {
+                  echo "json_keys=".implode(',',array_slice(array_keys($decoded),0,30))."\n";
+                  $sanitized = array_intersect_key($decoded,array_flip(array('cp7','localidade','concelho','distrito','detail','message','error')));
+                  echo "public_fields=".json_encode($sanitized, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)."\n";
+              } else {
+                  echo "body_prefix=".substr(preg_replace('/[[:cntrl:]]/',' ',$body),0,150)."\n";
+              }
+              if (function_exists('cvl_postcode_locality_parse_reply')) {
+                  $parsed = cvl_postcode_locality_parse_reply($code,$body,$postcode);
+                  echo "parsed=".json_encode($parsed,JSON_UNESCAPED_UNICODE)."\n";
+              }
+          }
+
+          $path = get_template_directory().'/assets/js/checkout-postcode-locality.js';
+          echo "javascript_file=".(is_file($path)?'present':'missing')."\n";
+          echo "javascript_bytes=".(is_file($path)?filesize($path):0)."\n";
+          PHP
