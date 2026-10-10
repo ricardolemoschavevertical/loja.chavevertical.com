@@ -83,7 +83,7 @@ if(count($dup)<1) {
 if(count($dup)>130)throw new RuntimeException('Unexpected number of duplicates.');
 $redirects=get_option('cv_core_category_slug_redirects',[]);
 if(!is_array($redirects))throw new RuntimeException('Bad SEO redirect option.');
-$allowed_meta=['order','display_type'];
+$allowed_meta=['order','display_type','product_count_product_cat']; // derived Woo lookup counter
 $eligible=[];$skipped=[];$snapshots=[];$relationships = [];
 foreach($dup as $id){
     $cat=$locals[$id];
@@ -147,6 +147,11 @@ $backup_payload=['timestamp_utc'=>gmdate('c'),'plan'=>$plan,'canonical'=>$locals
    'original_redirects'=>$redirects,'duplicates'=>array_intersect_key($snapshots,array_flip(array_column($work,'id')))];
 if(file_put_contents($backup_file,wp_json_encode($backup_payload,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE))===false
    || !filesize($backup_file))throw new RuntimeException('Cannot persist pre-change snapshot.');
+$lock_key='cv_category_merge_operation_lock';
+if (get_option($lock_key, false)) throw new RuntimeException('Outra migração de categorias bloqueou a operação.');
+if (!add_option($lock_key, ['when'=>gmdate('c'),'workflow'=>'rosqueadeiras-live-safe'], '', false)) {
+    throw new RuntimeException('Não foi possível obter lock de escrita.');
+}
 $done=[];$failures=[];
 foreach($work as $entry){
     $id=(int)$entry['id'];
@@ -168,6 +173,13 @@ foreach($work as $entry){
                 throw new RuntimeException('Post changed during merge: '.$post_id);
             $up=wp_set_object_terms($post_id,[$canonical_id],'product_cat',true);
             if(is_wp_error($up)) throw new RuntimeException('Cannot attach canonical term to product '.$post_id);
+            foreach (['rank_math_primary_product_cat','_yoast_wpseo_primary_product_cat'] as $meta_key) {
+                if ((int)get_post_meta($post_id,$meta_key,true)===$id) {
+                    update_post_meta($post_id,$meta_key,(string)$canonical_id);
+                    if ((int)get_post_meta($post_id,$meta_key,true)!==$canonical_id)
+                        throw new RuntimeException('Failed to update primary category on product '.$post_id);
+                }
+            }
             $verify=wp_get_post_terms($post_id,'product_cat',['fields'=>'ids']);
             if(is_wp_error($verify) || !in_array($canonical_id,array_map('intval',$verify),true))
                 throw new RuntimeException('Product canonical association not saved: '.$post_id);
@@ -203,3 +215,4 @@ echo 'CV_MERGE_RESULT '.wp_json_encode([
   'deleted'=>$results['deleted'],'product_associations_preserved'=>$results['preserved_product_relationships'],
   'errors'=>$failures,'remaining'=>$results['remaining_in_original_inventory']],JSON_UNESCAPED_UNICODE).PHP_EOL;
 if($failures)throw new RuntimeException('Partial merge: see snapshot and journal. Do not retry before review.');
+delete_option($lock_key);
