@@ -71,6 +71,24 @@ jobs:
             });
             console.log('checkout_inspection='+JSON.stringify(before));
 
+            const nativeNameFields=await page.evaluate(()=>{
+              const keys=['billing-first_name','billing-last_name','shipping-first_name','shipping-last_name'];
+              return keys.map(id=>{
+                const input=document.getElementById(id);
+                const wrapper=input?.closest('.wc-block-components-text-input');
+                const section=input?.closest('.wc-block-components-address-form');
+                return {id,present:!!input,tag:input?.tagName??null,
+                  required:input?.required??null,visible:input?.getClientRects().length>0,
+                  valuePresent:!!input?.value,autofill:input?.autocomplete??null,
+                  label:input?.labels?.[0]?.textContent?.trim()??null,
+                  wrapperClass:wrapper?.className??null,
+                  sectionId:section?.id??null,
+                  parent:wrapper?.parentElement?.id??null};
+              });
+            });
+            console.log('NATIVE_NAME_FIELDS='+JSON.stringify(nativeNameFields));
+
+
             // Read-only diagnosis of native Woo Blocks address ordering and actions.
             const addressDetails=await page.evaluate(()=>{
               const data=window.wp?.data;
