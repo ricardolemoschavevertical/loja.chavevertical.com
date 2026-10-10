@@ -71,7 +71,7 @@ jobs:
             diff=$(rsync -rcn --delete --out-format='%i %n' "$source/" "$target/")
             if test -n "$diff"; then echo "$diff"; exit 1; fi
             wp --path="$WP" plugin is-installed "$slug"
-            wp --path="$WP" plugin is-inactive "$slug"
+            status=$(wp --path="$WP" plugin get "$slug" --field=status)\n            test "$status" = inactive
             echo "INACTIVE_PLUGIN_INSTALLED=$slug"
           done
 
@@ -80,8 +80,8 @@ jobs:
         run: |
           set -euo pipefail
           WP=/home/chavevertical-loja/htdocs/loja.chavevertical.com
-          wp --path="$WP" plugin is-inactive cv-cloudflare-ai-enricher
-          wp --path="$WP" plugin is-inactive cv-mcp-bridge
+          test "$(wp --path="$WP" plugin get cv-cloudflare-ai-enricher --field=status)" = inactive
+          test "$(wp --path="$WP" plugin get cv-mcp-bridge --field=status)" = inactive
           wp --path="$WP" eval '
             if (!class_exists("CV_Core_Catalog_Rules")) { fwrite(STDERR,"Live Woo category policy unavailable\n"); exit(1); }
             $tree=CV_Core_Catalog_Rules::tree("enricher");
