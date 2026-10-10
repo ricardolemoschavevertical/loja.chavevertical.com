@@ -25,6 +25,7 @@ on:
       - "ops/move-checkout-fiscal-block.php"
       - "ops/checkout-billing-before-shipping.php"
       - "ops/test-checkout-billing-first.js"
+      - "ops/test-woocommerce-email-ptpt.php"
   workflow_dispatch:
 
 permissions:
@@ -83,6 +84,8 @@ jobs:
           test -f "$THEME/functions.php"
           test -f "$THEME/index.php"
           find "$THEME" -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          php -l ops/test-woocommerce-email-ptpt.php
+          php ops/test-woocommerce-email-ptpt.php
           php -l ops/verify-checkout-customer-type.php
           php -l ops/test-checkout-tax-validation-unit.php
           php ops/test-checkout-tax-validation-unit.php
