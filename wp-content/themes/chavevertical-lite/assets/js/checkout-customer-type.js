@@ -48,7 +48,7 @@
             return isCompany ? 'Indique o NIPC da empresa.' : 'Indique o NIF.';
         }
 
-        var isPortuguese = !country || country === 'PT' || /^PT[\s.\-]*[0-9]/i.test(value);
+        var isPortuguese = !country || country === 'PT' || /^PT/i.test(value);
         if (isPortuguese) {
             var kind = fiscalKind(value);
             if (!kind) {
