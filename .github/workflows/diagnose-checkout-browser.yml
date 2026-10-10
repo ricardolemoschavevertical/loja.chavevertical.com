@@ -198,6 +198,120 @@ jobs:
             }
             console.log('REAL_BROWSER_FISCAL_PLACEMENT=PASS');
 
+            // Billing first, delivery address cloned only when native checkbox
+            // in the fiscal/billing section is selected (guest cart only).
+            const deliveryChoice=page.locator('#order-cvl-fiscal-use-billing-for-shipping');
+            if(await deliveryChoice.count()!==1){
+              throw new Error('Same billing address for delivery checkbox is missing');
+            }
+            const billingFirst=await page.evaluate(()=>{
+              const data=window.wp.data;
+              const blocks=['wp-block-woocommerce-checkout-billing-address-block',
+                            'wp-block-woocommerce-checkout-additional-information-block',
+                            'wp-block-woocommerce-checkout-shipping-address-block'];
+              const order=Array.from(document.querySelectorAll('.wc-block-checkout *'))
+                .filter(el=>blocks.some(cl=>el.classList?.contains(cl)))
+                .map(el=>blocks.find(cl=>el.classList.contains(cl)));
+              return {
+                order,
+                useShippingAsBilling:data.select('wc/store/checkout').getUseShippingAsBilling(),
+                billingVisible:!!document.querySelector('#billing-address_1'),
+                sameLabel:document.querySelector('#order-cvl-fiscal-use-billing-for-shipping')
+                  ?.labels?.[0]?.textContent?.trim()??''
+              };
+            });
+            console.log('BILLING_FIRST_INIT='+JSON.stringify(billingFirst));
+            if(billingFirst.useShippingAsBilling!==false ||
+              !billingFirst.billingVisible ||
+              billingFirst.order[0]!=='wp-block-woocommerce-checkout-billing-address-block' ||
+              billingFirst.order[1]!=='wp-block-woocommerce-checkout-additional-information-block' ||
+              billingFirst.order[2]!=='wp-block-woocommerce-checkout-shipping-address-block'){
+              throw new Error('Billing and fiscal sections are not displayed before shipping address');
+            }
+            if(!billingFirst.sameLabel.includes('faturação para entrega')){
+              throw new Error('Missing explicit matching delivery label');
+            }
+
+            await deliveryChoice.check();
+            await page.evaluate(()=>{
+              const wpData=window.wp.data;
+              const data=wpData.select('wc/store/cart').getCustomerData();
+              wpData.dispatch('wc/store/cart').setBillingAddress({
+                ...data.billingAddress,
+                country:'PT',
+                first_name:'Cliente',
+                last_name:'Teste',
+                address_1:'Rua Exemplo 4',
+                city:'Lisboa',
+                postcode:'1000-098',
+                phone:'911000000'
+              });
+            });
+            await page.waitForTimeout(1200);
+            const sameAfter=await page.evaluate(()=>{
+              const cart=window.wp.data.select('wc/store/cart').getCustomerData();
+              return {
+                billing:{address:cart.billingAddress.address_1,city:cart.billingAddress.city,postcode:cart.billingAddress.postcode},
+                shipping:{address:cart.shippingAddress.address_1,city:cart.shippingAddress.city,postcode:cart.shippingAddress.postcode},
+                shippingHidden:getComputedStyle(document.querySelector('.wp-block-woocommerce-checkout-shipping-address-block')).display==='none',
+                shippingMethodPresent:!!document.querySelector('.wp-block-woocommerce-checkout-shipping-method-block')
+              };
+            });
+            console.log('BILLING_SAME_SHIPPING='+JSON.stringify(sameAfter));
+            if(sameAfter.shipping.address!==sameAfter.billing.address
+              ||sameAfter.shipping.city!==sameAfter.billing.city
+              ||sameAfter.shipping.postcode!==sameAfter.billing.postcode
+              ||!sameAfter.shippingHidden||!sameAfter.shippingMethodPresent){
+              throw new Error('Checked billing same for delivery failed to copy or hide duplicates');
+            }
+
+            await deliveryChoice.uncheck();
+            await page.waitForTimeout(350);
+            const separateBefore=await page.evaluate(()=>{
+              const el=document.querySelector('.wp-block-woocommerce-checkout-shipping-address-block');
+              return el?getComputedStyle(el).display:'missing';
+            });
+            if(separateBefore==='none'||separateBefore==='missing'){
+              throw new Error('Unchecking same delivery did not show separate shipping address');
+            }
+
+            await page.evaluate(()=>{
+              const data=window.wp.data;
+              const customer=data.select('wc/store/cart').getCustomerData();
+              data.dispatch('wc/store/cart').setShippingAddress({
+                ...customer.shippingAddress, address_1:'Rua Transporte 9',city:'Porto',postcode:'4000-001'
+              });
+              data.dispatch('wc/store/cart').setBillingAddress({
+                ...customer.billingAddress, address_1:'Rua da Fatura 8',city:'Coimbra',postcode:'3000-001'
+              });
+            });
+            await page.waitForTimeout(450);
+            const different=await page.evaluate(()=>{
+              const d=window.wp.data.select('wc/store/cart').getCustomerData();
+              return {billing:d.billingAddress.address_1,shipping:d.shippingAddress.address_1};
+            });
+            console.log('BILLING_DIFFERENT_SHIPPING='+JSON.stringify(different));
+            if(different.billing!=='Rua da Fatura 8'||different.shipping!=='Rua Transporte 9'){
+              throw new Error('Billing and shipping must remain independent when unchecked');
+            }
+
+            await page.setViewportSize({width:390,height:844});
+            await page.waitForTimeout(320);
+            const mobileOkay=await page.evaluate(()=>{
+              const a=document.querySelector('#billing-address_1');
+              const type=document.querySelector('#order-cvl-fiscal-customer-type');
+              const delivery=document.querySelector('#order-cvl-fiscal-use-billing-for-shipping');
+              return !!a?.getClientRects().length&&!!type?.getClientRects().length&&!!delivery?.getClientRects().length;
+            });
+            console.log('MOBILE_BILLING_FIRST='+mobileOkay);
+            if(!mobileOkay){
+              throw new Error('Billing-first checkout is not fully visible on mobile');
+            }
+            await page.setViewportSize({width:1280,height:960});
+            console.log('REAL_BROWSER_BILLING_SHIPPING=PASS');
+
+
+
 
 
             if(!before.script||!before.cartStore||!before.config){
