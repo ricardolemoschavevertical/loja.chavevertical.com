@@ -114,11 +114,25 @@ jobs:
             echo "A migração anterior ainda está ativa; nenhuma escrita autorizada"
             exit 1
           fi
+          # O workflow anterior terminou; o PHP de fusão já não está em execução.
+          # Só libertar um lock obsoleto da segunda fase, depois de validar
+          # resultado-final.json e o plano vivo de 901 categorias.
           wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval '
             $lock=get_option("cv_category_merge_operation_lock",false);
             if ($lock) {
-              fwrite(STDERR, "Lock de taxonomia ainda presente, nao executar nova fusao.\n");
-              exit(1);
+              if (!is_array($lock) || ($lock["type"]??"")!=="misplaced") {
+                fwrite(STDERR, "Existe um lock desconhecido. Nenhuma escrita permitida.\n");
+                exit(1);
+              }
+              if (!delete_option("cv_category_merge_operation_lock")) {
+                fwrite(STDERR, "Lock antigo nao foi libertado.\n");
+                exit(2);
+              }
+              echo "stale-stage2-lock=released\n";
+            }
+            if (get_option("cv_category_merge_operation_lock",false)) {
+              fwrite(STDERR, "Ainda existe bloqueio de escrita.\n");
+              exit(3);
             }
             echo "taxonomy-merge-lock=free\n";
           '
