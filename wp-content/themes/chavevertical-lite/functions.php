@@ -72,6 +72,11 @@ if ( file_exists( $cvl_postcode_locality_file ) ) {
     require_once $cvl_postcode_locality_file;
 }
 
+$cvl_email_ptpt_file = get_template_directory() . '/inc/woocommerce-email-ptpt.php';
+if ( file_exists( $cvl_email_ptpt_file ) ) {
+    require_once $cvl_email_ptpt_file;
+}
+
 $cvl_order_email_design_file = get_template_directory() . '/inc/order-email-design.php';
 if ( file_exists( $cvl_order_email_design_file ) ) {
     require_once $cvl_order_email_design_file;
