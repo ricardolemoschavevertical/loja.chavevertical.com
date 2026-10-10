@@ -327,13 +327,11 @@ jobs:
             const billingIndex=sectionOrder.indexOf('wp-block-woocommerce-checkout-billing-address-block');
             const fiscalIndex=sectionOrder.indexOf('wp-block-woocommerce-checkout-additional-information-block');
             const paymentIndex=sectionOrder.indexOf('wp-block-woocommerce-checkout-payment-block');
-            // Woo Blocks unmounts billing address fields when "Same as shipping" is
-            // selected; in that mode its wrapper is absent from the DOM.
-            // Verify the fiscal step always precedes payment, and its position
-            // relative to Billing when that section is actually rendered.
-            if(fiscalIndex<0 || paymentIndex<0 || fiscalIndex>=paymentIndex
-              || (billingIndex>=0 && billingIndex>=fiscalIndex)){
-              throw new Error('Fiscal section must precede payment and follow Billing when rendered');
+            // Customer selection and NIF/NIPC must appear BEFORE the billing
+            // address section, with all three preceding payment.
+            if(fiscalIndex<0 || billingIndex<0 || paymentIndex<0 ||
+              fiscalIndex>=billingIndex || billingIndex>=paymentIndex){
+              throw new Error('Fiscal customer-type section must precede billing address');
             }
             console.log('REAL_BROWSER_FISCAL_PLACEMENT=PASS');
 
@@ -360,12 +358,61 @@ jobs:
               };
             });
             console.log('BILLING_FIRST_INIT='+JSON.stringify(billingFirst));
+
+            // Unified full name is visible; Woo keeps the underlying first and
+            // last name values required by payment, billing and transport.
+            await page.waitForSelector('#cvl-billing-full-name');
+            await page.waitForSelector('#cvl-shipping-full-name');
+            const initialFullNames=await page.evaluate(()=>{
+              const ids=['billing','shipping'];
+              return ids.map(section=>{
+                const control=document.getElementById('cvl-'+section+'-full-name');
+                const first=document.getElementById(section+'-first_name');
+                const last=document.getElementById(section+'-last_name');
+                return {section,control:!!control,required:control?.required??false,
+                  firstHidden:getComputedStyle(first.closest('.wc-block-components-text-input')).display==='none',
+                  lastHidden:getComputedStyle(last.closest('.wc-block-components-text-input')).display==='none'};
+              });
+            });
+            console.log('FULL_NAME_FIELDS='+JSON.stringify(initialFullNames));
+            if(initialFullNames.some(x=>!x.control||!x.firstHidden||!x.lastHidden)){
+              throw new Error('Separate first and last name fields were not safely replaced');
+            }
+
+            await page.locator('#cvl-billing-full-name').fill('Maria João da Silva');
+            await page.locator('#cvl-billing-full-name').blur();
+            await page.waitForTimeout(350);
+            const billingName=await page.evaluate(()=>{
+              const cart=window.wp.data.select('wc/store/cart').getCustomerData();
+              return {first:cart.billingAddress.first_name,last:cart.billingAddress.last_name,
+                visible:document.getElementById('cvl-billing-full-name')?.value??null};
+            });
+            console.log('BILLING_FULL_NAME_SPLIT='+JSON.stringify(billingName));
+            if(billingName.visible!=='Maria João da Silva' ||
+              billingName.first!=='Maria João da'||billingName.last!=='Silva'){
+              throw new Error('Nome completo must be saved as native first_name and last_name');
+            }
+
+            await page.locator('#cvl-shipping-full-name').fill('António Ferreira Costa');
+            await page.locator('#cvl-shipping-full-name').blur();
+            await page.waitForTimeout(350);
+            const shippingName=await page.evaluate(()=>{
+              const cart=window.wp.data.select('wc/store/cart').getCustomerData();
+              return {first:cart.shippingAddress.first_name,last:cart.shippingAddress.last_name,
+                visible:document.getElementById('cvl-shipping-full-name')?.value??null};
+            });
+            console.log('SHIPPING_FULL_NAME_SPLIT='+JSON.stringify(shippingName));
+            if(shippingName.first!=='António Ferreira'||shippingName.last!=='Costa'){
+              throw new Error('Shipping Nome completo was not saved in Woo customer address');
+            }
+            console.log('REAL_BROWSER_FULL_NAME=PASS');
+
             if(billingFirst.useShippingAsBilling!==false ||
               !billingFirst.billingVisible ||
-              billingFirst.order[0]!=='wp-block-woocommerce-checkout-billing-address-block' ||
-              billingFirst.order[1]!=='wp-block-woocommerce-checkout-additional-information-block' ||
+              billingFirst.order[0]!=='wp-block-woocommerce-checkout-additional-information-block' ||
+              billingFirst.order[1]!=='wp-block-woocommerce-checkout-billing-address-block' ||
               billingFirst.order[2]!=='wp-block-woocommerce-checkout-shipping-address-block'){
-              throw new Error('Billing and fiscal sections are not displayed before shipping address');
+              throw new Error('Fiscal customer type, billing and shipping sections are not in requested order');
             }
             if(!billingFirst.sameLabel.includes('faturação para entrega')){
               throw new Error('Missing explicit matching delivery label');
@@ -443,6 +490,21 @@ jobs:
               return !!a?.getClientRects().length&&!!type?.getClientRects().length&&!!delivery?.getClientRects().length;
             });
             console.log('MOBILE_BILLING_FIRST='+mobileOkay);
+
+            const mobileFullName=await page.evaluate(()=>{
+              const input=document.getElementById('cvl-billing-full-name');
+              const section=document.getElementById('billing');
+              const rect=input?.getBoundingClientRect();
+              const parentRect=section?.getBoundingClientRect();
+              return {visible:!!input?.getClientRects().length,
+                within:!!rect&&!!parentRect&&rect.left>=parentRect.left-2&&rect.right<=parentRect.right+2,
+                width:rect?.width??0};
+            });
+            console.log('MOBILE_FULL_NAME='+JSON.stringify(mobileFullName));
+            if(!mobileFullName.visible || !mobileFullName.within || mobileFullName.width<200){
+              throw new Error('Full-name input must fit the mobile billing form');
+            }
+
             const fiscalMobile=await page.evaluate(()=>{
               const group=document.getElementById('cvl-fiscal-customer-radio-group')?.getBoundingClientRect();
               const tax=document.getElementById('order-cvl-fiscal-nif')?.getBoundingClientRect();
