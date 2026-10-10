@@ -35,6 +35,104 @@ async function payload(request){
   if(!p||Array.isArray(p)||typeof p!=='object')throw Error('JSON inválido.');
   return p;
 }
+
+/**
+ * The admin chooses the provider, model and account policy in WooCommerce.
+ * Config and Gemini credentials are Cloudflare Secrets, never sent on Queue
+ * messages, never persisted in D1 and never returned from this Worker.
+ */
+function activeConfig(env){
+  let o={};
+  try{
+    const parsed=JSON.parse(String(env.CV_AI_CONFIG_JSON||'{}'));
+    if(parsed && typeof parsed==='object' && !Array.isArray(parsed))o=parsed;
+  }catch(_e){return {provider:'workers_ai',gemini_model:'gemini-2.5-flash',
+    key_strategy:'auto',jobs_enabled:false};}
+  return {
+    provider:o.provider==='gemini'?'gemini':'workers_ai',
+    gemini_model:/^gemini-[a-z0-9.-]{3,60}$/i.test(String(o.gemini_model||''))
+      ?String(o.gemini_model):'gemini-2.5-flash',
+    key_strategy:['auto','free','paid','primary'].includes(o.key_strategy)?o.key_strategy:'auto',
+    jobs_enabled:o.jobs_enabled===true
+  };
+}
+function jobsEnabled(env){
+  return enabled(env.ENABLE_AI_JOBS) || activeConfig(env).jobs_enabled;
+}
+function availableGeminiKeys(env){
+  let raw=[];
+  try {
+    const decoded=JSON.parse(String(env.GEMINI_API_KEYS_JSON||'[]'));
+    if(Array.isArray(decoded))raw=decoded;
+  }catch(_e){return [];}
+  if(!raw.length && typeof env.GEMINI_API_KEY==='string' && env.GEMINI_API_KEY.length>=20)
+    raw=[{key:env.GEMINI_API_KEY,label:'principal',tier:'auto'}];
+  return raw.filter(x=>x&&typeof x.key==='string'&&/^[A-Za-z0-9_-]{20,256}$/.test(x.key))
+    .map(x=>({key:x.key,label:String(x.label||'Gemini').slice(0,60),
+      tier:['free','paid','auto'].includes(x.tier)?x.tier:'auto'}))
+    .slice(0,20);
+}
+function selectedGeminiKeys(env){
+  const config=activeConfig(env),list=availableGeminiKeys(env);
+  if(config.key_strategy==='primary')return list.slice(0,1);
+  if(config.key_strategy==='free')return list.filter(x=>x.tier==='free');
+  if(config.key_strategy==='paid')return list.filter(x=>x.tier==='paid');
+  return list.sort((a,b)=>Number(a.tier==='paid')-Number(b.tier==='paid'));
+}
+async function callGemini(env,prompt){
+  const config=activeConfig(env);
+  const keys=selectedGeminiKeys(env);
+  if(!keys.length)throw Error('Gemini selecionado sem contas autorizadas.');
+  const url='https://generativelanguage.googleapis.com/v1beta/models/'+
+    encodeURIComponent(config.gemini_model)+':generateContent';
+  const body=JSON.stringify({
+    contents:[{role:'user',parts:[{text:prompt}]}],
+    generationConfig:{temperature:0.1,maxOutputTokens:3500,
+      responseMimeType:'application/json'}
+  });
+  let last='Nenhuma conta respondeu.';
+  for(const entry of keys){
+    try{
+      const r=await fetch(url,{
+        method:'POST',
+        headers:{'x-goog-api-key':entry.key,'Content-Type':'application/json',
+          'Accept':'application/json'},
+        body,redirect:'error'
+      });
+      if(r.status===429||r.status===503||r.status===500){
+        last='Gemini HTTP '+r.status+' (limite ou indisponibilidade)';
+        continue;
+      }
+      if(!r.ok){
+        const e=new Error('Gemini HTTP '+r.status);
+        e.http=r.status;throw e;
+      }
+      const result=await r.json();
+      const parts=result?.candidates?.[0]?.content?.parts||[];
+      const output=parts.filter(x=>typeof x.text==='string').map(x=>x.text).join('\n').trim();
+      if(!output)throw Error('Gemini respondeu sem conteúdo JSON.');
+      return {response:output};
+    }catch(e){
+      last=clean(e.message,110);
+      if(e.http===401||e.http===403||e.http===400)throw e;
+    }
+  }
+  throw Error('Falha em todas as contas Gemini disponíveis: '+last);
+}
+async function listGeminiModels(env){
+  const key=selectedGeminiKeys(env)[0]?.key||availableGeminiKeys(env)[0]?.key;
+  if(!key)return fail('Nenhuma chave Gemini foi sincronizada no Worker.',409);
+  const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=100',
+    {headers:{'x-goog-api-key':key,'Accept':'application/json'},redirect:'error'});
+  if(!r.ok)return fail('A Google recusou a consulta de modelos (HTTP '+r.status+').',502);
+  const result=await r.json();
+  const models=(Array.isArray(result.models)?result.models:[])
+    .filter(x=>Array.isArray(x.supportedGenerationMethods)&&x.supportedGenerationMethods.includes('generateContent'))
+    .map(x=>({name:String(x.name||'').replace(/^models\//,''),
+      display_name:clean(x.displayName||'',120)}))
+    .filter(x=>/^gemini-[a-z0-9.-]+$/i.test(x.name)).slice(0,100);
+  return json({ok:true,provider:'gemini',models});
+}
 function requireBindings(env){
   if(!env.DB||!env.JOBS||!env.AI)return 'Bindings DB/JOBS/AI ainda não disponíveis.';
   if(!env.CV_AI_TOKEN)return 'Token de autorização por configurar.';
@@ -105,7 +203,7 @@ async function makeList(env,req){
   return json({ok:true,id:uuid,total:ids.size},201);
 }
 async function start(env,id){
-  if(!enabled(env.ENABLE_AI_JOBS))return fail('Processamento por IA desativado durante instalação.',423);
+  if(!jobsEnabled(env))return fail('Processamento por IA desativado; ativar no painel WooCommerce.',423);
   const x=await env.DB.prepare('SELECT id,status FROM lists WHERE id=?').bind(id).first();
   if(!x)return fail('Lista não encontrada.',404);
   await env.DB.prepare("UPDATE lists SET status='active' WHERE id=?").bind(id).run();
@@ -150,7 +248,7 @@ async function apply(env,id){
   }
 }
 async function processMessage(env,message){
-  if(!enabled(env.ENABLE_AI_JOBS)){message.retry({delaySeconds:3600});return;}
+  if(!jobsEnabled(env)){message.retry({delaySeconds:3600});return;}
   const id=message.body?.jobId;
   if(!isUUID(id)){message.ack();return;}
   const j=await env.DB.prepare("SELECT j.*,l.status AS list_status FROM jobs j JOIN lists l ON j.list_id=l.id WHERE j.id=?")
@@ -167,10 +265,12 @@ async function processMessage(env,message){
       category_paths:src.category_paths,description:clean(src.description,7800),
       short_description:clean(src.short_description,2200)};
     const prompt='Responde APENAS com JSON válido contendo name,description,short_description,meta_description,focus_keyword. PT-PT. Marca MAIÚSCULAS; modelo e especificações apenas se confirmados; descrição 350-600 palavras com Aplicações e Vantagens; breve 8-15 pontos; nunca inventar dados ou alterar preço/SKU/stock/categoria/imagens/estado. Dados:\n'+JSON.stringify(input);
-    const ai=await env.AI.run(env.AI_MODEL||MODEL,{
-      messages:[{role:'system',content:'Devolve somente JSON. Nunca inventar dados técnicos.'},{role:'user',content:prompt}],
-      max_tokens:3800,temperature:0.1
-    });
+    const ai=activeConfig(env).provider==='gemini'
+      ? await callGemini(env,prompt)
+      : await env.AI.run(env.AI_MODEL||MODEL,{
+          messages:[{role:'system',content:'Devolve somente JSON. Nunca inventar dados técnicos.'},{role:'user',content:prompt}],
+          max_tokens:3800,temperature:0.1
+        });
     const result=proposal(ai,src);
     await env.DB.prepare("UPDATE jobs SET state='review',source_version=?,source_json=?,proposal_json=?,error=NULL,updated_at=datetime('now') WHERE id=?")
       .bind(src.modified_gmt,JSON.stringify(src),JSON.stringify(result),id).run();
@@ -190,9 +290,11 @@ export default {
       if(p==='/health'&&request.method==='GET') {
         const bindings=!!env.DB&&!!env.JOBS&&!!env.AI;
         const secret=String(env.CV_AI_TOKEN||'').length>=40;
-        return json({ok:bindings&&secret,service:'cv-ai-enricher',version:'0.3.0',
+        return json({ok:bindings&&secret,service:'cv-ai-enricher',version:'0.4.0',
           bindings_ready:bindings,auth_ready:secret,
-          processing_enabled:enabled(env.ENABLE_AI_JOBS),
+          provider:activeConfig(env).provider,model:activeConfig(env).gemini_model,
+          gemini_accounts_configured:availableGeminiKeys(env).length,
+          processing_enabled:jobsEnabled(env),
           product_apply_enabled:enabled(env.ENABLE_PRODUCT_APPLY)},
           bindings&&secret?200:503);
       }
@@ -204,6 +306,7 @@ export default {
         return json(await woo(env,'GET','/wp-json/cv-ai/v1/catalog/categories'));
       if(p==='/v1/catalog/categories/validate'&&request.method==='POST')
         return json(await woo(env,'POST','/wp-json/cv-ai/v1/catalog/categories/validate',await payload(request)));
+      if(p==='/v1/providers/gemini/models'&&request.method==='GET')return listGeminiModels(env);
       if(p==='/v1/lists'&&request.method==='GET')return lists(env);
       if(p==='/v1/lists'&&request.method==='POST')return makeList(env,request);
       let match=p.match(/^\/v1\/lists\/([\da-f-]+)(?:\/(start|pause|jobs))?$/i);
@@ -225,7 +328,7 @@ export default {
         if(!action&&request.method==='GET')return jobDetail(env,id);
         if(action==='apply'&&request.method==='POST')return apply(env,id);
         if(action==='retry'&&request.method==='POST'){
-          if(!enabled(env.ENABLE_AI_JOBS))return fail('Processamento por IA desativado.',423);
+          if(!jobsEnabled(env))return fail('Processamento por IA desativado.',423);
           const changed=await env.DB.prepare("UPDATE jobs SET state='queued',attempts=0,error=NULL WHERE id=? AND state IN ('failed','stale')").bind(id).run();
           if(!changed.meta?.changes)return fail('Tarefa não disponível para repetir.',409);
           await env.JOBS.send({jobId:id});return json({ok:true,queued:true});
