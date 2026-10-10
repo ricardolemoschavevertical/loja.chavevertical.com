@@ -221,22 +221,9 @@ $cvl_category_image = static function ( $term, $size = 'large', $loading = 'lazy
         return '';
     }
 
-    $thumbnail_id = absint( get_term_meta( $term->term_id, 'thumbnail_id', true ) );
-
-    if ( ! $thumbnail_id ) {
-        return '';
-    }
-
-    return wp_get_attachment_image(
-        $thumbnail_id,
-        $size,
-        false,
-        array(
-            'loading'  => $loading,
-            'decoding' => 'async',
-            'alt'      => $term->name,
-        )
-    );
+    return function_exists( 'cvl_category_picture' )
+        ? cvl_category_picture( $term, $size, $loading )
+        : '';
 };
 ?>
 
