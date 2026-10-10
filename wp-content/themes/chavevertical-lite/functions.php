@@ -349,6 +349,16 @@ add_action( 'wp_enqueue_scripts', function () {
             cvl_asset_version( 'assets/js/checkout-fiscal-radios.js' ),
             true
         );
+
+        // Apresentar apenas Nome completo na faturação e entrega, sem
+        // alterar o first_name / last_name interno exigido pelo WooCommerce.
+        wp_enqueue_script(
+            'cvl-checkout-full-name',
+            get_template_directory_uri() . '/assets/js/checkout-full-name.js',
+            array( 'wp-data', 'wc-blocks-data-store', 'cvl-checkout-billing-first' ),
+            cvl_asset_version( 'assets/js/checkout-full-name.js' ),
+            true
+        );
     }
 
     if ( is_front_page() ) {
