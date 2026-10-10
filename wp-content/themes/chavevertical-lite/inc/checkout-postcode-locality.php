@@ -90,7 +90,10 @@ function cvl_postcode_locality_parse_reply( int $http_status, string $body, stri
                 is_array( $item ) ? ( $item['localidade'] ?? '' ) : $item
             );
             if ( '' !== $candidate ) {
-                $possible[ mb_strtolower( $candidate, 'UTF-8' ) ] = $candidate;
+                $key = function_exists( 'mb_strtolower' )
+                    ? mb_strtolower( $candidate, 'UTF-8' )
+                    : strtolower( $candidate );
+                $possible[ $key ] = $candidate;
             }
         }
         if ( count( $possible ) > 1 ) {
