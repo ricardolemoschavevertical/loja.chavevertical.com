@@ -1,0 +1,31 @@
+name: Preservar imagem de categoria apos fusao
+on:
+  workflow_run:
+    workflows: ["Consolidar categorias duplicadas conforme backup"]
+    types: [completed]
+permissions:
+  contents: read
+jobs:
+  image:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.event.workflow_run.conclusion == 'success'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 4
+    steps:
+      - name: Repor imagem existente de multimetros sem substituir ficheiros
+        shell: bash
+        run: |
+          set -euo pipefail
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval '
+            $id=23340;$photo=26907;
+            $cat=get_term($id,"product_cat");
+            if (!$cat || is_wp_error($cat)) { fwrite(STDERR,"Categoria destino nao existe\n"); exit(1); }
+            $current=(int)get_term_meta($id,"thumbnail_id",true);
+            if ($current>0) { echo "Imagem ja existente; preservada: ".$current."\n"; return; }
+            if (!wp_attachment_is_image($photo)) {
+                fwrite(STDERR,"Imagem original nao identificada; nao houve alteracao\n");exit(2);
+            }
+            update_term_meta($id,"thumbnail_id",$photo);
+            $confirmed=(int)get_term_meta($id,"thumbnail_id",true);
+            if ($confirmed!==$photo) { fwrite(STDERR,"Erro apos atualizar meta\n"); exit(3); }
+            echo "Imagem historica recuperada: category=".$id.";attachment=".$photo."\n";
+          '
