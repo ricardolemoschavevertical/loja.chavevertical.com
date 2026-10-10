@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CV MCP Bridge - Chave Vertical
  * Description: Ponte MCP independente com ferramentas WooCommerce e delegação segura para Cloudflare.
- * Version: 0.3.0
+ * Version: 0.4.0
  * Author: CHAVE VERTICAL
  * Requires Plugins: woocommerce, chavevertical-core
  * Requires PHP: 7.4
@@ -20,12 +20,19 @@ final class CV_MCP_Bridge {
         ]);
     }
     public static function authenticate(WP_REST_Request $r) {
-        $expected=defined('CV_MCP_BRIDGE_TOKEN')?(string)CV_MCP_BRIDGE_TOKEN:'';
-        $given=(string)$r->get_header('authorization');
+        $given=trim((string)$r->get_header('authorization'));
         if(stripos($given,'Bearer ')===0)$given=substr($given,7);
         if(!$given)$given=(string)$r->get_header('x-cv-mcp-token');
-        if(strlen($expected)<40 || !$given || !hash_equals($expected,$given))
-            return new WP_Error('cv_mcp_forbidden','Autenticação MCP necessária.',['status'=>401]);
+        if(class_exists('CV_CFAI_Secrets')) {
+            $valid=CV_CFAI_Secrets::verify_mcp_token($given);
+        } elseif(defined('CV_MCP_BRIDGE_TOKEN') && strlen((string)CV_MCP_BRIDGE_TOKEN)>=40) {
+            $valid=strlen($given)>=40 && hash_equals((string)CV_MCP_BRIDGE_TOKEN,$given);
+        } else {
+            $hash=(string)get_option('cv_mcp_bridge_token_sha256','');
+            $valid=(bool)preg_match('/^[a-f0-9]{64}$/D',$hash)
+                && strlen($given)>=40 && hash_equals($hash,hash('sha256',$given));
+        }
+        if(!$valid) return new WP_Error('cv_mcp_forbidden','Autenticação MCP necessária.',['status'=>401]);
         return true;
     }
 
@@ -65,7 +72,7 @@ final class CV_MCP_Bridge {
         if($method==='notifications/initialized')return new WP_REST_Response(null,202);
         if($method==='initialize')return rest_ensure_response(['jsonrpc'=>'2.0','id'=>$id,'result'=>[
             'protocolVersion'=>'2025-03-26','capabilities'=>['tools'=>['listChanged'=>false]],
-            'serverInfo'=>['name'=>'cv-mcp-bridge','version'=>'0.3.0']]]);
+            'serverInfo'=>['name'=>'cv-mcp-bridge','version'=>'0.4.0']]]);
         if($method==='ping')return rest_ensure_response(['jsonrpc'=>'2.0','id'=>$id,'result'=>(object)[]]);
         if($method==='tools/list')return rest_ensure_response(['jsonrpc'=>'2.0','id'=>$id,'result'=>['tools'=>self::tools()]]);
         if($method!=='tools/call')return rest_ensure_response(self::error($id,-32601,'Método MCP não suportado.'));
