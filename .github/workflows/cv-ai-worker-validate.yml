@@ -36,6 +36,29 @@ jobs:
           const h=await healthy.json();
           assert.equal(h.processing_enabled,false);
           assert.equal(h.product_apply_enabled,false);
+          assert.equal(h.version,'0.4.0');
+          assert.equal(h.provider,'workers_ai');
+          assert.equal(h.gemini_accounts_configured,0);
+          const account={key:'AIza'+'x'.repeat(44),label:'Fornecedor Principal',tier:'free'};
+          const configured={...fake,
+            CV_AI_CONFIG_JSON:JSON.stringify({
+              provider:'gemini',gemini_model:'gemini-2.5-flash',
+              jobs_enabled:true,product_apply_enabled:false,key_strategy:'auto'
+            }),
+            GEMINI_API_KEYS_JSON:JSON.stringify([account])
+          };
+          const configuredResp=await worker.fetch(req,configured);
+          assert.equal(configuredResp.status,200);
+          const configuredHealth=await configuredResp.json();
+          assert.equal(configuredHealth.provider,'gemini');
+          assert.equal(configuredHealth.gemini_accounts_configured,1);
+          assert.equal(configuredHealth.processing_enabled,true);
+          assert.equal(configuredHealth.product_apply_enabled,false);
+          assert.ok(!JSON.stringify(configuredHealth).includes(account.key),
+            'Gemini secret must never be returned from Worker');
+          const modelForbidden=await worker.fetch(
+            new Request('https://example.test/v1/providers/gemini/models'),configured);
+          assert.equal(modelForbidden.status,401);
           const unauthorized=await worker.fetch(new Request('https://example.test/v1/lists'),fake);
           assert.equal(unauthorized.status,401);
           console.log('Worker health/auth and safety defaults: PASS');
