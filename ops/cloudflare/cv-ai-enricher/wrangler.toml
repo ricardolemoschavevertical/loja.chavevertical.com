@@ -1,0 +1,33 @@
+name = "cv-ai-enricher"
+main = "worker.mjs"
+compatibility_date = "2026-10-10"
+workers_dev = true
+
+[vars]
+WOO_BASE_URL = "https://loja.chavevertical.com"
+AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast"
+ENABLE_AI_JOBS = "false"
+ENABLE_PRODUCT_APPLY = "false"
+
+[ai]
+binding = "AI"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "cv-ai-enricher-db"
+database_id = "cab9dcd9-9d1c-46df-b765-c74cb9cf3e9c"
+
+[[queues.producers]]
+queue = "cv-ai-enricher-jobs"
+binding = "JOBS"
+
+[[queues.consumers]]
+queue = "cv-ai-enricher-jobs"
+max_batch_size = 1
+max_batch_timeout = 5
+max_retries = 3
+max_concurrency = 2
+retry_delay = 60
+dead_letter_queue = "cv-ai-enricher-dlq"
+
+# CV_AI_TOKEN is stored as a Cloudflare Secret. Never commit the value.
