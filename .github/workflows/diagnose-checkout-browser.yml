@@ -81,33 +81,33 @@ jobs:
             });
             console.log('native_fiscal_fields='+JSON.stringify(fiscalSelectors));
 
-            const typeField = page.locator('select[id*="cvl-fiscal/customer-type"]');
+            const typeField = page.locator('select[id*="cvl-fiscal-customer-type"]');
             if(await typeField.count()!==1){
               throw new Error('Native company/individual selector not visible in real checkout');
             }
             await typeField.selectOption('empresa');
             await page.waitForTimeout(600);
             const companyFields = await page.evaluate(()=>{
-              return Array.from(document.querySelectorAll('input[id*="cvl-fiscal"]')).map(e=>({
+              return Array.from(document.querySelectorAll('input[id*="cvl-fiscal-"]')).map(e=>({
                 id:e.id,visible:e.getClientRects().length>0
               }));
             });
             console.log('fiscal_company_fields='+JSON.stringify(companyFields));
-            if(!companyFields.some(x=>x.id.includes('/company-name')&&x.visible)
-              ||!companyFields.some(x=>x.id.includes('/nipc')&&x.visible)){
+            if(!companyFields.some(x=>x.id.includes('-company-name')&&x.visible)
+              ||!companyFields.some(x=>x.id.endsWith('-nipc')&&x.visible)){
               throw new Error('Company name and NIPC fields must appear after choosing Empresa');
             }
 
             await typeField.selectOption('particular');
             await page.waitForTimeout(500);
             const personFields = await page.evaluate(()=>{
-              return Array.from(document.querySelectorAll('input[id*="cvl-fiscal"]')).map(e=>({
+              return Array.from(document.querySelectorAll('input[id*="cvl-fiscal-"]')).map(e=>({
                 id:e.id,visible:e.getClientRects().length>0
               }));
             });
             console.log('fiscal_person_fields='+JSON.stringify(personFields));
-            if(!personFields.some(x=>x.id.includes('/nif')&&x.visible)
-              ||personFields.some(x=>x.id.includes('/nipc')&&x.visible)){
+            if(!personFields.some(x=>x.id.endsWith('-nif')&&x.visible)
+              ||personFields.some(x=>x.id.endsWith('-nipc')&&x.visible)){
               throw new Error('NIF only must appear for Particular');
             }
             console.log('REAL_BROWSER_FISCAL_FIELDS=PASS');
