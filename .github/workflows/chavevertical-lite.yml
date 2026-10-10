@@ -22,6 +22,7 @@ on:
       - "ops/test-checkout-postcode-locality-unit.php"
       - "ops/test-checkout-postcode-locality-blocks.js"
       - "ops/test-checkout-blocks-fiscal-unit.php"
+      - "ops/move-checkout-fiscal-block.php"
   workflow_dispatch:
 
 permissions:
@@ -85,6 +86,7 @@ jobs:
           php ops/test-checkout-tax-validation-unit.php
           php -l ops/test-checkout-blocks-fiscal-unit.php
           php ops/test-checkout-blocks-fiscal-unit.php
+          php -l ops/move-checkout-fiscal-block.php
           php -l ops/test-checkout-vies-unit.php
           php ops/test-checkout-vies-unit.php
           php -l ops/test-checkout-postcodes-unit.php
@@ -187,6 +189,14 @@ jobs:
         run: |
           set -euo pipefail
           php ops/verify-checkout-customer-type.php
+
+      - name: Position fiscal fields beside billing (guarded one-time)
+        if: steps.latest.outputs.should_deploy == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          php ops/move-checkout-fiscal-block.php
+          php ops/move-checkout-fiscal-block.php --apply
 
       - name: Ensure brands page
         if: steps.latest.outputs.should_deploy == 'true'
