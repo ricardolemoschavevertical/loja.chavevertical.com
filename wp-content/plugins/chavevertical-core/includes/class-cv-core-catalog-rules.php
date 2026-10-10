@@ -12,12 +12,44 @@ final class CV_Core_Catalog_Rules {
 
     public static function init() {
         add_action('rest_api_init', [__CLASS__, 'routes']);
+        add_action('template_redirect', [__CLASS__, 'redirect_old_category_urls'], 0);
         add_action('admin_menu', [__CLASS__, 'menu'], 30);
         add_action('admin_post_cv_core_catalog_roots', [__CLASS__, 'save_admin']);
         add_action('created_product_cat', [__CLASS__, 'invalidate_cache']);
         add_action('edited_product_cat', [__CLASS__, 'invalidate_cache']);
         add_action('delete_product_cat', [__CLASS__, 'invalidate_cache']);
     }
+    /**
+     * Preserve SEO links when a category slug (or an ancestor slug) changes.
+     * Only redirect taxonomy 404s, never valid product/category routes.
+     */
+    public static function redirect_old_category_urls() {
+        if (!is_404() || is_admin() || wp_doing_ajax()) return;
+        if (function_exists('wp_is_json_request') && wp_is_json_request()) return;
+        $uri = isset($_SERVER['REQUEST_URI']) && is_string($_SERVER['REQUEST_URI'])
+            ? wp_unslash($_SERVER['REQUEST_URI']) : '';
+        $path = wp_parse_url($uri, PHP_URL_PATH);
+        if (!is_string($path) || strlen($path) > 600 || strpos($path, '/categoria-produto/') !== 0) return;
+        $redirects = get_option('cv_core_category_slug_redirects', []);
+        if (!is_array($redirects) || !isset($redirects[$path])) return;
+        $destination = $redirects[$path];
+        $seen = [$path => true];
+        // Resolve a finite redirect chain so an old term URL always gets one 301.
+        for ($i=0; $i<12; $i++) {
+            if (!is_string($destination) || strlen($destination)>600
+                || strpos($destination, '/categoria-produto/') !== 0
+                || strpos($destination, "\r") !== false || strpos($destination, "\n") !== false
+                || strpos($destination, '?') !== false || strpos($destination, '#') !== false
+                || isset($seen[$destination])) return;
+            $seen[$destination] = true;
+            if (!isset($redirects[$destination])) break;
+            $destination = $redirects[$destination];
+        }
+        if ($i===12 || $destination===$path) return;
+        wp_safe_redirect(home_url($destination), 301, 'ChaveVertical-Category');
+        exit;
+    }
+
     public static function invalidate_cache() { self::$cache = []; }
 
     public static function roots($scope) {
