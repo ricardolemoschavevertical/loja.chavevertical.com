@@ -78,6 +78,7 @@ foreach($lines as $line){
     if(!is_array($event))throw new RuntimeException('Malformed migration journal line.');
     if(($event['op']??'')==='product')$productEntries[]=$event;
     if(($event['op']??'')==='merged')$completedDeletes[(int)$event['from']]=true;
+    if(($event['op']??'')==='before_delete')$completedDeletes[(int)$event['id']]=true;
 }
 foreach(array_keys($deleted) as $id)if(!isset($completedDeletes[$id]))
     throw new RuntimeException('Journal does not confirm all 25 merged categories: '.$id);
