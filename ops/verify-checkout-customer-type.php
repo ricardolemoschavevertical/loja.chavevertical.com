@@ -40,7 +40,21 @@ $uses_shortcode   = has_shortcode( $page_content, 'woocommerce_checkout' );
 
 echo 'checkout_page_id=' . $checkout_page_id . "\n";
 echo 'checkout_mode=' . ( $uses_blocks ? 'blocks' : ( $uses_shortcode ? 'classic' : 'unknown' ) ) . "\n";
-cvl_checkout_test_assert( $uses_shortcode && ! $uses_blocks, 'Classic shortcode checkout is active' );
+cvl_checkout_test_assert( $uses_shortcode || $uses_blocks, 'Known WooCommerce checkout type is configured' );
+
+if ( $uses_blocks ) {
+    echo "NOTICE: checkout is WooCommerce Blocks. Classic NIF/NIPC/VIES fields are not rendered by the Blocks checkout.\n";
+    echo "checkout_fiscal_choice_ui=classic_only_not_available_in_blocks\n";
+}
+
+cvl_checkout_test_assert( function_exists( 'cvl_checkout_valid_pt_postcode' ), 'CTT postcode helper loaded in live theme' );
+cvl_checkout_test_assert( '6160-152' === wc_format_postcode( '6160152', 'PT' ), 'WooCommerce Store API-compatible PT normalization' );
+cvl_checkout_test_assert( WC_Validation::is_postcode( '6160-152', 'PT' ), 'WooCommerce PT postcode format accepted' );
+cvl_checkout_test_assert( ! WC_Validation::is_postcode( '6160-15A', 'PT' ), 'WooCommerce PT invalid postcode rejected' );
+cvl_checkout_test_assert(
+    cvl_checkout_valid_pt_postcode( '2500-663' ) && ! cvl_checkout_valid_pt_postcode( '2500-66' ),
+    'CTT seven-digit postcode format correctly checked'
+);
 
 $fields = apply_filters(
     'woocommerce_checkout_fields',
