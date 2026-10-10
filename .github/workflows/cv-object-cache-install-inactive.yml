@@ -1,0 +1,64 @@
+name: Install CV Object Cache 0.5.0 (inactive)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ops/packages/cv-object-cache-0.5.0/**"
+      - "ops/install-cv-object-cache-inactive.sh"
+      - ".github/workflows/cv-object-cache-install-inactive.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cv-object-cache-install-inactive
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check safe installer and payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n ops/install-cv-object-cache-inactive.sh
+          for n in 01 02 03 04 05 06 07 08; do
+            test -f "ops/packages/cv-object-cache-0.5.0/part-${n}.b64"
+          done
+          cat ops/packages/cv-object-cache-0.5.0/part-??.b64 | base64 --decode > "$RUNNER_TEMP/cvoc-code.tar.xz"
+          echo "b85df457cb739f4b198571c77e6d406c560739dc9dea6a11b05eb054096375f1  $RUNNER_TEMP/cvoc-code.tar.xz" | sha256sum --check --status
+          mkdir -p "$RUNNER_TEMP/cvoc-validate"
+          tar -xJf "$RUNNER_TEMP/cvoc-code.tar.xz" -C "$RUNNER_TEMP/cvoc-validate" --no-same-owner --no-same-permissions
+          grep -q '^ \* Version: 0\.5\.0$' "$RUNNER_TEMP/cvoc-validate/cv-object-cache/cv-object-cache.php"
+          find "$RUNNER_TEMP/cvoc-validate/cv-object-cache" -type f -name '*.php' -print0 | xargs -0 -r -n1 php -l
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cvoc-code-0.5.0-verified
+          path: ${{ runner.temp }}/cvoc-code.tar.xz
+          if-no-files-found: error
+          retention-days: 7
+
+  install-inactive:
+    needs: validate
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: cvoc-code-0.5.0-verified
+          path: ${{ runner.temp }}/cvoc-code-0.5.0-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Copy plugin only, keep inactive
+        shell: bash
+        env:
+          PACKAGE: ${{ runner.temp }}/cvoc-code-0.5.0-${{ github.run_id }}-${{ github.run_attempt }}/cvoc-code.tar.xz
+        run: bash ops/install-cv-object-cache-inactive.sh "$PACKAGE"
