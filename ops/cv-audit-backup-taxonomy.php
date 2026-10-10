@@ -29,8 +29,10 @@ do {
         ];
     }
     if (!$pages) {$pages=(int)wp_remote_retrieve_header($r,'x-wp-totalpages');}
+    echo 'CV_CAT_FETCH_PAGE '.wp_json_encode(['page'=>$page,'received'=>count($rows),'pages'=>$pages,'cumulative'=>count($source)]).PHP_EOL;
     $page++;
-} while ($page<=min(50,$pages ?: 50) && count($rows)===100);
+    if ($page>50) throw new RuntimeException('Pagination over safety limit');
+} while ($pages ? $page<=$pages : count($rows)===100);
 if (count($source)<500) throw new RuntimeException('Backup taxonomy not fully available');
 
 $terms=get_terms(['taxonomy'=>'product_cat','hide_empty'=>false,'orderby'=>'term_id','order'=>'ASC']);
