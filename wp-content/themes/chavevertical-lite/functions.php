@@ -53,6 +53,12 @@ if ( file_exists( $cvl_checkout_vies_file ) ) {
     require_once $cvl_checkout_vies_file;
 }
 
+// Verificação postal PT, independente entre faturação e entrega.
+$cvl_checkout_postcodes_file = get_template_directory() . '/inc/checkout-postcodes.php';
+if ( file_exists( $cvl_checkout_postcodes_file ) ) {
+    require_once $cvl_checkout_postcodes_file;
+}
+
 $cvl_order_email_design_file = get_template_directory() . '/inc/order-email-design.php';
 if ( file_exists( $cvl_order_email_design_file ) ) {
     require_once $cvl_order_email_design_file;
@@ -276,6 +282,14 @@ add_action( 'wp_enqueue_scripts', function () {
                 'ajaxUrl' => admin_url( 'admin-ajax.php' ),
                 'nonce'   => wp_create_nonce( 'cvl_vies_checkout' ),
             )
+        );
+
+        wp_enqueue_script(
+            'cvl-checkout-postcodes',
+            get_template_directory_uri() . '/assets/js/checkout-postcodes.js',
+            array( 'jquery', 'cvl-checkout-vies' ),
+            cvl_asset_version( 'assets/js/checkout-postcodes.js' ),
+            true
         );
     }
 
