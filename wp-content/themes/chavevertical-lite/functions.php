@@ -47,6 +47,13 @@ if ( file_exists( $cvl_checkout_customer_type_file ) ) {
     require_once $cvl_checkout_customer_type_file;
 }
 
+// API nativa Checkout Blocks: Particular/NIF ou Empresa/Nome/NIPC,
+// guardados exclusivamente nos dados de faturação.
+$cvl_checkout_blocks_fiscal_file = get_template_directory() . '/inc/checkout-blocks-fiscal.php';
+if ( file_exists( $cvl_checkout_blocks_fiscal_file ) ) {
+    require_once $cvl_checkout_blocks_fiscal_file;
+}
+
 // VIES é opcional, apenas para faturação Empresa; sem ligação à entrega.
 $cvl_checkout_vies_file = get_template_directory() . '/inc/checkout-vies.php';
 if ( file_exists( $cvl_checkout_vies_file ) ) {
