@@ -113,5 +113,15 @@ jobs:
             }
             echo "CV_AI_ADMIN_CLASSES=loaded;new_mcp=loaded;autoapply=disabled\n";
           '
+          # Confirm that public PHP and the protected CV AI REST route still work.
+          # The ERR trap restores the backup if the change broke the live site.
+          for url in "https://loja.chavevertical.com/" "https://loja.chavevertical.com/wp-json/"; do
+            code=$(curl -sS --connect-timeout 10 --max-time 30 -o /dev/null -w '%{http_code}' "$url")
+            echo "LIVE_SMOKE_URL=$url;HTTP=$code"
+            test "$code" = "200"
+          done
+          protected=$(curl -sS --connect-timeout 10 --max-time 30 -o /dev/null -w '%{http_code}' 'https://loja.chavevertical.com/wp-json/cv-ai/v1/catalog/categories')
+          echo "LIVE_CV_AI_UNAUTHORIZED_HTTP=$protected"
+          test "$protected" = "401"
           trap - ERR
           echo "SAFE_UPGRADE_SUCCESS;BACKUP_PATH=$TMP"
