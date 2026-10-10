@@ -869,3 +869,50 @@ body.woocommerce-checkout .wc-block-checkout .cvl-postcode-locality-status {
   padding:0 3px;
 }
 
+
+/* ============================================================
+   Faturação primeiro — checkout WooCommerce Blocks
+   A cópia para entrega é tratada pelo store oficial, não pelo DOM.
+   ============================================================ */
+
+/* O controlo nativo inverte o sentido pedido (Envio -> Faturação).
+   Ocultá-lo APENAS depois de confirmar que a faturação independente
+   está ativa. O controlo efetivo fica na secção Dados de faturação. */
+body.cvl-billing-first-active.woocommerce-checkout
+  .wc-block-checkout .wc-block-checkout__use-address-for-billing {
+  display:none!important;
+}
+
+/* O cliente escolheu "Usar a mesma morada de faturação para entrega":
+   apenas ocultar os inputs duplicados; métodos de transporte continuam. */
+body.cvl-billing-first-active.cvl-use-billing-for-shipping.woocommerce-checkout
+  .wc-block-checkout .wp-block-woocommerce-checkout-shipping-address-block {
+  display:none!important;
+}
+
+/* Evitar disponibilizar a opção de entrega em encomendas digitais/levantamento. */
+body.cvl-billing-first-active.cvl-delivery-unavailable.woocommerce-checkout
+  .wc-block-checkout #order-cvl-fiscal-use-billing-for-shipping {
+  display:none!important;
+}
+
+body.cvl-billing-first-active.woocommerce-checkout
+  .wc-block-checkout label[for="order-cvl-fiscal-use-billing-for-shipping"] {
+  display:inline-block;
+  font-weight:700;
+  color:#25353e;
+}
+
+/* Identificação fiscal integra visualmente a faturação. */
+body.cvl-billing-first-active.woocommerce-checkout
+  .wc-block-checkout .wp-block-woocommerce-checkout-additional-information-block {
+  margin-top:5px;
+  margin-bottom:18px;
+}
+
+body.cvl-billing-first-active.woocommerce-checkout
+  .wc-block-checkout .wp-block-woocommerce-checkout-additional-information-block
+  .wc-block-components-title {
+  margin-bottom:12px;
+}
+
