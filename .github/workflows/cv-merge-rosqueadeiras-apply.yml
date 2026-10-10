@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
     paths: [".github/workflows/cv-merge-rosqueadeiras-apply.yml"]
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,7 +14,8 @@ concurrency:
 
 jobs:
   merge:
-    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    # Desativado: a operação principal de 141 duplicados já está em execução.
+    if: false
     runs-on: [self-hosted, Linux, X64, loja-chavevertical]
     timeout-minutes: 16
     steps:
