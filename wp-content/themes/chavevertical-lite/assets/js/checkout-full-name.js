@@ -313,7 +313,20 @@
         // Avoid direct modifications to React-owned first_name / last_name.
         document.addEventListener('click', onPlaceOrder, true);
 
+        // A opção "usar faturação para entrega" altera a visibilidade por
+        // classe CSS, mesmo quando o checkout não muda dados no Store API.
+        document.addEventListener('change', function (event) {
+            if (event.target && event.target.id === 'order-cvl-fiscal-use-billing-for-shipping') {
+                window.setTimeout(schedule, 150);
+            }
+        }, true);
+
         if (typeof MutationObserver === 'function' && document.body) {
+            var classObserver = new MutationObserver(schedule);
+            classObserver.observe(document.body, {
+                attributes: true,
+                attributeFilter: ['class']
+            });
             var observer = new MutationObserver(function (mutations) {
                 if (mutations.some(function (mutation) {
                     return mutation.type === 'childList'
