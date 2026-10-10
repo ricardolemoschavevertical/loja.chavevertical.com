@@ -1,4 +1,4 @@
-name: Comparar slugs das categorias com backup
+name: Comparar slugs das categorias com backup (v2)
 
 on:
   push:
