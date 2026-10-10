@@ -1,0 +1,17 @@
+name: Validar reconciliacao final de categorias
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ops/cv-finalize-backup-categories.php"
+      - ".github/workflows/cv-final-categories-code-check.yml"
+permissions:
+  contents: read
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar parser PHP do reconciliador sem dados de producao
+        run: php -l ops/cv-finalize-backup-categories.php
