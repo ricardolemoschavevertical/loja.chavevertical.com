@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CV AI Enricher - Cloudflare
  * Description: Ponte segura WooCommerce <-> Cloudflare Workers, com categorias obtidas em tempo real.
- * Version: 0.4.0
+ * Version: 0.4.1
  * Author: CHAVE VERTICAL
  * Requires Plugins: woocommerce, chavevertical-core
  * Requires PHP: 7.4
@@ -26,11 +26,66 @@ final class CV_Cloudflare_AI_Enricher {
         return CV_CFAI_Secrets::open();
     }
 
+    const DEFAULT_WORKER_URL = 'https://cv-ai-enricher.chavevertical.workers.dev';
+
+    public static function validate_worker_url($raw) {
+        $url = untrailingslashit(esc_url_raw(trim((string) $raw)));
+        $parts = $url ? wp_parse_url($url) : false;
+        // Never transmit the shared token to an arbitrary host or a URL with
+        // credentials, query strings, fragments, custom ports or subpaths.
+        $allowed_hosts = [
+            'cv-ai-enricher.chavevertical.workers.dev',
+            'cv-ai-enricher.chavevertical.com'
+        ];
+        if (!$parts || !is_array($parts)
+            || ($parts['scheme'] ?? '') !== 'https'
+            || !in_array(strtolower((string) ($parts['host'] ?? '')), $allowed_hosts, true)
+            || isset($parts['user']) || isset($parts['pass'])
+            || isset($parts['port']) || isset($parts['query']) || isset($parts['fragment'])
+            || (isset($parts['path']) && $parts['path'] !== '' && $parts['path'] !== '/')
+            || !wp_http_validate_url($url)) {
+            return new WP_Error('cv_ai_worker_url', 'Indica o URL HTTPS oficial do Worker CV AI Enricher.');
+        }
+        return $url;
+    }
+
     public static function worker_url() {
-        $o = get_option(self::SETTINGS, []);
-        $url = defined('CV_CFAI_WORKER_URL') ? (string) CV_CFAI_WORKER_URL : (is_array($o) ? (string)($o['worker_url'] ?? '') : '');
-        $url = untrailingslashit($url);
-        return ($url && wp_http_validate_url($url) && wp_parse_url($url,PHP_URL_SCHEME)==='https') ? $url : '';
+        $saved = get_option(self::SETTINGS, []);
+        // Values saved in the plugin take precedence over legacy wp-config.php.
+        $url = is_array($saved) ? trim((string) ($saved['worker_url'] ?? '')) : '';
+        if ($url === '' && defined('CV_CFAI_WORKER_URL')) $url = (string) CV_CFAI_WORKER_URL;
+        if ($url === '') $url = self::DEFAULT_WORKER_URL;
+        $validated = self::validate_worker_url($url);
+        return is_wp_error($validated) ? '' : $validated;
+    }
+
+    public static function probe_worker($url, $token) {
+        $validated = self::validate_worker_url($url);
+        if (is_wp_error($validated)) return $validated;
+        if (!is_string($token) || strlen($token) < 40 || strlen($token) > 256
+            || preg_match('/[\\x00-\\x20\\x7F]/', $token)) {
+            return new WP_Error('cv_ai_missing_token', 'Indica um token de ligação ao Worker válido.');
+        }
+        $response = wp_remote_get($validated.'/v1/lists', [
+            'timeout' => 15, 'redirection' => 0, 'sslverify' => true,
+            'headers' => [
+                'Accept' => 'application/json',
+                'X-CV-AI-Token' => $token,
+                'Cache-Control' => 'no-store'
+            ]
+        ]);
+        if (is_wp_error($response)) {
+            return new WP_Error('cv_ai_connect_failed', 'Não foi possível contactar o Worker com segurança.');
+        }
+        $status = (int) wp_remote_retrieve_response_code($response);
+        $body = json_decode((string) wp_remote_retrieve_body($response), true);
+        if ($status !== 200 || !is_array($body) || empty($body['ok'])
+            || !isset($body['lists']) || !is_array($body['lists'])) {
+            return new WP_Error('cv_ai_connect_denied',
+                $status === 401 ? 'O Worker recusou o token (HTTP 401). Confirma o segredo na Cloudflare.'
+                    : 'Não foi possível validar a ligação ao Worker (HTTP '.$status.').');
+        }
+        return true;
     }
 
     public static function auth(WP_REST_Request $request) {
@@ -163,7 +218,7 @@ final class CV_Cloudflare_AI_Enricher {
     public static function remote($method,$route,$body=null) {
         $url=self::worker_url();
         $token=self::token();
-        if(!$url || strlen($token)<40)return new WP_Error('cv_ai_not_ready','Configure URL do Worker e token no wp-config.php.');
+        if(!$url || strlen($token)<40)return new WP_Error('cv_ai_not_ready','Configura o URL e o token em WooCommerce → CV AI Enricher → Cloudflare / Ligação.');
         $args=['method'=>$method,'timeout'=>15,'redirection'=>0,
             'headers'=>['Accept'=>'application/json','Content-Type'=>'application/json','X-CV-AI-Token'=>$token]];
         if($body!==null)$args['body']=wp_json_encode($body);
@@ -199,10 +254,12 @@ final class CV_Cloudflare_AI_Enricher {
     public static function save_settings() {
         if(!current_user_can('manage_options'))wp_die('Permissão insuficiente.');
         check_admin_referer('cv_cfai_settings');
-        $url=esc_url_raw(trim((string)wp_unslash($_POST['worker_url']??'')));
-        if($url && (!wp_http_validate_url($url)||wp_parse_url($url,PHP_URL_SCHEME)!=='https'))
-            wp_die('O URL do Worker deve ser HTTPS válido.');
-        update_option(self::SETTINGS,['worker_url'=>$url],false);
+        $url=self::validate_worker_url(wp_unslash($_POST['worker_url']??''));
+        if(is_wp_error($url))wp_die(esc_html($url->get_error_message()));
+        $settings=get_option(self::SETTINGS,[]);
+        if(!is_array($settings))$settings=[];
+        $settings['worker_url']=$url;
+        update_option(self::SETTINGS,$settings,false);
         wp_safe_redirect(admin_url('admin.php?page=cv-cloudflare-ai&updated=1'));
         exit;
     }
