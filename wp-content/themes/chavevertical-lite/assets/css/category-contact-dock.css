@@ -73,3 +73,24 @@ body.cv-has-category-contact-dock .cvl-floating-contact{display:none!important}
 }
 @media(prefers-reduced-motion:reduce){.cv-category-contact-dock .cv-dock-item{transition:none}}
 @media print{.cv-category-contact-dock{display:none!important}}
+
+/* Ficha de produto: atalhos laterais só com ícones, sem painéis expansíveis. */
+body.single-product .cv-category-contact-dock {
+  --cv-dock-tab:44px;--cv-dock-row:44px;
+  width:44px;gap:6px;right:max(4px,env(safe-area-inset-right,0px));
+}
+body.single-product .cv-category-contact-dock .cv-dock-item,
+body.single-product .cv-category-contact-dock .cv-dock-item[open] {
+  width:44px;height:44px;border:0;border-radius:50%;
+  background:transparent;box-shadow:none;overflow:visible;
+}
+body.single-product .cv-category-contact-dock summary {
+  width:44px;height:44px;background:transparent;position:absolute;inset:0;
+}
+body.single-product .cv-category-contact-dock .cv-dock-icon {
+  width:34px;height:34px;flex:0 0 34px;border-radius:0;background:transparent;
+}
+body.single-product .cv-category-contact-dock .cv-dock-icon svg {width:23px;height:23px}
+body.single-product .cv-category-contact-dock .cv-dock-whatsapp .cv-dock-icon svg {width:27px;height:27px}
+body.single-product .cv-category-contact-dock .cv-dock-panel {display:none!important}
+body.single-product .cv-category-contact-dock summary:focus-visible {outline:2px solid currentColor;outline-offset:0}
