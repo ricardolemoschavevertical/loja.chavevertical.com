@@ -1,0 +1,33 @@
+name: Auditoria completa categorias backup e loja
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/cv-full-taxonomy-audit.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate and run live backup comparison (read only)
+        shell: bash
+        env:
+          CV_TAXONOMY_AUDIT_DIR: ${{ runner.temp }}/cv-full-category-${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          php -l ops/cv-audit-backup-taxonomy.php
+          mkdir -p "$CV_TAXONOMY_AUDIT_DIR"
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval-file ops/cv-audit-backup-taxonomy.php
+          test -s "$CV_TAXONOMY_AUDIT_DIR/cv-category-full-inventory.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cv-full-category-audit-${{ github.run_id }}
+          path: ${{ runner.temp }}/cv-full-category-${{ github.run_id }}/
+          retention-days: 30
+          if-no-files-found: error
