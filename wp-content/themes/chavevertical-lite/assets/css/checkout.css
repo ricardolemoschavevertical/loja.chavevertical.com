@@ -798,3 +798,42 @@ body.woocommerce-checkout:not(.woocommerce-order-received)
   background:#fff9fa!important;
 }
 
+
+/* WooCommerce Checkout Blocks: ajuda não intrusiva, com dados separados. */
+body.woocommerce-checkout .wc-block-checkout .cvl-postcode-block-help {
+  display:block;
+  margin:0 0 15px;
+  padding:0 3px;
+  font-size:11px;
+  line-height:1.55;
+  color:#657484;
+}
+
+body.woocommerce-checkout .wc-block-checkout .cvl-postcode-block-help[hidden] {
+  display:none!important;
+}
+
+body.woocommerce-checkout .wc-block-checkout .cvl-postcode-block-help a {
+  color:var(--cvl-teal,#00776b);
+  font-weight:750;
+  text-decoration:underline;
+  text-underline-offset:2px;
+}
+
+body.woocommerce-checkout .wc-block-checkout .cvl-postcode-block-error {
+  display:block;
+  margin-top:5px;
+  color:#b42336;
+  font-size:11px;
+  line-height:1.45;
+}
+
+body.woocommerce-checkout .wc-block-checkout .cvl-postcode-block-error:empty {
+  display:none;
+}
+
+body.woocommerce-checkout .wc-block-checkout .cvl-postcode-block-help.is-invalid {
+  border-left:2px solid #b42336;
+  padding-left:11px;
+}
+
