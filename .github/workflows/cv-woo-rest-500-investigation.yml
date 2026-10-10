@@ -1,0 +1,65 @@
+name: Investigar erro HTTP 500 REST publico Woo
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/cv-woo-rest-500-investigation.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 7
+    steps:
+      - name: HTTP status and safe error type
+        shell: bash
+        run: |
+          set -euo pipefail
+          for route in / /wp-json/ /?rest_route=%2F /wp-json/cv-ai/v1/catalog/categories /wp-admin/; do
+            code=$(curl -sS --connect-timeout 8 --max-time 30 -o /tmp/loo-response -D /tmp/loo-headers -w '%{http_code};size=%{size_download};redirect=%{redirect_url}' "https://loja.chavevertical.com$route" || true)
+            echo "URL=$route;DETAILS=$code"
+            python3 - <<'PY'
+          import json,re
+          text=open('/tmp/loo-response','rb').read(100000).decode('utf-8','replace')
+          try:
+              d=json.loads(text)
+              print('RESPONSE_JSON_CODE=',str(d.get('code',''))[:80])
+              print('RESPONSE_JSON_MESSAGE=',str(d.get('message',''))[:130])
+          except Exception:
+              clean=re.sub('<[^>]+>',' ',text)
+              clean=re.sub(r'\s+',' ',clean)
+              print('HTML_SIGNATURE=',clean[:125])
+          PY
+          done
+
+      - name: Inspect recent generic PHP fatal signatures only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os,pathlib,re
+          locations=[
+            '/home/chavevertical-loja/htdocs/loja.chavevertical.com/wp-content/debug.log',
+            '/home/chavevertical-loja/logs',
+            '/home/chavevertical-loja/htdocs/loja.chavevertical.com/logs'
+          ]
+          hits=0
+          for loc in locations:
+              p=pathlib.Path(loc)
+              paths=[p] if p.is_file() else list(p.glob('*.log')) if p.is_dir() else []
+              for entry in paths[:20]:
+                  try:
+                      with entry.open('rb') as f:
+                          f.seek(max(0,entry.stat().st_size-300000))
+                          chunk=f.read().decode('utf-8','replace')
+                      lines=[line for line in chunk.splitlines() if re.search(r'PHP Fatal error|Uncaught Error|PHP Parse error|Critical error',line,re.I)]
+                      for line in lines[-8:]:
+                          line=re.sub(r'(AIza|sk-|Bearer\s+)[^\s"\']+','[REDACTED]',line)
+                          line=line.replace('\n',' ')
+                          print('FATAL_FILE=',entry.name,'SIGNATURE=',line[:330])
+                          hits+=1
+                  except (OSError,PermissionError):
+                      pass
+          print('FATAL_HITS=',hits)
+          PY
