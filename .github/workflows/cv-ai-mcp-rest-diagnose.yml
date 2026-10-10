@@ -1,0 +1,61 @@
+name: Diagnosticar endpoints CV AI e MCP com seguranca
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/cv-ai-mcp-rest-diagnose.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 7
+    steps:
+      - name: Confirmar auth via REST internamente no WordPress
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          wp --path="$WP" eval '
+            foreach ([
+              ["GET","/cv-ai/v1/catalog/categories"],
+              ["POST","/cv-mcp/v1/mcp"]
+            ] as $route) {
+              try {
+                $r=new WP_REST_Request($route[0],$route[1]);
+                $r->set_header("Content-Type","application/json");
+                if ($route[0]==="POST") $r->set_body("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\"}");
+                $out=rest_do_request($r);
+                echo "INTERNAL_CV_REST=".$route[1].";status=".$out->get_status().";code=".sanitize_key((string)($out->get_data()["code"]??"none"))."\n";
+              }catch(Throwable $e){
+                echo "INTERNAL_CV_REST_EXCEPTION=".$route[1].";type=".get_class($e)."\n";
+                exit(1);
+              }
+            }
+            echo "SECRET_CLASS=".(class_exists("CV_CFAI_Secrets")?"yes":"no").";MCP_CLASS=".(class_exists("CV_MCP_Bridge")?"yes":"no")."\n";
+          '
+      - name: Confirmar resposta externa e tipo de erro, sem dados pessoais
+        shell: bash
+        run: |
+          set -euo pipefail
+          for route in /wp-json/ /wp-json/cv-ai/v1/catalog/categories /wp-json/cv-catalog/v1/categories /wp-json/cv-mcp/v1/mcp; do
+            if [ "$route" = /wp-json/cv-mcp/v1/mcp ]; then
+              curl -sS --connect-timeout 8 --max-time 35 -X POST -H 'Content-Type: application/json' \
+                -d '{"jsonrpc":"2.0","id":1,"method":"initialize"}' \
+                -o /tmp/cv-api-reply -D /tmp/cv-api-headers \
+                -w "REMOTE_STATUS=$route;HTTP=%{http_code};CONTENT_TYPE=%{content_type}\n" "https://loja.chavevertical.com$route"
+            else
+              curl -sS --connect-timeout 8 --max-time 35 \
+                -o /tmp/cv-api-reply -D /tmp/cv-api-headers \
+                -w "REMOTE_STATUS=$route;HTTP=%{http_code};CONTENT_TYPE=%{content_type}\n" "https://loja.chavevertical.com$route"
+            fi
+            python3 - <<'PY'
+          import json
+          try:
+              d=json.load(open('/tmp/cv-api-reply'))
+              print('ERROR_CODE',str(d.get('code',''))[:70])
+          except Exception:
+              print('RESPONSE_NOT_JSON')
+          PY
+          done
