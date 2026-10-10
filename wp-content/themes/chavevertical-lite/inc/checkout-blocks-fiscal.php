@@ -144,8 +144,15 @@ function cvl_blocks_fiscal_validate( $errors, $fields, $group ): void {
     }
 
     $type = sanitize_key( (string) ( $fields['cvl-fiscal/customer-type'] ?? '' ) );
-    if ( '' === $type && ! array_key_exists( 'cvl-fiscal/customer-type', $fields ) ) {
-        // Algumas chamadas internas podem validar só os campos contact.
+    if ( '' === $type ) {
+        // O cliente tem de escolher expressamente Particular ou Empresa.
+        // Nunca aceitar Checkout Blocks sem a escolha, mesmo que o cliente
+        // esconda/retire o campo no browser.
+        $errors->add(
+            'cvl_fiscal_customer_type_required',
+            'Selecione Particular ou Empresa para a faturação.',
+            array( 'id' => 'order-cvl-fiscal-customer-type' )
+        );
         return;
     }
 
