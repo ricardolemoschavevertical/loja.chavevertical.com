@@ -121,4 +121,22 @@ $errors = new WP_Error();
 cvl_checkout_customer_validate( $malformed_pt, $errors );
 check( $errors->has_errors(), 'Malformed Portuguese prefix not treated as foreign VAT' );
 
+$cross_border_pt_invalid = $business;
+$cross_border_pt_invalid['billing_country'] = 'ES';
+$cross_border_pt_invalid['billing_nipc'] = 'PT 509 514 503';
+$cross_border_pt_invalid = cvl_checkout_customer_clean_data( $cross_border_pt_invalid );
+check( $cross_border_pt_invalid['billing_nipc'] === 'PT509514503', 'Cross-border PT VAT prefix retained during sanitization' );
+$errors = new WP_Error();
+cvl_checkout_customer_validate( $cross_border_pt_invalid, $errors );
+check( $errors->has_errors(), 'Invalid cross-border Portuguese VAT blocked after sanitization' );
+
+$cross_border_pt_valid = $business;
+$cross_border_pt_valid['billing_country'] = 'FR';
+$cross_border_pt_valid['billing_nipc'] = 'PT 509 514 502';
+$cross_border_pt_valid = cvl_checkout_customer_clean_data( $cross_border_pt_valid );
+check( $cross_border_pt_valid['billing_nipc'] === 'PT509514502', 'Valid cross-border PT VAT prefix preserved' );
+$errors = new WP_Error();
+cvl_checkout_customer_validate( $cross_border_pt_valid, $errors );
+check( ! $errors->has_errors(), 'Valid cross-border Portuguese VAT accepted' );
+
 echo "checkout_tax_unit_status=ok\n";
