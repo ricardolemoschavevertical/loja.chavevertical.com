@@ -1,0 +1,55 @@
+name: Consolidar Rosqueadeiras duplicadas - lote controlado
+
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/cv-merge-rosqueadeiras-apply.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cv-production-category-merges
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Consolidar ate 20 duplicados validados, guardar snapshot e journal
+        shell: bash
+        env:
+          CV_MERGE_MODE: apply
+          CV_MERGE_CONFIRM: CV_ROSQUEADEIRAS_MERGE_APPROVED
+          CV_MERGE_LIMIT: '20'
+          CV_MERGE_OUTPUT_DIR: ${{ runner.temp }}/cv-rosqueadeiras-apply-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          php -l ops/cv-merge-rosqueadeiras-duplicates.php
+          mkdir -p "$CV_MERGE_OUTPUT_DIR"
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval-file ops/cv-merge-rosqueadeiras-duplicates.php
+          test -s "$CV_MERGE_OUTPUT_DIR/plan.json"
+          test -s "$CV_MERGE_OUTPUT_DIR/snapshot-before.json"
+          test -s "$CV_MERGE_OUTPUT_DIR/journal.ndjson"
+          test -s "$CV_MERGE_OUTPUT_DIR/result.json"
+          RESULT_FILE="$CV_MERGE_OUTPUT_DIR/result.json" python3 - <<'PY'
+          import os,json
+          d=json.load(open(os.environ['RESULT_FILE']))
+          print('RESULTADO: deleted',d['deleted'],'moved',d['preserved_product_relationships'],
+                'remaining',d['remaining_in_original_inventory'],'errors',d['errors'])
+          if d['errors'] or d['deleted']<1 or d['deleted']>20:
+              raise SystemExit('Falha na consolidacao; inspecionar snapshot e journal antes de repetir')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cv-rosqueadeiras-merge-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/cv-rosqueadeiras-apply-${{ github.run_id }}-${{ github.run_attempt }}/
+          retention-days: 30
+          if-no-files-found: warn
