@@ -71,7 +71,8 @@ jobs:
             diff=$(rsync -rcn --delete --out-format='%i %n' "$source/" "$target/")
             if test -n "$diff"; then echo "$diff"; exit 1; fi
             wp --path="$WP" plugin is-installed "$slug"
-            status=$(wp --path="$WP" plugin get "$slug" --field=status)\n            test "$status" = inactive
+            status=$(wp --path="$WP" plugin get "$slug" --field=status)
+            test "$status" = inactive
             echo "INACTIVE_PLUGIN_INSTALLED=$slug"
           done
 
