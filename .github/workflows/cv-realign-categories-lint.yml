@@ -1,0 +1,18 @@
+name: Validar codigo de realinhamento de categorias
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ops/cv-realign-backup-misplaced.php"
+      - ".github/workflows/cv-realign-categories-lint.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar sintaxe PHP sem aceder a dados da loja
+        run: php -l ops/cv-realign-backup-misplaced.php
