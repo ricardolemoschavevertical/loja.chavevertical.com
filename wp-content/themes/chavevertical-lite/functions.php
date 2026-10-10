@@ -59,6 +59,12 @@ if ( file_exists( $cvl_checkout_postcodes_file ) ) {
     require_once $cvl_checkout_postcodes_file;
 }
 
+// Consulta opcional da localidade pelo CP7. Apenas o código postal é enviado.
+$cvl_postcode_locality_file = get_template_directory() . '/inc/checkout-postcode-locality.php';
+if ( file_exists( $cvl_postcode_locality_file ) ) {
+    require_once $cvl_postcode_locality_file;
+}
+
 $cvl_order_email_design_file = get_template_directory() . '/inc/order-email-design.php';
 if ( file_exists( $cvl_order_email_design_file ) ) {
     require_once $cvl_order_email_design_file;
@@ -299,6 +305,22 @@ add_action( 'wp_enqueue_scripts', function () {
             array(),
             cvl_asset_version( 'assets/js/checkout-postcodes-blocks.js' ),
             true
+        );
+
+        wp_enqueue_script(
+            'cvl-checkout-postcode-locality',
+            get_template_directory_uri() . '/assets/js/checkout-postcode-locality.js',
+            array(),
+            cvl_asset_version( 'assets/js/checkout-postcode-locality.js' ),
+            true
+        );
+        wp_localize_script(
+            'cvl-checkout-postcode-locality',
+            'CVLPostcodeLocality',
+            array(
+                'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+                'nonce' => wp_create_nonce( 'cvl_postcode_locality' ),
+            )
         );
     }
 
