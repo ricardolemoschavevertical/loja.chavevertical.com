@@ -216,3 +216,40 @@ jobs:
           fi
 
           echo "visitor_cookies_count=$(grep -c 'woocommerce\|wp_woocommerce' "$COOKIE_JAR" || true)"
+
+      - name: Inspect official WooCommerce Blocks checkout capabilities
+        shell: bash
+        run: |
+          set -euo pipefail
+          php <<'PHP'
+          <?php
+          require_once '/home/chavevertical-loja/htdocs/loja.chavevertical.com/wp-load.php';
+          echo "woo_version=" . (defined('WC_VERSION') ? WC_VERSION : 'not_loaded') . "\n";
+          echo "register_additional_field=" . (function_exists('woocommerce_register_additional_checkout_field')?'yes':'no') . "\n";
+          echo "checkout_page_id=".wc_get_page_id('checkout')."\n";
+          $post = get_post(wc_get_page_id('checkout'));
+          echo "checkout_page_title=".($post ? $post->post_title : 'missing')."\n";
+          $blocks = $post ? parse_blocks($post->post_content) : array();
+          $walk=function ($items,$depth=0) use (&$walk) {
+            foreach ($items as $item) {
+              $name = $item['blockName']??'null';
+              echo "checkout_block=".str_repeat(' ',min(12,$depth)).$name."\n";
+              if (!empty($item['innerBlocks'])) $walk($item['innerBlocks'],$depth+1);
+            }
+          };
+          $walk($blocks);
+
+          $hooks=array(
+            'woocommerce_blocks_validate_location_other_fields',
+            'woocommerce_store_api_checkout_update_order_from_request',
+            'woocommerce_store_api_checkout_order_processed',
+            'woocommerce_store_api_checkout_update_order_meta',
+            'woocommerce_blocks_checkout_update_order_from_request'
+          );
+          foreach($hooks as $hook) {
+            echo "hook[$hook]=" . (has_action($hook)?'registered':'empty') . "\n";
+          }
+          if (class_exists('Automattic\WooCommerce\Blocks\Package')) {
+            echo "woocommerce_blocks_package=present\n";
+          }
+          PHP
