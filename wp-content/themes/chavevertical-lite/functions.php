@@ -42,6 +42,11 @@ if ( file_exists( $cvl_brand_archive_file ) ) {
     require_once $cvl_brand_archive_file;
 }
 
+$cvl_order_email_design_file = get_template_directory() . '/inc/order-email-design.php';
+if ( file_exists( $cvl_order_email_design_file ) ) {
+    require_once $cvl_order_email_design_file;
+}
+
 $cvl_contact_form_file = get_template_directory() . '/inc/contact-form.php';
 if ( file_exists( $cvl_contact_form_file ) ) {
     require_once $cvl_contact_form_file;
