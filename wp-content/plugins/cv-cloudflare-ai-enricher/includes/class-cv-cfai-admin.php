@@ -116,11 +116,15 @@ final class CV_CFAI_Admin {
 
             case 'provider':
                 $provider=sanitize_key(self::val('ai_provider',24));
-                $model=self::val('gemini_model',80);
+                $gemini_model=self::val('gemini_model',80);
+                $workers_model=self::val('workers_ai_model',120);
+                $byok_model=self::val('byok_model',120);
                 $strategy=sanitize_key(self::val('key_strategy',24));
                 $queue=self::val('queue_enabled',8)==='yes';
-                if(!in_array($provider,['gemini','workers_ai'],true)
-                    || !preg_match('/^gemini-[a-zA-Z0-9.-]{3,60}$/D',$model)
+                if(!in_array($provider,['gemini','workers_ai','byok','hybrid'],true)
+                    || !preg_match('/^gemini-[a-zA-Z0-9.-]{3,60}$/D',$gemini_model)
+                    || !preg_match('/^@cf\/[a-zA-Z0-9._\/-]{4,100}$/D',$workers_model)
+                    || !preg_match('/^(google|mistral|deepseek|openai|anthropic)\/[a-zA-Z0-9._-]{3,100}$/D',$byok_model)
                     || !in_array($strategy,['auto','free','paid','primary'],true)) {
                     self::announce('Fornecedor, modelo ou seleção de contas inválidos.',true);break;
                 }
@@ -128,21 +132,24 @@ final class CV_CFAI_Admin {
                     self::announce('Para ativar uma fila de IA é necessária confirmação adicional.',true);break;
                 }
                 if($provider==='gemini' && !get_option('cv_cfai_gemini_key_labels',[])) {
-                    self::announce('Sincroniza primeiro as chaves Gemini.',true);break;
+                    self::announce('Sincroniza primeiro as chaves Gemini antigas.',true);break;
                 }
+                // BYOK keys are stored in the authenticated Cloudflare AI Gateway,
+                // not in the WordPress database or in the Worker config secret.
                 $config=[
                     'provider'=>$provider,
-                    'gemini_model'=>$model,
+                    'workers_ai_model'=>$workers_model,
+                    'byok_model'=>$byok_model,
+                    'gemini_model'=>$gemini_model,
                     'key_strategy'=>$strategy,
                     'jobs_enabled'=>$queue,
-                    // Never enable product auto-apply from provider settings.
                     'product_apply_enabled'=>false
                 ];
                 $r=CV_CFAI_Secrets::put_cloudflare_secret($cf_token,'CV_AI_CONFIG_JSON',
                     wp_json_encode($config,JSON_UNESCAPED_SLASHES));
                 if(is_wp_error($r)){self::announce($r->get_error_message(),true);break;}
                 update_option('cv_cfai_public_provider',$config,false);
-                self::announce('Definições sincronizadas com a Cloudflare. A aplicação a produtos continua bloqueada.');
+                self::announce('Motor e modelos sincronizados. As chaves BYOK são geridas na Cloudflare. A aplicação a produtos continua bloqueada.');
                 break;
 
             case 'detect_models':
@@ -271,13 +278,15 @@ final class CV_CFAI_Admin {
             'Worker'=>($health['ok']??false)?'Online — '.($health['version']??''):'Não verificado',
             'Credencial de ligação'=>$paired?'Emparelhada (cifrada)':'Por emparelhar',
             'Fornecedor IA'=>esc_html($health['provider']??'Workers AI (padrão)'),
+            'Modelo IA'=>esc_html($health['model']??'Por configurar'),
+            'AI Gateway'=>esc_html($health['ai_gateway_id']??'cv-ai-enricher'),
             'Processamento IA'=>!empty($health['processing_enabled'])?'Ligado':'Desligado (seguro)',
             'Aplicação automática'=>!empty($health['product_apply_enabled'])?'Ativa no Worker (WordPress mantém bloqueio)':'Bloqueada',
             'MCP novo'=>$mcp?'Token configurado':'Sem token; acesso recusado'
         ];
         foreach($rows as $k=>$v)echo '<tr><th style="width:240px">'.esc_html($k).'</th><td>'.esc_html($v).'</td></tr>';
         echo '</tbody></table>';
-        echo '<h2>Arquitetura</h2><p><strong>WooCommerce</strong> → Worker Cloudflare → D1/Queues → Gemini ou Workers AI → proposta para rever no WooCommerce.</p>';
+        echo '<h2>Arquitetura</h2><p><strong>WooCommerce</strong> → Worker Cloudflare → D1/Queues → Workers AI (Neurons), BYOK AI Gateway ou Gemini legado → proposta para rever no WooCommerce.</p>';
         echo '<p><strong>ChatGPT</strong> → Endpoint MCP WordPress → ferramentas autorizadas → listas e produtos; nunca diretamente à D1.</p>';
         echo '<p><a class="button" href="'.esc_url(self::url('providers')).'">Gerir Gemini</a> ';
         echo '<a class="button" href="'.esc_url(self::url('mcp')).'">Gerir ligação ChatGPT</a></p>';
@@ -304,13 +313,21 @@ final class CV_CFAI_Admin {
         echo '<p><label><input type="checkbox" name="confirm_original" value="yes" required> Importar as chaves Gemini existentes sem alterar o plugin original.</label></p>';
         self::cf_input();
         self::end('Importar do Gemini Enricher 4.10.2','secondary');
-        echo '<hr><h2>Motor e modelo para a fila</h2>';
+        echo '<hr><h2>Neurons e BYOK — Cloudflare AI Gateway</h2>';
+        echo '<p>O AI Gateway <code>cv-ai-enricher</code> foi criado com credenciais obrigatórias, sem faturação unificada de terceiros. Para BYOK, acrescenta uma chave do fornecedor em <strong>AI Gateway → cv-ai-enricher → Provider Keys</strong>, usando o alias <code>default</code>.</p>';
+        echo '<p><a class="button button-secondary" href="https://dash.cloudflare.com/?to=/:account/ai/ai-gateway" target="_blank" rel="noopener noreferrer">Gerir as chaves BYOK na Cloudflare</a></p>';
+        self::help('Workers AI consome Neurons na tua conta Cloudflare; BYOK consome a quota ou saldo do fornecedor. No Workers Paid, o uso acima dos Neurons gratuitos pode ser faturado sem mudar automaticamente de motor.');
+        echo '<h2>Motor e modelo para a fila</h2>';
         self::opening('provider','providers');
         echo '<table class="form-table"><tbody><tr><th>Fornecedor</th><td><select name="ai_provider">';
-        foreach(['workers_ai'=>'Cloudflare Workers AI','gemini'=>'Google Gemini'] as $value=>$label)
+        foreach(['workers_ai'=>'Cloudflare Workers AI (Neurons)','hybrid'=>'Neurons primeiro, BYOK em erro/quota','byok'=>'BYOK via AI Gateway','gemini'=>'Google Gemini (chaves antigas)'] as $value=>$label)
             echo '<option value="'.esc_attr($value).'" '.selected($saved['provider']??'workers_ai',$value,false).'>'.esc_html($label).'</option>';
         echo '</select></td></tr>';
-        echo '<tr><th>Modelo Gemini</th><td><input name="gemini_model" class="regular-text" value="'.esc_attr($saved['gemini_model']??'gemini-2.5-flash').'" required>';
+        echo '<tr><th>Modelo Workers AI</th><td><input name="workers_ai_model" class="regular-text" value="'.esc_attr($saved['workers_ai_model']??'@cf/meta/llama-3.1-8b-instruct-fast').'" required>';
+        self::help('Usa um modelo @cf/... disponível na tua conta, por exemplo @cf/meta/llama-3.1-8b-instruct-fast.');echo '</td></tr>';
+        echo '<tr><th>Modelo BYOK (Gateway)</th><td><input name="byok_model" class="regular-text" value="'.esc_attr($saved['byok_model']??'google/gemini-2.5-flash').'" required>';
+        self::help('Formato fornecedor/modelo, por exemplo google/gemini-2.5-flash. Requer chave BYOK do fornecedor com alias default no Gateway.');echo '</td></tr>';
+        echo '<tr><th>Modelo Gemini (legado)</th><td><input name="gemini_model" class="regular-text" value="'.esc_attr($saved['gemini_model']??'gemini-2.5-flash').'" required>';
         self::help('Identificador de um modelo que suporta generateContent, por exemplo gemini-2.5-flash.');echo '</td></tr>';
         echo '<tr><th>Seleção de contas</th><td><select name="key_strategy">';
         foreach(['auto'=>'Automático (free primeiro)','free'=>'Apenas Free','paid'=>'Apenas Paid','primary'=>'Primeira conta'] as $v=>$label)
@@ -318,7 +335,7 @@ final class CV_CFAI_Admin {
         echo '</select></td></tr>';
         echo '<tr><th>Fila de normalização</th><td><label><input type="checkbox" name="queue_enabled" value="yes" '.checked(!empty($saved['jobs_enabled']),true,false).'> Permitir processar tarefas na Cloudflare</label>';
         echo '<p><label><input type="checkbox" name="confirm_queue" value="yes"> Confirmo que esta alteração pode iniciar chamadas pagas à IA.</label></p>';
-        self::help('A aplicação direta aos produtos continua desativada, mesmo com a fila ligada.');echo '</td></tr></tbody></table>';
+        self::help('A aplicação direta aos produtos continua desativada. O modo híbrido só passa para BYOK perante erro/quota, não quando a franquia gratuita terminar num plano pago. Confirma os limites de faturação antes de ligar a fila.');echo '</td></tr></tbody></table>';
         self::cf_input();
         self::end('Guardar fornecedor e modelo');
         echo '<hr><h3>Detetar modelos Gemini</h3>';
@@ -401,6 +418,8 @@ final class CV_CFAI_Admin {
 
     private static function cloudflare($worker,$paired) {
         echo '<h2>Ligação segura à Cloudflare</h2>';
+        echo '<p><strong>AI Gateway:</strong> <code>cv-ai-enricher</code>. Credenciais de fornecedor obrigatórias (BYOK), autenticação ligada, conteúdo das chamadas não registado.</p>';
+        echo '<p><a href="https://dash.cloudflare.com/?to=/:account/ai/ai-gateway" target="_blank" rel="noopener noreferrer">Abrir AI Gateway e adicionar chave BYOK (alias default)</a></p>';
         echo '<p><strong>Worker:</strong> <code>'.esc_html($worker?:'Não definido').'</code></p>';
         echo '<p><strong>Estado do segredo partilhado:</strong> '.($paired?'Configurado (cifrado no WordPress)':'Por configurar').'</p>';
         echo '<p><strong>Conta Cloudflare:</strong> <code>'.esc_html(CV_CFAI_Secrets::ACCOUNT).'</code> | <strong>Script:</strong> <code>'.esc_html(CV_CFAI_Secrets::WORKER).'</code></p>';

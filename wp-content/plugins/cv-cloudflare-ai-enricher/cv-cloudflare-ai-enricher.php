@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CV AI Enricher - Cloudflare
  * Description: Ponte segura WooCommerce <-> Cloudflare Workers, com categorias obtidas em tempo real.
- * Version: 0.4.0
+ * Version: 0.5.0
  * Author: CHAVE VERTICAL
  * Requires Plugins: woocommerce, chavevertical-core
  * Requires PHP: 7.4

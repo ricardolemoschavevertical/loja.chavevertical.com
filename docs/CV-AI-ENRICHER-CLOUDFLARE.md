@@ -76,3 +76,35 @@ O painel de gestão foi implementado **no WordPress**, seguindo a organização 
 **Incidente de permissões corrigido:** o primeiro upgrade v0.4 criou um diretório de includes com permissões 0700 e ficheiros PHP 0600 por herdar `umask 0077` do backup; o PHP-FPM não os podia ler e o site devolvia HTTP 500. Foram corrigidos para diretórios 0755 e PHP 0644. Verificação final: página inicial 200, REST global 200, CV AI sem token 401, CV MCP sem token 401, ambas classes carregadas, plugins ativos. Workflow: `cv-ai-safe-permissions-reactivate.yml` (run `38065937066`). O atualizador GitHub foi corrigido para aplicar `umask 0022` aos ficheiros que o servidor deve ler.
 
 **Pendente:** emparelhamento autenticado com Cloudflare a partir do painel e configuração das chaves Gemini pelo administrador; criação de app MCP no ChatGPT, com autenticação suportada pelo cliente; eventual migração de OAuth/paridade de ferramentas antigas após testes. Não foram aplicadas alterações a produtos.
+
+
+## Fase Neurons + BYOK — 10/10/2026 (PR, sem ativação)
+
+Gateway `cv-ai-enricher` criado na mesma conta Cloudflare que o Worker:
+- `authentication=true`: pedidos ao Gateway exigem autorização.
+- `byok_only=true`: serviços externos **nunca** passam para Unified Billing quando não existe chave BYOK.
+- `workers_ai_billing_mode=postpaid`: Workers AI usa a faturação habitual em Neurons, incluindo eventual consumo acima da quota gratuita no Workers Paid.
+- `collect_logs=false`, `cache_ttl=0`, 60 pedidos por 60 segundos.
+- Não existem chaves de fornecedores configuradas no Gateway no momento da criação.
+
+Versão proposta v0.5.0:
+- `workers_ai`: Workers AI por `env.AI.run` com `gateway:{id:'cv-ai-enricher',skipCache:true}`.
+- `byok`: modelo externo (ex.: `google/gemini-2.5-flash`) pelo mesmo `env.AI.run` no Gateway; o fornecedor só funciona com uma chave própria guardada no **Provider Keys** do Gateway, alias `default`.
+- `hybrid`: tenta Workers AI primeiro e só faz fallback BYOK após erro de quota, capacidade ou indisponibilidade. **Não garante mudar automaticamente depois da franquia gratuita no plano Workers Paid**, onde o excedente pode ser faturado sem erro.
+- `gemini`: mantém comportamento anterior de rotação das chaves Gemini guardadas como Worker Secret; não é o caminho BYOK do AI Gateway.
+- O painel WooCommerce define fornecedor e modelos; os resultados guardam o fornecedor/modelo executado no `source_json` da tarefa D1 para auditoria. Não guardam chaves.
+- `ENABLE_AI_JOBS=false` e `ENABLE_PRODUCT_APPLY=false` não são alterados; a aprovação/aplicação pelo Woo mantém o seu bloqueio próprio.
+
+### Para terminar a configuração em produção
+1. Abrir Cloudflare → AI Gateway → `cv-ai-enricher` → **Provider Keys**.
+2. Adicionar a chave do fornecedor (p. ex., Google) com alias **`default`**. O custo/quota BYOK pertence ao fornecedor e não está incluído nos Neurons gratuitos.
+3. Rever limites, custos e franquia diária de Workers AI no dashboard; opcionalmente definir spend limits no Gateway. Uma regra de preço não equivale exatamente a um limite de Neurons gratuitos.
+4. Testar a branch/PR e publicar Worker sem perder bindings/secrets. Verificar página `/health` e configuração do Gateway.
+5. Só depois, emparelhar WordPress e ativar uma lista de **1 produto** em ambiente controlado. Deixar aplicação automática desativada.
+6. Não enviar tokens para GitHub, prompts, commits, logs ou a conversa.
+
+Referências Cloudflare:
+- https://developers.cloudflare.com/workers-ai/platform/pricing/
+- https://developers.cloudflare.com/ai-gateway/configuration/bring-your-own-keys/
+- https://developers.cloudflare.com/ai-gateway/features/unified-billing/
+- https://developers.cloudflare.com/ai-gateway/usage/worker-binding-methods/

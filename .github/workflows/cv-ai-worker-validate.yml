@@ -5,6 +5,11 @@ on:
     paths:
       - "ops/cloudflare/cv-ai-enricher/**"
       - ".github/workflows/cv-ai-worker-validate.yml"
+  pull_request:
+    paths:
+      - "ops/cloudflare/cv-ai-enricher/**"
+      - "wp-content/plugins/cv-cloudflare-ai-enricher/**"
+      - ".github/workflows/cv-ai-worker-validate.yml"
   workflow_dispatch:
 permissions:
   contents: read
@@ -16,6 +21,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Worker JS syntax
         run: node --check ops/cloudflare/cv-ai-enricher/worker.mjs
+      - name: WordPress plugin PHP syntax
+        run: |
+          php -l wp-content/plugins/cv-cloudflare-ai-enricher/cv-cloudflare-ai-enricher.php
+          php -l wp-content/plugins/cv-cloudflare-ai-enricher/includes/class-cv-cfai-admin.php
+      - name: Routing tests (no paid API calls)
+        run: node --test ops/cloudflare/cv-ai-enricher/tests/test-routing.mjs
       - name: Fail-closed health and authentication tests
         shell: bash
         run: |
@@ -36,8 +47,19 @@ jobs:
           const h=await healthy.json();
           assert.equal(h.processing_enabled,false);
           assert.equal(h.product_apply_enabled,false);
-          assert.equal(h.version,'0.4.0');
+          assert.equal(h.version,'0.5.0');
           assert.equal(h.provider,'workers_ai');
+          assert.equal(h.ai_gateway_id,'cv-ai-enricher');
+          assert.equal(h.workers_ai_model,'@cf/meta/llama-3.1-8b-instruct-fast');
+          assert.equal(h.byok_model,'google/gemini-2.5-flash');
+          const byok=await worker.fetch(req,{...fake,CV_AI_CONFIG_JSON:JSON.stringify({
+            provider:'byok',byok_model:'google/gemini-2.5-flash',jobs_enabled:false
+          })});
+          const byokHealth=await byok.json();
+          assert.equal(byokHealth.provider,'byok');
+          assert.equal(byokHealth.model,'google/gemini-2.5-flash');
+          assert.equal(byokHealth.processing_enabled,false);
+  
           assert.equal(h.gemini_accounts_configured,0);
           const account={key:'AIza'+'x'.repeat(44),label:'Fornecedor Principal',tier:'free'};
           const configured={...fake,
