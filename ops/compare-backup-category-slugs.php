@@ -191,7 +191,7 @@ $stats['revisao_necessaria']=$stats['ambiguas']+$stats['colisoes']+$stats['sem_c
 if ($mode === 'apply') {
     if (!class_exists('CV_Core_Catalog_Rules')
         || !method_exists('CV_Core_Catalog_Rules', 'redirect_old_category_urls')
-        || !has_action('template_redirect', ['CV_Core_Catalog_Rules','redirect_old_category_urls'])) {
+        || has_action('template_redirect', ['CV_Core_Catalog_Rules','redirect_old_category_urls']) === false) {
         throw new RuntimeException('Redirecionamento 301 ainda nao ativo; bloqueada a alteracao.');
     }
     $expect_backup=(int)getenv('CV_CATEGORY_EXPECTED_BACKUP_COUNT');
