@@ -916,3 +916,220 @@ body.cvl-billing-first-active.woocommerce-checkout
   margin-bottom:12px;
 }
 
+
+/* ================================================================
+   Faturação: Particular / Empresa com bolinhas e dados ao lado
+   Woo Blocks mantém SELECT nativo, obrigatório e validado pelo servidor.
+   ================================================================ */
+body.woocommerce-checkout .wc-block-checkout
+  #order.cvl-fiscal-radio-layout {
+  display:grid!important;
+  grid-template-columns:minmax(180px, 0.85fr) minmax(0, 1.45fr)!important;
+  gap:11px 22px!important;
+  align-items:start;
+  width:100%;
+}
+
+body.woocommerce-checkout .wc-block-checkout
+  #order.cvl-fiscal-radio-layout > .cvl-fiscal-native-select-hidden {
+  position:absolute!important;
+  top:auto!important;
+  left:-10000px!important;
+  width:1px!important;
+  height:1px!important;
+  min-height:0!important;
+  margin:0!important;
+  padding:0!important;
+  opacity:0!important;
+  overflow:hidden!important;
+  clip-path:inset(50%)!important;
+  pointer-events:none!important;
+}
+
+body.woocommerce-checkout .wc-block-checkout
+  #order.cvl-fiscal-radio-layout > .cvl-fiscal-customer-radios {
+  grid-column:1!important;
+  grid-row:1 / span 2!important;
+  min-width:0;
+  width:100%;
+  margin:0;
+  padding:0;
+  border:0;
+  background:transparent;
+}
+
+body.woocommerce-checkout .wc-block-checkout
+  .cvl-fiscal-customer-radios__legend {
+  display:block;
+  float:none;
+  width:100%;
+  margin:0 0 10px;
+  padding:0;
+  color:#263842;
+  font-size:13px;
+  font-weight:800;
+  line-height:1.4;
+}
+
+body.woocommerce-checkout .wc-block-checkout
+  .cvl-fiscal-customer-radios__required {
+  color:#c62036;
+  font-weight:900;
+}
+
+body.woocommerce-checkout .wc-block-checkout
+  .cvl-fiscal-customer-radios__options {
+  display:flex;
+  flex-direction:column;
+  gap:9px;
+}
+
+body.woocommerce-checkout .wc-block-checkout
+  .cvl-fiscal-customer-radios__option {
+  display:flex;
+  align-items:center;
+  gap:11px;
+  width:100%;
+  min-height:53px;
+  margin:0;
+  padding:11px 14px;
+  border:1px solid #d4dce0;
+  border-radius:7px;
+  background:#fff;
+  color:#23343c;
+  font-size:13px;
+  font-weight:750;
+  letter-spacing:0;
+  cursor:pointer;
+  transition:border-color .15s ease,background .15s ease;
+}
+
+body.woocommerce-checkout .wc-block-checkout
+  .cvl-fiscal-customer-radios__option:has(input:checked) {
+  border-color:var(--cvl-teal,#08776e);
+  background:#f0faf8;
+}
+
+body.woocommerce-checkout .wc-block-checkout
+  .cvl-fiscal-customer-radios__option:has(input:focus-visible) {
+  outline:3px solid rgba(0,119,105,.25);
+  outline-offset:2px;
+}
+
+body.woocommerce-checkout .wc-block-checkout
+  .cvl-fiscal-customer-radios__input {
+  display:block!important;
+  flex:0 0 17px;
+  width:17px!important;
+  height:17px!important;
+  min-width:17px;
+  margin:0!important;
+  accent-color:var(--cvl-teal,#08776e);
+  cursor:pointer;
+}
+
+body.woocommerce-checkout .wc-block-checkout
+  .cvl-fiscal-customer-radios__error {
+  margin:9px 0 0;
+  color:#b42336;
+  font-size:12px;
+  line-height:1.45;
+}
+
+body.woocommerce-checkout .wc-block-checkout
+  .cvl-fiscal-customer-radios__error[hidden] {
+  display:none!important;
+}
+
+body.woocommerce-checkout .wc-block-checkout
+  .cvl-fiscal-choice-invalid .cvl-fiscal-customer-radios__option {
+  border-color:#c62438;
+}
+
+body.woocommerce-checkout .wc-block-checkout
+  #order.cvl-fiscal-radio-layout >
+  .wc-block-components-text-input.wc-block-components-address-form__cvl-fiscal-nif,
+body.woocommerce-checkout .wc-block-checkout
+  #order.cvl-fiscal-radio-layout >
+  .wc-block-components-text-input.wc-block-components-address-form__cvl-fiscal-company-name {
+  grid-column:2!important;
+  grid-row:1!important;
+  min-width:0;
+  width:100%;
+  margin:0!important;
+}
+
+body.woocommerce-checkout .wc-block-checkout
+  #order.cvl-fiscal-radio-layout >
+  .wc-block-components-text-input.wc-block-components-address-form__cvl-fiscal-nipc {
+  grid-column:2!important;
+  grid-row:2!important;
+  min-width:0;
+  width:100%;
+  margin:0!important;
+}
+
+body.woocommerce-checkout .wc-block-checkout
+  #order.cvl-fiscal-radio-layout >
+  .wc-block-components-checkbox.wc-block-components-address-form__cvl-fiscal-use-billing-for-shipping {
+  grid-column:1 / -1!important;
+  grid-row:3!important;
+  width:100%;
+  margin:12px 0 0;
+}
+
+/* A seleção é sempre obrigatória, mas os campos não selecionados nunca
+   ficam visíveis. O estado efetivo é controlado pelo WooCommerce. */
+@media (max-width:700px) {
+  body.woocommerce-checkout .wc-block-checkout
+    #order.cvl-fiscal-radio-layout {
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:13px!important;
+  }
+
+  body.woocommerce-checkout .wc-block-checkout
+    #order.cvl-fiscal-radio-layout > .cvl-fiscal-customer-radios {
+    grid-column:1!important;
+    grid-row:1!important;
+  }
+
+  body.woocommerce-checkout .wc-block-checkout
+    .cvl-fiscal-customer-radios__options {
+    flex-direction:row;
+    gap:10px;
+  }
+
+  body.woocommerce-checkout .wc-block-checkout
+    .cvl-fiscal-customer-radios__option {
+    justify-content:center;
+    min-width:0;
+    padding:10px;
+    min-height:48px;
+  }
+
+  body.woocommerce-checkout .wc-block-checkout
+    #order.cvl-fiscal-radio-layout >
+    .wc-block-components-text-input.wc-block-components-address-form__cvl-fiscal-nif,
+  body.woocommerce-checkout .wc-block-checkout
+    #order.cvl-fiscal-radio-layout >
+    .wc-block-components-text-input.wc-block-components-address-form__cvl-fiscal-company-name {
+    grid-column:1!important;
+    grid-row:2!important;
+  }
+
+  body.woocommerce-checkout .wc-block-checkout
+    #order.cvl-fiscal-radio-layout >
+    .wc-block-components-text-input.wc-block-components-address-form__cvl-fiscal-nipc {
+    grid-column:1!important;
+    grid-row:3!important;
+  }
+
+  body.woocommerce-checkout .wc-block-checkout
+    #order.cvl-fiscal-radio-layout >
+    .wc-block-components-checkbox.wc-block-components-address-form__cvl-fiscal-use-billing-for-shipping {
+    grid-column:1!important;
+    grid-row:4!important;
+    margin-top:4px;
+  }
+}
+
