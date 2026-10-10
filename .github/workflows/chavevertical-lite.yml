@@ -87,6 +87,7 @@ jobs:
           node --check "$THEME/assets/js/checkout-customer-type.js"
           node --check "$THEME/assets/js/checkout-vies.js"
           node --check "$THEME/assets/js/checkout-postcodes.js"
+          node --check "$THEME/assets/js/checkout-postcodes-blocks.js"
           php -l ops/ensure-brands-page.php
           php -l ops/ensure-contactos-page.php
           php -l ops/ensure-quem-somos-page.php
