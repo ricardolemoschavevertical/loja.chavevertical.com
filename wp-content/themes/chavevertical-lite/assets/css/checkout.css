@@ -610,3 +610,34 @@ body.woocommerce-checkout:not(.woocommerce-order-received)
     padding:10px 9px;
   }
 }
+
+/* Estado informativo do NIF/NIPC: validação imediata e acessível. */
+body.woocommerce-checkout:not(.woocommerce-order-received)
+  form.checkout .cvl-fiscal-feedback {
+  display:block;
+  margin-top:6px;
+  font-size:11px;
+  line-height:1.5;
+  color:#bc2633;
+}
+
+body.woocommerce-checkout:not(.woocommerce-order-received)
+  form.checkout .cvl-fiscal-feedback:empty {
+  display:none;
+}
+
+body.woocommerce-checkout:not(.woocommerce-order-received)
+  form.checkout .cvl-fiscal-invalid input.input-text {
+  border-color:#bc2633!important;
+  background:#fff9f9!important;
+}
+
+body.woocommerce-checkout:not(.woocommerce-order-received)
+  form.checkout .cvl-fiscal-conditional .description {
+  display:block;
+  margin-top:6px;
+  font-size:11px;
+  line-height:1.55;
+  color:#6a7885;
+}
+
