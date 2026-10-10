@@ -5,6 +5,8 @@
  * PT: sete algarismos no formato CTT 1234-567.
  * Billing e shipping são tratados como endereços independentes.
  * Os restantes países mantêm as regras nativas do WooCommerce.
+ * No Checkout Blocks, a validação de servidor acontece pela Store API
+ * via WC_Validation::is_postcode / woocommerce_validate_postcode.
  *
  * IMPORTANTE: valida a estrutura, não a existência do código numa base CTT
  * nem a correspondência entre o código postal, a rua e a localidade.
@@ -62,7 +64,7 @@ add_filter(
     static function ( $fields ) {
         foreach ( array( 'billing', 'shipping' ) as $section ) {
             $key = $section . '_postcode';
-            if ( ! isset( $fields[ $section ][ $key ] ) ) {
+            if ( ! isset( $fields[ $section ][ $key ] ) || ! is_array( $fields[ $section ][ $key ] ) ) {
                 continue;
             }
 
