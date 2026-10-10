@@ -1,0 +1,35 @@
+name: Recomparar slugs depois do realinhamento
+on:
+  workflow_run:
+    workflows: ["Auditar taxonomia apos realinhamento"]
+    types: [completed]
+permissions:
+  contents: read
+jobs:
+  compare:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Recalcular todas as correspondencias e conflitos de slug
+        shell: bash
+        env:
+          CV_CATEGORY_SYNC_MODE: plan
+          CV_CATEGORY_SYNC_OUTPUT_DIR: ${{ runner.temp }}/cv-slugs-after-realignment-${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          php -l ops/compare-backup-category-slugs.php
+          mkdir -p "$CV_CATEGORY_SYNC_OUTPUT_DIR"
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval-file ops/compare-backup-category-slugs.php
+          test -s "$CV_CATEGORY_SYNC_OUTPUT_DIR/comparacao-com-backup.json"
+          test -s "$CV_CATEGORY_SYNC_OUTPUT_DIR/comparacao-com-backup.csv"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cv-slugs-after-realignment-${{ github.run_id }}
+          path: ${{ runner.temp }}/cv-slugs-after-realignment-${{ github.run_id }}/
+          retention-days: 30
+          if-no-files-found: warn
