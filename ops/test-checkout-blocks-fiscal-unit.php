@@ -96,9 +96,12 @@ foreach ( $GLOBALS['cvl_additional_fields'] as $field ) {
     $fields[$field['id']] = $field;
     check( $field['location'] === 'order', 'Fiscal field applies to order only, not shipping' );
 }
-check( count( $fields ) === 4, 'Exactly four fiscal fields registered' );
+check( count( $fields ) === 5, 'Four fiscal fields and same-delivery toggle registered' );
 check( $fields['cvl-fiscal/customer-type']['type'] === 'select', 'Customer type is native select' );
 check( $fields['cvl-fiscal/customer-type']['required'] === true, 'Customer type required' );
+check( $fields['cvl-fiscal/use-billing-for-shipping']['type'] === 'checkbox', 'Same-delivery option is native accessible Woo field' );
+check( $fields['cvl-fiscal/use-billing-for-shipping']['required'] === false, 'Same-delivery option is optional' );
+check( $fields['cvl-fiscal/use-billing-for-shipping']['location'] === 'order', 'Delivery toggle appears with billing-only fiscal fields' );
 check( count( $fields['cvl-fiscal/customer-type']['options'] ) === 2, 'Exactly Particular and Empresa options' );
 
 foreach ( array(
