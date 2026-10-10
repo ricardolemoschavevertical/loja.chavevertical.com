@@ -109,12 +109,15 @@ function cvl_checkout_customer_clean_data( $data ) {
     $country = strtoupper( (string) ( $data['billing_country'] ?? 'PT' ) );
     foreach ( array( 'billing_nif', 'billing_nipc' ) as $key ) {
         $value = sanitize_text_field( (string) ( $data[ $key ] ?? '' ) );
-        // Validar PT mesmo se a morada de faturação for estrangeira.
-        if ( 'PT' === $country || '' === $country || preg_match( '/^PT/i', $value ) ) {
-            $compact = strtoupper( preg_replace( '/[\s.\-]+/', '', $value ) );
-            if ( str_starts_with( $compact, 'PT' ) ) {
-                $compact = substr( $compact, 2 );
-            }
+        // Se a faturação for PT, remover PT do campo normalizado.
+        // Para faturação noutro país, PRESERVAR PT: retirar o prefixo
+        // permitia contornar a validação fiscal portuguesa depois da limpeza.
+        $compact = strtoupper( preg_replace( '/[\s.\-]+/', '', $value ) );
+        if ( 'PT' === $country || '' === $country ) {
+            $value = str_starts_with( $compact, 'PT' )
+                ? substr( $compact, 2 )
+                : $compact;
+        } elseif ( str_starts_with( $compact, 'PT' ) ) {
             $value = $compact;
         }
         $data[ $key ] = $value;
