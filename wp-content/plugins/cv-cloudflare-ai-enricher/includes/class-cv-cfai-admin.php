@@ -380,10 +380,13 @@ final class CV_CFAI_Admin {
         echo '<table class="widefat striped"><tbody>';
         echo '<tr><th>Endpoint MCP novo</th><td><code>'.esc_html(rest_url('cv-mcp/v1/mcp')).'</code></td></tr>';
         echo '<tr><th>Autenticação do MCP novo</th><td>'.($mcp?'Bearer configurado; token oculto':'Sem token; acesso recusado').'</td></tr>';
-        echo '<tr><th>Endpoint MCP original (OAuth / Bearer)</th><td><code>'.esc_html(rest_url('wcge-chatgpt/v1/mcp')).'</code></td></tr>';
+        $legacy=function_exists('wcge_chatgpt_mcp_endpoint');
+        echo '<tr><th>MCP original (OAuth / Bearer)</th><td>'.($legacy
+            ?'<code>'.esc_html(wcge_chatgpt_mcp_endpoint()).'</code>'
+            :'Não encontrado como plugin ativo nesta instalação.').'</td></tr>';
         echo '</tbody></table>';
-        echo '<p><a class="button button-secondary" href="'.esc_url(admin_url('options-general.php?page=wcge-settings')).'">Abrir definições MCP do plugin original</a></p>';
-        echo '<p><strong>Compatibilidade:</strong> mantém o MCP original no ChatGPT enquanto o novo Bridge não disponibilizar todas as ferramentas e OAuth.</p>';
+        if($legacy)echo '<p><a class="button button-secondary" href="'.esc_url(admin_url('options-general.php?page=wcge-settings')).'">Abrir definições MCP original</a></p>';
+        echo '<p><strong>Compatibilidade:</strong> o Bridge novo suporta autenticação Bearer, mas ainda não oferece paridade integral de ferramentas nem OAuth. Não substituas uma ligação ChatGPT MCP ativa sem validar o método de autenticação do cliente.</p>';
         if(self::$one_time_mcp_token!==''){
             echo '<div class="notice notice-warning inline"><p><strong>Token MCP — copiar agora:</strong></p>';
             echo '<p><input type="text" class="large-text code" readonly autocomplete="off" value="'.esc_attr(self::$one_time_mcp_token).'"></p>';
