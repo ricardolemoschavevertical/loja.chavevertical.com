@@ -324,6 +324,16 @@ add_action( 'wp_enqueue_scripts', function () {
                 'nonce' => wp_create_nonce( 'cvl_postcode_locality' ),
             )
         );
+
+        // Checkout Blocks: faturação primeiro, com morada de entrega igual
+        // à faturação quando o cliente seleciona a opção nativa no checkout.
+        wp_enqueue_script(
+            'cvl-checkout-billing-first',
+            get_template_directory_uri() . '/assets/js/checkout-billing-first.js',
+            array( 'wp-data', 'wc-blocks-data-store', 'cvl-checkout-postcode-locality' ),
+            cvl_asset_version( 'assets/js/checkout-billing-first.js' ),
+            true
+        );
     }
 
     if ( is_front_page() ) {
