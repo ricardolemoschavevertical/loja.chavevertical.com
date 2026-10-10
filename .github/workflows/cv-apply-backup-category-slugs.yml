@@ -1,0 +1,94 @@
+name: Aplicar slugs de categorias com referencia ao backup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cv-apply-backup-category-slugs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cv-category-slugs-production-apply
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Validar sintaxe e redirecionamentos SEO
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l ops/compare-backup-category-slugs.php
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval '
+            if (!class_exists("CV_Core_Catalog_Rules") ||
+                !method_exists("CV_Core_Catalog_Rules","redirect_old_category_urls") ||
+                has_action("template_redirect",["CV_Core_Catalog_Rules","redirect_old_category_urls"]) === false) {
+               fwrite(STDERR, "ERRO: mecanismo 301 nao instalado\n"); exit(1);
+            }
+            echo "301-category-redirect=active\n";
+          '
+
+      - name: Aplicar apenas as 34 alteracoes com correspondencia e sem colisao
+        shell: bash
+        env:
+          CV_CATEGORY_SYNC_MODE: apply
+          CV_CATEGORY_SYNC_CONFIRM: APLICAR_SLUGS_VALIDADOS
+          CV_CATEGORY_EXPECTED_BACKUP_COUNT: '894'
+          CV_CATEGORY_EXPECTED_LOJA_COUNT: '1067'
+          CV_CATEGORY_MAX_CHANGES: '34'
+          CV_CATEGORY_SYNC_OUTPUT_DIR: ${{ runner.temp }}/cv-backup-apply-${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$CV_CATEGORY_SYNC_OUTPUT_DIR"
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval-file ops/compare-backup-category-slugs.php
+          test -s "$CV_CATEGORY_SYNC_OUTPUT_DIR/snapshot-categorias-loja-antes.json"
+          test -s "$CV_CATEGORY_SYNC_OUTPUT_DIR/resultado-aplicacao.json"
+          test -s "$CV_CATEGORY_SYNC_OUTPUT_DIR/journal.ndjson"
+          CV_SYNC_RESULTS="$CV_CATEGORY_SYNC_OUTPUT_DIR/resultado-aplicacao.json" python3 - <<'PY'
+          import json,os
+          d=json.load(open(os.environ['CV_SYNC_RESULTS']))
+          print('alterados=',d['alterados'],'falhas=',d['falhas'],'redirecionamentos=',d['redirecionamentos'])
+          assert d['alterados']==34, 'Esperadas 34 correcoes exatas de slugs'
+          assert d['falhas']==0
+          assert d['redirecionamentos']>=34
+          PY
+
+      - name: Validar os 34 slugs corrigidos diretamente na taxonomia
+        if: success()
+        shell: bash
+        env:
+          CV_CATEGORY_SYNC_OUTPUT_DIR: ${{ runner.temp }}/cv-backup-apply-${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          CV_SYNC_RESULTS="$CV_CATEGORY_SYNC_OUTPUT_DIR/resultado-aplicacao.json" python3 - <<'PY'
+          import os,json
+          d=json.load(open(os.environ['CV_SYNC_RESULTS']))
+          for row in d['resultados']:
+              if row['estado']=='atualizado':
+                  assert row['para']!=row['de']
+          PY
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval '
+            $redirects=get_option("cv_core_category_slug_redirects",[]);
+            if (!is_array($redirects) || count($redirects)<34) {
+              fwrite(STDERR,"ERRO: redirecionamentos incompletos\n"); exit(1);
+            }
+            echo "redirects-registered=".count($redirects)."\n";
+          '
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cv-backup-slug-migracao-${{ github.run_id }}
+          path: ${{ runner.temp }}/cv-backup-apply-${{ github.run_id }}/
+          retention-days: 30
+          if-no-files-found: warn
