@@ -33,6 +33,7 @@ jobs:
             const browser = await chromium.launch({headless:true});
             const context = await browser.newContext({locale:'pt-PT',timezoneId:'Europe/Lisbon'});
             const page = await context.newPage();
+            page.setDefaultTimeout(12000);
             const errors = [];
             page.on('pageerror', e=>errors.push(String(e).slice(0,250)));
             page.on('console', msg=>{
@@ -149,5 +150,5 @@ jobs:
             }
             console.log('REAL_BROWSER_POSTCODE_AUTOFILL=PASS');
           }
-          main().catch(err=>{console.error('BROWSER_CHECKOUT_FAIL='+String(err));process.exitCode=1;});
+          main().catch(err=>{console.error('BROWSER_CHECKOUT_FAIL='+String(err));process.exit(1);});
           NODE
