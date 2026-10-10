@@ -5743,3 +5743,11 @@ body .cvl-contact-page .cvl-contact-location-map iframe{
   }
 }
 
+/* CV: manter visivel o Hero integral e o destaque lateral no desktop. */
+/* Ambos os media sao posicionados de forma absoluta. A proporcao quadrada
+   da lateral fixa a altura da linha CSS Grid, sem alterar imagens ou texto. */
+@media (min-width:1200px){
+  body.cvl-site .cvl-ref-hero-showcase .cvl-ref-hero-grid > .cvl-ref-hero-side.is-full-image.is-text-hidden{
+    aspect-ratio:1/1!important;
+  }
+}
