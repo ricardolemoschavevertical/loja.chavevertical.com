@@ -1,4 +1,4 @@
-name: Smoke test CV AI Cloudflare (read only)
+name: Smoke test CV AI Cloudflare and WordPress 0.4
 on:
   push:
     branches: [main]
@@ -25,6 +25,9 @@ jobs:
           import json
           d=json.load(open('/tmp/cv-ai-health.json'))
           assert d['ok'] is True
+          assert d['version']=='0.4.0'
+          assert d['provider']=='workers_ai'
+          assert d['gemini_accounts_configured']==0
           assert d['bindings_ready'] is True
           assert d['auth_ready'] is True
           assert d['processing_enabled'] is False
@@ -35,12 +38,17 @@ jobs:
           echo "WORKER_UNAUTH_HTTP=$unauthorized"
           test "$unauthorized" = "401"
 
-      - name: Confirmar que os novos plugins WordPress não expõem endpoints
+      - name: Confirmar que os endpoints WordPress exigem credenciais
         shell: bash
         run: |
           set -euo pipefail
-          for route in cv-ai/v1/catalog/categories cv-mcp/v1/mcp; do
-            code=$(curl -sS --connect-timeout 10 --max-time 30 -o /tmp/cv-wp-plugin-response -w '%{http_code}' "https://loja.chavevertical.com/wp-json/$route")
-            echo "INACTIVE_REST=$route;HTTP=$code"
-            test "$code" = "404"
-          done
+          woo_code=$(curl -sS --connect-timeout 10 --max-time 30 -o /tmp/cv-ai-restricted -w '%{http_code}' "https://loja.chavevertical.com/wp-json/cv-ai/v1/catalog/categories")
+          echo "WORDPRESS_CV_AI_UNAUTH_HTTP=$woo_code"
+          test "$woo_code" = 401
+          mcp_code=$(curl -sS --connect-timeout 10 --max-time 30 -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"jsonrpc":"2.0","id":1,"method":"initialize"}' \
+            -o /tmp/cv-mcp-restricted -w '%{http_code}' \
+            "https://loja.chavevertical.com/wp-json/cv-mcp/v1/mcp")
+          echo "WORDPRESS_CV_MCP_UNAUTH_HTTP=$mcp_code"
+          test "$mcp_code" = 401
