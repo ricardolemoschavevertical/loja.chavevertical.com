@@ -94,6 +94,7 @@ jobs:
           php -l ops/move-checkout-fiscal-block.php
           php -l ops/checkout-billing-before-shipping.php
           node --check "$THEME/assets/js/checkout-billing-first.js"
+          node --check "$THEME/assets/js/checkout-fiscal-radios.js"
           node --check ops/test-checkout-billing-first.js
           node ops/test-checkout-billing-first.js
           php -l ops/test-checkout-vies-unit.php
