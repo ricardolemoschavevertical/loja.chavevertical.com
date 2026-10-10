@@ -21,6 +21,7 @@ on:
       - "ops/test-checkout-postcodes-unit.php"
       - "ops/test-checkout-postcode-locality-unit.php"
       - "ops/test-checkout-postcode-locality-blocks.js"
+      - "ops/test-checkout-blocks-fiscal-unit.php"
   workflow_dispatch:
 
 permissions:
@@ -82,6 +83,8 @@ jobs:
           php -l ops/verify-checkout-customer-type.php
           php -l ops/test-checkout-tax-validation-unit.php
           php ops/test-checkout-tax-validation-unit.php
+          php -l ops/test-checkout-blocks-fiscal-unit.php
+          php ops/test-checkout-blocks-fiscal-unit.php
           php -l ops/test-checkout-vies-unit.php
           php ops/test-checkout-vies-unit.php
           php -l ops/test-checkout-postcodes-unit.php
