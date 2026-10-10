@@ -63,6 +63,24 @@ foreach (array('WC_Email_New_Order', 'WC_Email_Customer_Processing_Order') as $t
         $html = $preview->render();
         while (ob_get_level() > $level) { ob_end_clean(); }
         echo "preview[$type]=ok:" . strlen((string) $html) . "\n";
+        // Verify the data-bearing design without exposing any customer information.
+        if ('WC_Email_New_Order' === $type) {
+            $c = wp_count_posts('product');
+            $published = is_object($c) ? (int) ($c->publish ?? 0) : 0;
+            $expected = number_format(intdiv(max(0, $published), 1000) * 1000, 0, ',', '.');
+            $text = preg_replace('/\\s+/u', ' ', wp_strip_all_tags((string) $html));
+            echo "published_parent_products=$published;rounded_down_thousand=$expected\n";
+            foreach (array(
+                'headline' => 'CHAVE VERTICAL ONLINE',
+                'dynamic_count' => $expected,
+                'company_nipc' => 'NIPC: 509514502',
+                'support_heading' => 'Informação sobre encomendas online:',
+                'phone' => '914 580 410',
+                'support_email' => 'encomendas@chavevertical.com',
+            ) as $label => $needle) {
+                echo "email_design[$label]=" . (str_contains((string) $text, $needle) ? 'ok' : 'missing') . "\n";
+            }
+        }
     } catch (Throwable $e) {
         while (ob_get_level() > $level) { ob_end_clean(); }
         echo "preview[$type]=failed\n";
