@@ -18,6 +18,22 @@ jobs:
     runs-on: [self-hosted, Linux, X64, loja-chavevertical]
     timeout-minutes: 30
     steps:
+      - name: Verificar sucesso da primeira fusao antes de qualquer escrita
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          summary=$(curl --fail --silent --show-error --retry 2 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/ricardolemoschavevertical/loja.chavevertical.com/actions/runs/38053903679")
+          status=$(printf '%s' "$summary" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("status",""))')
+          conclusion=$(printf '%s' "$summary" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("conclusion",""))')
+          echo "first-stage-status=$status first-stage-conclusion=$conclusion"
+          test "$status" = completed
+          test "$conclusion" = success
+
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
