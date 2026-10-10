@@ -88,6 +88,33 @@ final class CV_CFAI_Admin {
         $action=sanitize_key(self::val('cv_cfai_admin_action',64));
         $cf_token=self::val('cf_api_token',1024);
         switch($action) {
+            case 'save_worker_connection':
+                $url=CV_Cloudflare_AI_Enricher::validate_worker_url(self::val('worker_url',512));
+                if(is_wp_error($url)){self::announce($url->get_error_message(),true);break;}
+                $new_token=self::val('worker_shared_token',256);
+                $token=$new_token!=='' ? $new_token : CV_CFAI_Secrets::open();
+                // Verify a shared token before keeping it. The test is read-only
+                // and does not enqueue tasks or change WooCommerce products.
+                if($token!==''){
+                    $check=CV_Cloudflare_AI_Enricher::probe_worker($url,$token);
+                    if(is_wp_error($check)){
+                        self::announce($check->get_error_message().' Nenhuma alteração foi guardada.',true);
+                        break;
+                    }
+                }
+                if($new_token!==''){
+                    $saved=CV_CFAI_Secrets::save_worker_token($new_token);
+                    if(is_wp_error($saved)){self::announce($saved->get_error_message(),true);break;}
+                }
+                $settings=get_option(CV_Cloudflare_AI_Enricher::SETTINGS,[]);
+                if(!is_array($settings))$settings=[];
+                $settings['worker_url']=$url;
+                update_option(CV_Cloudflare_AI_Enricher::SETTINGS,$settings,false);
+                self::announce($token!==''
+                    ? 'URL e token configurados no próprio plugin. Ligação autenticada ao Worker confirmada.'
+                    : 'URL guardado no plugin. Para concluir, indica o token do Worker ou utiliza o emparelhamento automático.');
+                break;
+
             case 'pair':
                 if(self::val('confirm_pair',16)!=='yes'){
                     self::announce('Confirma a rotação da credencial de ligação WordPress–Cloudflare.',true);
@@ -269,7 +296,7 @@ final class CV_CFAI_Admin {
         $rows=[
             'WooCommerce'=>'Origem de produtos, categorias e painel de controlo',
             'Worker'=>($health['ok']??false)?'Online — '.($health['version']??''):'Não verificado',
-            'Credencial de ligação'=>$paired?'Emparelhada (cifrada)':'Por emparelhar',
+            'Credencial de ligação'=>CV_CFAI_Secrets::has_saved_worker_token()?'Configurada no painel (cifrada)':($paired?'Configuração legada':'Por emparelhar'),
             'Fornecedor IA'=>esc_html($health['provider']??'Workers AI (padrão)'),
             'Processamento IA'=>!empty($health['processing_enabled'])?'Ligado':'Desligado (seguro)',
             'Aplicação automática'=>!empty($health['product_apply_enabled'])?'Ativa no Worker (WordPress mantém bloqueio)':'Bloqueada',
@@ -400,18 +427,34 @@ final class CV_CFAI_Admin {
     }
 
     private static function cloudflare($worker,$paired) {
+        $in_plugin=CV_CFAI_Secrets::has_saved_worker_token();
         echo '<h2>Ligação segura à Cloudflare</h2>';
-        echo '<p><strong>Worker:</strong> <code>'.esc_html($worker?:'Não definido').'</code></p>';
-        echo '<p><strong>Estado do segredo partilhado:</strong> '.($paired?'Configurado (cifrado no WordPress)':'Por configurar').'</p>';
+        echo '<p>Configura o Worker diretamente neste painel. Não é necessário editar <code>wp-config.php</code>. O token de ligação fica cifrado na base de dados do WordPress e nunca é mostrado novamente.</p>';
+        echo '<p><strong>Token:</strong> '.($in_plugin?'Guardado no plugin (cifrado)':($paired?'Disponível através de configuração legada':'Não configurado')).'</p>';
         echo '<p><strong>Conta Cloudflare:</strong> <code>'.esc_html(CV_CFAI_Secrets::ACCOUNT).'</code> | <strong>Script:</strong> <code>'.esc_html(CV_CFAI_Secrets::WORKER).'</code></p>';
-        echo '<p>O token Cloudflare que introduzires abaixo é usado apenas para sincronizar segredos. Não fica na base de dados nem é colocado no GitHub.</p>';
+
+        self::opening('save_worker_connection','cloudflare');
+        echo '<table class="form-table"><tbody>';
+        echo '<tr><th><label for="cv_cfai_worker_url">URL do Worker</label></th><td>';
+        echo '<input id="cv_cfai_worker_url" name="worker_url" type="url" class="regular-text code" required value="'.esc_attr($worker?:CV_Cloudflare_AI_Enricher::DEFAULT_WORKER_URL).'">';
+        self::help('Worker oficial: https://cv-ai-enricher.chavevertical.workers.dev');
+        echo '</td></tr>';
+        echo '<tr><th><label for="cv_cfai_worker_token">Token de ligação ao Worker</label></th><td>';
+        echo '<input id="cv_cfai_worker_token" name="worker_shared_token" type="password" class="regular-text" autocomplete="new-password" spellcheck="false" maxlength="256" placeholder="'.esc_attr($paired?'Deixar vazio para manter o token atual':'Colar token partilhado do Worker').'">';
+        self::help('Este é o segredo CV_AI_TOKEN configurado no Worker, não o API Token da conta Cloudflare. Se o preencheres, a ligação é testada antes de guardar. Deixa em branco para manter o token existente.');
+        echo '</td></tr>';
+        echo '</tbody></table>';
+        self::end('Guardar e testar ligação');
+
+        echo '<hr><h2>Alternativa: gerar e emparelhar automaticamente</h2>';
+        echo '<p>Se não conheces o token partilhado, podes gerar outro e sincronizá-lo com a Cloudflare neste painel. Esta operação substitui o segredo do Worker: confirma que nenhuma outra integração depende do token anterior.</p>';
         self::opening('pair','cloudflare');
         self::cf_input();
         echo '<p><label><input type="checkbox" value="yes" name="confirm_pair" required> Confirmo a criação/rotação da credencial de ligação WordPress–Cloudflare.</label></p>';
-        self::end($paired?'Rodar e emparelhar novo segredo':'Emparelhar WordPress com Worker');
+        self::end($paired?'Gerar e emparelhar um novo token':'Gerar e emparelhar token');
         echo '<hr>';
         self::opening('test_link','cloudflare');
-        self::end('Testar autenticação e listar tarefas','secondary');
-        echo '<p>Para criar um API Token Cloudflare, concede apenas as permissões necessárias sobre o Worker. Nunca uses a chave global da conta.</p>';
+        self::end('Testar a ligação atual','secondary');
+        echo '<p>O API Token Cloudflare da operação de emparelhamento é utilizado apenas durante esse pedido, não é guardado no WordPress e nunca deve ser colocado no GitHub.</p>';
     }
 }
