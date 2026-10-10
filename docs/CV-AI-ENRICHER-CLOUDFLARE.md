@@ -30,3 +30,20 @@ A fonte de verdade das categorias é a **taxonomia product_cat atual** do WooCom
 Este núcleo já está no `main` pelo PR #7 e passa pelo deploy de plugins internos do repositório. Os plugins **CV AI Enricher** e **CV MCP Bridge** da versão 0.2.0 usam a classe central `CV_Core_Catalog_Rules`, mas estão separados do deploy automático e ainda necessitam de configuração/instalação. O antigo plugin **Gemini Enricher 4.10.2** mantém o seu mecanismo de categorias até à migração; a instalação do Core por si só não altera esse plugin nem modifica produtos.
 
 Ao criar propostas com o Worker, a versão da taxonomia aplicada a cada produto é assinada e validada novamente no WordPress antes da escrita. O Worker nunca cria nem atribui categorias fora da árvore.
+
+
+## Estado real da instalação — 10/10/2026
+
+A instalação em produção é **passiva / sem ativação**. Verificações atuais:
+- Plugins novos `cv-cloudflare-ai-enricher` **v0.3.0** e `cv-mcp-bridge` **v0.3.0** adicionados ao repositório; deploy separado em `.github/workflows/cv-ai-mcp-install-inactive.yml` para os copiar para `wp-content/plugins`, mantendo `status=inactive`.
+- Cloudflare Worker `cv-ai-enricher` **v0.3.0** publicado em `https://cv-ai-enricher.chavevertical.workers.dev` com Workers AI, D1 `cv-ai-enricher-db` (jurisdição EU), Queue `cv-ai-enricher-jobs` e DLQ `cv-ai-enricher-dlq`.
+- Worker tem token secreto próprio em **Cloudflare Secrets**; não está gravado no GitHub. A mesma credencial **ainda não foi emparelhada com o WordPress**.
+- `ENABLE_AI_JOBS=false`, `ENABLE_PRODUCT_APPLY=false` na Cloudflare; `CV_CFAI_ALLOW_PRODUCT_APPLY` e `CV_MCP_BRIDGE_ALLOW_WRITES` não definidos no WordPress: as escritas continuam bloqueadas por múltiplas camadas.
+- `/health` responde 200 após configuração; sem token, `GET /v1/lists` responde 401. Os endpoints dos novos plugins WordPress respondem 404 enquanto estes estão inativos (esperado).
+- As categorias são sempre validadas pela classe `CV_Core_Catalog_Rules` na taxonomia `product_cat`, nunca por JSON estático.
+- O MCP legado **não foi desativado nem substituído**.
+- Após a validação do deploy, guardar no WP apenas `cv_cfai_settings.worker_url`, sem guardar token na BD. O token deverá ser emparelhado por canal seguro (segredo de configuração, nunca em GitHub) durante a futura ativação controlada.
+
+**Atenção:** o conjunto de ferramentas do MCP novo v0.3.0 é deliberadamente limitado nesta instalação inicial e não substitui integralmente a API MCP antiga. A normalização e aprovação de produtos não foi testada de ponta a ponta porque os novos plugins WordPress permanecem desativados por pedido explícito.
+
+Os ficheiros antigos v0.2.0 distribuídos anteriormente por ZIP são uma versão preliminar; a versão instalada passivamente no repositório é a v0.3.0 com mecanismos adicionais de falha segura.
