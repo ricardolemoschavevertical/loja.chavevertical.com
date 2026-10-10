@@ -1,0 +1,44 @@
+name: Isolar qual plugin CV causa fatal publico
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/cv-ai-plugin-bisect.yml"]
+permissions:
+  contents: read
+concurrency:
+  group: cv-ai-production-isolation
+  cancel-in-progress: false
+jobs:
+  bisect:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 8
+    steps:
+      - name: Ativar isoladamente e restaurar ambos inativos
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          cleanup() {
+            wp --path="$WP" plugin deactivate cv-cloudflare-ai-enricher cv-mcp-bridge >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          for slug in cv-cloudflare-ai-enricher cv-mcp-bridge; do
+            test "$(wp --path="$WP" plugin get "$slug" --field=status)" = inactive
+          done
+          status() {
+            curl -sS --connect-timeout 8 --max-time 18 -H 'Cache-Control: no-store' \
+              -o /dev/null -w '%{http_code}' \
+              "https://loja.chavevertical.com/?cv_probe=${{ github.run_id }}-$1"
+          }
+          echo "BASE_HTTP=$(status off)"
+          wp --path="$WP" plugin activate cv-cloudflare-ai-enricher >/dev/null
+          echo "ENRICHER_ONLY_HTTP=$(status enricher)"
+          wp --path="$WP" plugin deactivate cv-cloudflare-ai-enricher >/dev/null
+          wp --path="$WP" plugin activate cv-mcp-bridge >/dev/null
+          echo "MCP_ONLY_HTTP=$(status mcp)"
+          wp --path="$WP" plugin deactivate cv-mcp-bridge >/dev/null
+          echo "RECOVERY_HTTP=$(status recovery)"
+          cleanup
+          trap - EXIT
+          echo "FINAL_PLUGINS=inactive"
