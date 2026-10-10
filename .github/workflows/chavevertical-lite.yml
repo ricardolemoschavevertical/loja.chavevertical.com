@@ -24,6 +24,7 @@ on:
       - "ops/test-checkout-blocks-fiscal-unit.php"
       - "ops/move-checkout-fiscal-block.php"
       - "ops/checkout-billing-before-shipping.php"
+      - "ops/ensure-fiscal-before-billing.php"
       - "ops/test-checkout-billing-first.js"
       - "ops/test-woocommerce-email-ptpt.php"
   workflow_dispatch:
@@ -93,6 +94,7 @@ jobs:
           php ops/test-checkout-blocks-fiscal-unit.php
           php -l ops/move-checkout-fiscal-block.php
           php -l ops/checkout-billing-before-shipping.php
+          php -l ops/ensure-fiscal-before-billing.php
           node --check "$THEME/assets/js/checkout-billing-first.js"
           node --check "$THEME/assets/js/checkout-fiscal-radios.js"
           node --check ops/test-checkout-billing-first.js
@@ -200,21 +202,13 @@ jobs:
           set -euo pipefail
           php ops/verify-checkout-customer-type.php
 
-      - name: Position fiscal fields beside billing (guarded one-time)
+      - name: Position mandatory fiscal customer type before billing (guarded)
         if: steps.latest.outputs.should_deploy == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          php ops/move-checkout-fiscal-block.php
-          php ops/move-checkout-fiscal-block.php --apply
-
-      - name: Move billing and fiscal data before delivery (guarded)
-        if: steps.latest.outputs.should_deploy == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          php ops/checkout-billing-before-shipping.php
-          php ops/checkout-billing-before-shipping.php --apply
+          php ops/ensure-fiscal-before-billing.php
+          php ops/ensure-fiscal-before-billing.php --apply
 
       - name: Ensure brands page
         if: steps.latest.outputs.should_deploy == 'true'
