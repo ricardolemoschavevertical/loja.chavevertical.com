@@ -171,6 +171,16 @@ jobs:
               }));
             });
             console.log('fiscal_company_fields='+JSON.stringify(companyFields));
+
+            const companyWrappers=await page.evaluate(()=>Array.from(document.querySelectorAll('#order > *'))
+              .map(el=>({
+                cls:el.className?.toString()?.slice(0,160)??'',
+                tag:el.tagName,
+                input:el.querySelector('input,select')?.id??null,
+                visible:el.getClientRects().length>0
+              })));
+            console.log('FISCAL_COMPANY_WRAPPERS='+JSON.stringify(companyWrappers));
+
             if(!companyFields.some(x=>x.id.includes('-company-name')&&x.visible)
               ||!companyFields.some(x=>x.id.endsWith('-nipc')&&x.visible)){
               throw new Error('Company name and NIPC fields must appear after choosing Empresa');
