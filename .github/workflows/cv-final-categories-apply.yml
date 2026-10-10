@@ -1,7 +1,7 @@
 name: Finalizar alinhamento comercial categorias Woo
 on:
   workflow_run:
-    workflows: ["Ultimos cinco grupos de categorias - plano"]
+    workflows: ["Auditar taxonomia apos realinhamento"]
     types: [completed]
 permissions:
   contents: read
@@ -18,12 +18,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Recuperar plano auditado sem permissões de escrita
+      - name: Recuperar plano auditado anterior (sempre sem escrita)
         uses: actions/download-artifact@v4
         with:
-          name: cv-last-five-category-plan-${{ github.event.workflow_run.id }}
+          name: cv-last-five-category-plan-38056429879
           repository: ricardolemoschavevertical/loja.chavevertical.com
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: 38056429879
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/cv-final-category-reviewed
 
