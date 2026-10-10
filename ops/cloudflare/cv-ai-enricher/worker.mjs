@@ -7,6 +7,7 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_ITEMS=250;
 const FIELDS=['name','description','short_description','meta_description','focus_keyword'];
 const MODEL='@cf/meta/llama-3.1-8b-instruct-fast';
+const GATEWAY='cv-ai-enricher';
 const now=()=>new Date().toISOString();
 const isUUID=(x)=>UUID.test(String(x||''));
 const fail=(message,status=400)=>json({ok:false,error:String(message).slice(0,220)},status);
@@ -46,15 +47,53 @@ function activeConfig(env){
   try{
     const parsed=JSON.parse(String(env.CV_AI_CONFIG_JSON||'{}'));
     if(parsed && typeof parsed==='object' && !Array.isArray(parsed))o=parsed;
-  }catch(_e){return {provider:'workers_ai',gemini_model:'gemini-2.5-flash',
-    key_strategy:'auto',jobs_enabled:false};}
+  }catch(_e){o={};}
+  const workersModel=String(o.workers_ai_model||env.AI_MODEL||MODEL);
+  const byokModel=String(o.byok_model||'google/gemini-2.5-flash');
   return {
-    provider:o.provider==='gemini'?'gemini':'workers_ai',
+    provider:['workers_ai','byok','hybrid','gemini'].includes(o.provider)?o.provider:'workers_ai',
+    workers_ai_model:/^@cf\/[a-z0-9._\/-]{4,100}$/i.test(workersModel)?workersModel:MODEL,
+    byok_model:/^(google|mistral|deepseek|openai|anthropic)\/[a-z0-9._-]{3,100}$/i.test(byokModel)
+      ?byokModel:'google/gemini-2.5-flash',
     gemini_model:/^gemini-[a-z0-9.-]{3,60}$/i.test(String(o.gemini_model||''))
       ?String(o.gemini_model):'gemini-2.5-flash',
     key_strategy:['auto','free','paid','primary'].includes(o.key_strategy)?o.key_strategy:'auto',
     jobs_enabled:o.jobs_enabled===true
   };
+}
+function aiGatewayId(env){
+  const id=String(env.AI_GATEWAY_ID||GATEWAY);
+  return /^[a-z0-9_]+(?:-[a-z0-9_]+)*$/.test(id)?id:GATEWAY;
+}
+async function runGatewayModel(env,model,prompt){
+  // The gateway requires BYOK provider credentials; no Unified Billing fallback.
+  // skipCache protects product drafts from an unintended cross-job cache hit.
+  return env.AI.run(model,{
+    messages:[
+      {role:'system',content:'Devolve somente JSON. Nunca inventar dados técnicos.'},
+      {role:'user',content:prompt}
+    ],max_tokens:3800,temperature:0.1
+  },{gateway:{id:aiGatewayId(env),skipCache:true}});
+}
+function mayFallbackToBYOK(error){
+  const message=String(error?.message||error||'');
+  return /(?:3036|3040|429|500|502|503|504|capacity|rate.?limit|quota|neuron|timeout|temporar|unavailable|overloaded)/i.test(message);
+}
+async function generateAI(env,prompt){
+  const cfg=activeConfig(env);
+  if(cfg.provider==='gemini'){
+    return {result:await callGemini(env,prompt),provider:'gemini_direct',model:cfg.gemini_model,gateway:null};
+  }
+  if(cfg.provider==='byok'){
+    return {result:await runGatewayModel(env,cfg.byok_model,prompt),provider:'byok',model:cfg.byok_model,gateway:aiGatewayId(env)};
+  }
+  try{
+    return {result:await runGatewayModel(env,cfg.workers_ai_model,prompt),provider:'workers_ai',model:cfg.workers_ai_model,gateway:aiGatewayId(env)};
+  }catch(error){
+    if(cfg.provider!=='hybrid'||!mayFallbackToBYOK(error))throw error;
+    // BYOK is charged by the third-party provider when a fallback occurs.
+    return {result:await runGatewayModel(env,cfg.byok_model,prompt),provider:'byok_fallback',model:cfg.byok_model,gateway:aiGatewayId(env)};
+  }
 }
 function jobsEnabled(env){
   return enabled(env.ENABLE_AI_JOBS) || activeConfig(env).jobs_enabled;
@@ -158,7 +197,7 @@ async function woo(env,method,path,body){
   return data;
 }
 function proposal(result,source){
-  let s=result?.response??result?.result??result;
+  let s=result?.response??result?.result??result?.choices?.[0]?.message?.content??result?.output?.[0]?.content?.[0]?.text??result;
   if(typeof s==='string'){
     s=s.trim().replace(/^\`\`\`(?:json)?\s*/i,'').replace(/\s*\`\`\`$/,'');
     s=JSON.parse(s);
@@ -265,13 +304,10 @@ async function processMessage(env,message){
       category_paths:src.category_paths,description:clean(src.description,7800),
       short_description:clean(src.short_description,2200)};
     const prompt='Responde APENAS com JSON válido contendo name,description,short_description,meta_description,focus_keyword. PT-PT. Marca MAIÚSCULAS; modelo e especificações apenas se confirmados; descrição 350-600 palavras com Aplicações e Vantagens; breve 8-15 pontos; nunca inventar dados ou alterar preço/SKU/stock/categoria/imagens/estado. Dados:\n'+JSON.stringify(input);
-    const ai=activeConfig(env).provider==='gemini'
-      ? await callGemini(env,prompt)
-      : await env.AI.run(env.AI_MODEL||MODEL,{
-          messages:[{role:'system',content:'Devolve somente JSON. Nunca inventar dados técnicos.'},{role:'user',content:prompt}],
-          max_tokens:3800,temperature:0.1
-        });
-    const result=proposal(ai,src);
+    const executed=await generateAI(env,prompt);
+    const result=proposal(executed.result,src);
+    // Execution metadata is stored with the snapshot, never with product fields.
+    src.ai_execution={provider:executed.provider,model:executed.model,gateway:executed.gateway};
     await env.DB.prepare("UPDATE jobs SET state='review',source_version=?,source_json=?,proposal_json=?,error=NULL,updated_at=datetime('now') WHERE id=?")
       .bind(src.modified_gmt,JSON.stringify(src),JSON.stringify(result),id).run();
     message.ack();
@@ -290,9 +326,14 @@ export default {
       if(p==='/health'&&request.method==='GET') {
         const bindings=!!env.DB&&!!env.JOBS&&!!env.AI;
         const secret=String(env.CV_AI_TOKEN||'').length>=40;
-        return json({ok:bindings&&secret,service:'cv-ai-enricher',version:'0.4.0',
+        const cfg=activeConfig(env);
+        const selectedModel=cfg.provider==='gemini'?cfg.gemini_model:
+          cfg.provider==='byok'?cfg.byok_model:cfg.workers_ai_model;
+        return json({ok:bindings&&secret,service:'cv-ai-enricher',version:'0.5.0',
           bindings_ready:bindings,auth_ready:secret,
-          provider:activeConfig(env).provider,model:activeConfig(env).gemini_model,
+          provider:cfg.provider,model:selectedModel,
+          workers_ai_model:cfg.workers_ai_model,byok_model:cfg.byok_model,
+          ai_gateway_id:aiGatewayId(env),
           gemini_accounts_configured:availableGeminiKeys(env).length,
           processing_enabled:jobsEnabled(env),
           product_apply_enabled:enabled(env.ENABLE_PRODUCT_APPLY)},
