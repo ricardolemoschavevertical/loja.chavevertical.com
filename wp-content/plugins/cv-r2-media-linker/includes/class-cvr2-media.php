@@ -740,13 +740,36 @@ JS;
         return esc_url_raw( $r2 );
     }
 
-    public static function filter_attachment_thumb_url( $url, int $post_id ) {
-        $r2 = self::attachment_r2_url( $post_id );
+    /**
+     * WordPress filters can receive non-numeric placeholder image IDs (for example,
+     * WooCommerce's sample order in the email preview). Never query R2 metadata
+     * or raise a TypeError for these IDs; let WordPress handle them normally.
+     */
+    private static function normalize_attachment_id( $value ): int {
+        if ( is_int( $value ) ) {
+            return $value > 0 ? $value : 0;
+        }
+
+        if ( is_string( $value ) && preg_match( '/\A[0-9]+\z/', $value ) ) {
+            return absint( $value );
+        }
+
+        return 0;
+    }
+
+    public static function filter_attachment_thumb_url( $url, $post_id ) {
+        $attachment_id = self::normalize_attachment_id( $post_id );
+        if ( ! $attachment_id ) {
+            return $url;
+        }
+
+        $r2 = self::attachment_r2_url( $attachment_id );
         return $r2 ?: $url;
     }
 
-    public static function filter_remote_srcset( $sources, $size_array, $image_src, $image_meta, int $attachment_id ) {
-        return self::attachment_r2_url( $attachment_id ) ? false : $sources;
+    public static function filter_remote_srcset( $sources, $size_array, $image_src, $image_meta, $attachment_id ) {
+        $id = self::normalize_attachment_id( $attachment_id );
+        return $id && self::attachment_r2_url( $id ) ? false : $sources;
     }
 
     public static function filter_rest_attachment( $response, WP_Post $attachment, $request ) {
@@ -807,19 +830,28 @@ JS;
         );
     }
 
-    public static function filter_attachment_url( $url, int $post_id ) {
-        $r2 = self::attachment_r2_url( $post_id );
+    public static function filter_attachment_url( $url, $post_id ) {
+        $attachment_id = self::normalize_attachment_id( $post_id );
+        if ( ! $attachment_id ) {
+            return $url;
+        }
+
+        $r2 = self::attachment_r2_url( $attachment_id );
         return $r2 ?: $url;
     }
 
-    public static function filter_image_downsize( $downsize, int $id, $size ) {
-        $r2 = self::attachment_r2_url( $id );
+    public static function filter_image_downsize( $downsize, $id, $size ) {
+        $attachment_id = self::normalize_attachment_id( $id );
+        if ( ! $attachment_id ) {
+            return $downsize;
+        }
 
+        $r2 = self::attachment_r2_url( $attachment_id );
         if ( ! $r2 ) {
             return $downsize;
         }
 
-        $meta   = wp_get_attachment_metadata( $id );
+        $meta   = wp_get_attachment_metadata( $attachment_id );
         $width  = is_array( $meta ) ? absint( $meta['width'] ?? 750 ) : 750;
         $height = is_array( $meta ) ? absint( $meta['height'] ?? 750 ) : 750;
 
