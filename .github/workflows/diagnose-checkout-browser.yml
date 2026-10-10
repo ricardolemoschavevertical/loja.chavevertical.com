@@ -1,0 +1,111 @@
+name: Diagnose real checkout browser
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/diagnose-checkout-browser.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - name: Install isolated headless Chromium (diagnostic only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/cvl-playwright" --no-audit --no-fund playwright@1.56.1
+          "$RUNNER_TEMP/cvl-playwright/node_modules/.bin/playwright" install chromium
+
+      - name: Test guest checkout with a temporary cart (no purchase)
+        shell: bash
+        run: |
+          export NODE_PATH="$RUNNER_TEMP/cvl-playwright/node_modules"
+          node <<'NODE'
+          const { chromium } = require('playwright');
+
+          async function main() {
+            const browser = await chromium.launch({headless:true});
+            const context = await browser.newContext({locale:'pt-PT',timezoneId:'Europe/Lisbon'});
+            const page = await context.newPage();
+            const errors = [];
+            page.on('pageerror', e=>errors.push(String(e).slice(0,250)));
+            page.on('console', msg=>{
+              if(msg.type()==='error')errors.push('console: '+msg.text().slice(0,250));
+            });
+            await page.goto('https://loja.chavevertical.com/?add-to-cart=3069',{waitUntil:'domcontentloaded',timeout:45000});
+            const checkoutResponse = await page.goto('https://loja.chavevertical.com/checkout/',{waitUntil:'domcontentloaded',timeout:45000});
+            console.log('checkout_http='+checkoutResponse.status());
+            console.log('checkout_url='+page.url());
+            if(!page.url().includes('/checkout/')){
+              throw new Error('Visitor cart not persisted; checkout redirected '+page.url());
+            }
+            await page.waitForTimeout(3500);
+            const before=await page.evaluate(()=>{
+              const data=window.wp&&window.wp.data;
+              const cart=data&&data.select('wc/store/cart');
+              const checkout=data&&data.select('wc/store/checkout');
+              const customer=cart&&cart.getCustomerData&&cart.getCustomerData();
+              return {
+                script:!!document.getElementById('cvl-checkout-postcode-locality-js'),
+                config:!!window.CVLPostcodeLocality,
+                block:!!document.querySelector('.wc-block-checkout'),
+                cartStore:!!cart,
+                getCustomerData:typeof(cart&&cart.getCustomerData),
+                setShippingAddress:typeof(data&&data.dispatch('wc/store/cart')?.setShippingAddress),
+                items:cart?.getCartData?.()?.itemsCount??null,
+                needsShipping:cart?.getNeedsShipping?.()??null,
+                sameAddress:checkout?.getUseShippingAsBilling?.()??null,
+                postcodeField:!!document.querySelector('#shipping-postcode'),
+                billingPostcodeField:!!document.querySelector('#billing-postcode'),
+                shippingCountry:customer?.shippingAddress?.country??null,
+                billingCountry:customer?.billingAddress?.country??null,
+                shippingCityPresent:!!customer?.shippingAddress?.city,
+              };
+            });
+            console.log('checkout_inspection='+JSON.stringify(before));
+
+            if(!before.script||!before.cartStore||!before.config){
+              throw new Error('Required checkout script/store/config missing');
+            }
+
+            // Only touch this temporary visitor's cart store. No order submits.
+            const section=before.needsShipping===false?'billing':'shipping';
+            const setAddress=await page.evaluate(section=>{
+              const store=window.wp.data;
+              const customer=store.select('wc/store/cart').getCustomerData();
+              const name=section+'Address';
+              const address=Object.assign({},customer[name],{country:'PT',postcode:'1000-098',city:''});
+              const action=section==='billing'?'setBillingAddress':'setShippingAddress';
+              store.dispatch('wc/store/cart')[action](address);
+              return action;
+            },section);
+            console.log('set_postcode_action='+setAddress);
+            await page.waitForTimeout(5500);
+            const after=await page.evaluate(section=>{
+              const customer=window.wp?.data?.select('wc/store/cart')?.getCustomerData?.();
+              const address=customer?.[section+'Address'];
+              return {
+                postcode:address?.postcode??null,
+                city:address?.city??null,
+                inputCity:document.getElementById(section+'-city')?.value??null,
+                inputPostcode:document.getElementById(section+'-postcode')?.value??null,
+              };
+            },section);
+            console.log('after_autofill='+JSON.stringify(after));
+            console.log('page_errors='+JSON.stringify(errors.slice(0,12)));
+
+            await context.close();
+            await browser.close();
+            if(after.city!=='Lisboa'){
+              throw new Error('Auto-fill did not set city to Lisboa in Blocks store');
+            }
+            console.log('REAL_BROWSER_POSTCODE_AUTOFILL=PASS');
+          }
+          main().catch(err=>{console.error('BROWSER_CHECKOUT_FAIL='+String(err));process.exitCode=1;});
+          NODE
