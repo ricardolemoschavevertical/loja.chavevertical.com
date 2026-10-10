@@ -90,7 +90,7 @@ check( cvl_postcode_locality_normalize( '6160-15A' ) === '', 'Invalid PT postcod
 check( cvl_postcode_locality_normalize( '75001' ) === '', 'French postcode never treated as PT' );
 check( cvl_postcode_locality_clean_name( '<script>evil</script> Coimbra' ) === 'evil Coimbra', 'Locality name sanitized' );
 check( cvl_postcode_locality_clean_name( '---' ) === '', 'Undisclosed locality rejected' );
-check( cvl_postcode_locality_clean_name( 'Não disponível' ) === 'Não disponível', 'Text sanitizer does not invent locality' );
+check( cvl_postcode_locality_clean_name( 'Não disponível' ) === '', 'Unavailable locality text is not offered as a city' );
 
 // Responses always contain only a locality string, not addresses/customer data.
 $body = json_encode( array(
