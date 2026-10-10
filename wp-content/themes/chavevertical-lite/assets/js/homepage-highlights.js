@@ -1,6 +1,37 @@
 (function () {
   'use strict';
 
+  // No telemovel, o destaque lateral integra o mesmo grupo dos quatro destaques,
+  // imediatamente a seguir as promocoes. Em tablet/desktop volta ao hero original.
+  var sideHighlight = document.querySelector('.cvl-ref-hero-grid > .cvl-ref-hero-side');
+  var highlightGrid = document.querySelector('.cvl-homepage-highlights-section .cvl-homepage-highlights');
+  if (sideHighlight && highlightGrid && window.matchMedia) {
+    var sideOrigin = document.createComment('cvl-side-highlight-original-position');
+    sideHighlight.parentNode.insertBefore(sideOrigin, sideHighlight);
+
+    var mobileQuery = window.matchMedia('(max-width: 767.98px)');
+    var syncMobileHighlights = function () {
+      if (mobileQuery.matches) {
+        if (sideHighlight.parentNode !== highlightGrid) {
+          highlightGrid.insertBefore(sideHighlight, highlightGrid.firstChild);
+        }
+        sideHighlight.classList.add('cvl-mobile-highlight-side');
+      } else {
+        if (sideOrigin.parentNode && sideHighlight.parentNode !== sideOrigin.parentNode) {
+          sideOrigin.parentNode.insertBefore(sideHighlight, sideOrigin.nextSibling);
+        }
+        sideHighlight.classList.remove('cvl-mobile-highlight-side');
+      }
+    };
+
+    syncMobileHighlights();
+    if (mobileQuery.addEventListener) {
+      mobileQuery.addEventListener('change', syncMobileHighlights);
+    } else if (mobileQuery.addListener) {
+      mobileQuery.addListener(syncMobileHighlights);
+    }
+  }
+
   var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   document.querySelectorAll('[data-cvl-highlight-rotation]').forEach(function (media) {
