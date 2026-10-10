@@ -1,0 +1,40 @@
+name: Diagnose CV AI and MCP installed plugin state
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cv-ai-mcp-current-state.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Confirm installed versions and runtime without revealing credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          echo "PHP=$(php -r 'echo PHP_VERSION;')"
+          php -r 'echo "SODIUM=".(extension_loaded("sodium")?"yes":"no")."\n";'
+          for p in cv-cloudflare-ai-enricher cv-mcp-bridge woocommerce-gemini-enricher-completo-js; do
+            if wp --path="$WP" plugin is-installed "$p"; then
+              echo "PLUGIN=$p|VERSION=$(wp --path="$WP" plugin get "$p" --field=version)|STATE=$(wp --path="$WP" plugin get "$p" --field=status)"
+            else
+              echo "PLUGIN=$p|NOT_INSTALLED"
+            fi
+          done
+          wp --path="$WP" eval '
+            echo "Woo=".((class_exists("WooCommerce"))?"yes":"no")."\n";
+            echo "Core=".(class_exists("CV_Core_Catalog_Rules")?"yes":"no")."\n";
+            echo "EnricherLoaded=".(class_exists("CV_Cloudflare_AI_Enricher")?"yes":"no")."\n";
+            echo "McpLoaded=".(class_exists("CV_MCP_Bridge")?"yes":"no")."\n";
+            echo "NewMcpHash=".(get_option("cv_mcp_bridge_token_sha256","")?"set":"not-set")."\n";
+            echo "GeminiSyncStatus=".(count((array)get_option("cv_cfai_gemini_key_labels",[])))."\n";
+          '
