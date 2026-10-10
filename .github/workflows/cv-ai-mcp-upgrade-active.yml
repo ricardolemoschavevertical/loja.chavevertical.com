@@ -3,7 +3,6 @@ on:
   push:
     branches: [main]
     paths:
-      - ".github/workflows/cv-ai-mcp-upgrade-active.yml"
       - "wp-content/plugins/cv-cloudflare-ai-enricher/**"
       - "wp-content/plugins/cv-mcp-bridge/**"
   workflow_dispatch:
@@ -72,12 +71,19 @@ jobs:
             done
           }
           trap rollback ERR
+          # Arquivos de backup: 0600. Ficheiros executados por PHP-FPM:
+          # diretórios 0755 e PHP 0644, nunca o umask 0077 do backup.
+          umask 0022
           # Admin helpers are added first; only then is the active main PHP
           # replaced. No activation/deactivation, no edits to other plugins.
           mkdir -p "$DEST/cv-cloudflare-ai-enricher/includes"
           rsync -r --no-perms --omit-dir-times "$TMP/stage/cv-cloudflare-ai-enricher/includes/" "$DEST/cv-cloudflare-ai-enricher/includes/"
           rsync --no-perms "$TMP/stage/cv-cloudflare-ai-enricher/cv-cloudflare-ai-enricher.php" "$DEST/cv-cloudflare-ai-enricher/cv-cloudflare-ai-enricher.php"
           rsync --no-perms "$TMP/stage/cv-mcp-bridge/cv-mcp-bridge.php" "$DEST/cv-mcp-bridge/cv-mcp-bridge.php"
+          for slug in "${slugs[@]}"; do
+            find "$DEST/$slug" -type d -exec chmod 0755 {} +
+            find "$DEST/$slug" -type f -name '*.php' -exec chmod 0644 {} +
+          done
           for slug in "${slugs[@]}"; do
             test "$(wp --path="$WP" plugin get "$slug" --field=version)" = "0.4.0"
             wp --path="$WP" plugin is-active "$slug"
