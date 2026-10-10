@@ -1,0 +1,45 @@
+name: Ultimos cinco grupos de categorias - plano
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ops/cv-plan-last-five-category-groups.php"
+      - ".github/workflows/cv-last-five-category-plan.yml"
+  workflow_run:
+    workflows: ["Auditar taxonomia apos realinhamento"]
+    types: [completed]
+permissions:
+  contents: read
+jobs:
+  lint:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - run: php -l ops/cv-plan-last-five-category-groups.php
+  plan:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Inventariar duplicados finais com origem backup (leitura)
+        shell: bash
+        env:
+          CV_LAST_CATEGORY_MODE: plan
+          CV_LAST_CATEGORY_OUTPUT_DIR: ${{ runner.temp }}/cv-last-five-plan-${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          php -l ops/cv-plan-last-five-category-groups.php
+          mkdir -p "$CV_LAST_CATEGORY_OUTPUT_DIR"
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval-file ops/cv-plan-last-five-category-groups.php
+          test -s "$CV_LAST_CATEGORY_OUTPUT_DIR/five-groups-plan.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cv-last-five-category-plan-${{ github.run_id }}
+          path: ${{ runner.temp }}/cv-last-five-plan-${{ github.run_id }}/
+          retention-days: 30
+          if-no-files-found: error
