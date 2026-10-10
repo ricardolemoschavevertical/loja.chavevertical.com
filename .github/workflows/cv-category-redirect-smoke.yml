@@ -1,0 +1,38 @@
+name: Verificar redirecionamentos SEO das categorias
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cv-category-redirect-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Confirmar 301 e URLs canonicos
+        shell: bash
+        run: |
+          set -euo pipefail
+          test_redirect() {
+            local before="$1" after="$2" status location canonical
+            echo "OLD=$before EXPECTED=$after"
+            status=$(curl -k -sS --connect-timeout 8 --max-time 35 -o /dev/null -D /tmp/cv-category-head -w '%{http_code}' "https://loja.chavevertical.com$before")
+            location=$(grep -i '^location:' /tmp/cv-category-head | tail -1 | sed -e 's/^[Ll]ocation: //' -e 's/\r$//' || true)
+            canonical=$(curl -k -sS --connect-timeout 8 --max-time 35 -o /dev/null -w '%{http_code}' "https://loja.chavevertical.com$after")
+            echo "STATUS=$status LOCATION=$location NEW_STATUS=$canonical"
+            [[ "$status" == "301" || "$status" == "308" ]]
+            [[ "$location" == "https://loja.chavevertical.com$after" ]]
+            [[ "$canonical" == "200" ]]
+          }
+          test_redirect /categoria-produto/ferramentas-manuais/bigornas/ /categoria-produto/ferramentas-manuais/bigornas-ferramentas-manuais/
+          test_redirect /categoria-produto/ferramentas-pneumaticas/roquetes/ /categoria-produto/ferramentas-pneumaticas/roquetes-ferramentas-pneumaticas/
+          test_redirect /categoria-produto/ambiente/sanitarios-portateis-wc/ /categoria-produto/ambiente/sanitarios-portateis-wc-ambiente/
+          test_redirect /categoria-produto/geradores-de-energia/estacoes-de-energia-geradores/ /categoria-produto/geradores-de-energia/estacoes-de-energia/
+          test_redirect /categoria-produto/maquinas-para-industria-metal/acessorios-maquinas-p-industria-metal/ /categoria-produto/maquinas-para-industria-metal/acessorios/
