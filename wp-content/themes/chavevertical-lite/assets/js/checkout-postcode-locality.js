@@ -1,410 +1,396 @@
 /**
- * Preencher localidade a partir do CP7 português, sem botão.
- * Compatível com WooCommerce Checkout Blocks e checkout clássico.
+ * Chave Vertical — preenchimento automático da localidade pelo CP7.
  *
- * Apenas altera billing_city OU shipping_city, consoante o próprio campo.
- * Uma localidade escrita pelo cliente nunca é substituída pela API.
- * A confirmação de morada e a validação final continuam no WooCommerce.
+ * WooCommerce Blocks: API suportada wp.data, store wc/store/cart.
+ * Checkout clássico: eventos input/change nos campos de faturação/entrega.
+ * Não modifica DOM gerido pelo React e não cria encomendas ou pagamentos.
+ *
+ * Nunca substitui uma localidade escrita pelo cliente. Se não for possível
+ * consultar o serviço, o campo continua totalmente editável.
  */
 (function () {
     'use strict';
 
-    var options = window.CVLPostcodeLocality || {};
+    var config = window.CVLPostcodeLocality || {};
+    var known = Object.create(null);
     var sections = ['billing', 'shipping'];
     var state = {
-        billing: { timer: null, request: 0, code: '', autoValue: '', autoCode: '', attempted: false, attemptsToRestore: 0 },
-        shipping: { timer: null, request: 0, code: '', autoValue: '', autoCode: '', attempted: false, attemptsToRestore: 0 }
+        billing: { postcode: '', request: 0, timer: null, controller: null, autoCity: '', autoPostcode: '' },
+        shipping: { postcode: '', request: 0, timer: null, controller: null, autoCity: '', autoPostcode: '' }
     };
-    var known = Object.create(null);
-    var scheduled = false;
-    var activeControllers = { billing: null, shipping: null };
+    var blockStore = 'wc/store/cart';
+    var checkoutStore = 'wc/store/checkout';
+    var classicInitialized = false;
+    var blocksInitialized = false;
 
-    function field(section, name) {
-        return document.getElementById(section + '-' + name)
-            || document.getElementById(section + '_' + name);
-    }
-
-    function canonicalPostcode(raw) {
-        var digits = String(raw || '').trim().replace(/[\s-]+/g, '');
+    function normalize(value) {
+        var digits = String(value || '').trim().replace(/[\s-]+/g, '');
         if (!/^[0-9]{7}$/.test(digits)) {
             return '';
         }
         return digits.slice(0, 4) + '-' + digits.slice(4);
     }
 
-    function countryIsPortugal(section) {
-        var f = field(section, 'country');
-        if (!f) {
-            return false;
-        }
-        return String(f.value || '').trim().toUpperCase() === 'PT';
-    }
-
-    function isVisible(input) {
-        return !!input
-            && input.getClientRects().length > 0
-            && !input.closest('[hidden], [aria-hidden="true"]');
-    }
-
-    function messageNode(section, postcodeInput) {
-        var id = 'cvl-postcode-locality-' + section;
-        var parent = postcodeInput.closest('.wc-block-components-text-input, .form-row')
-            || postcodeInput.parentElement;
-        if (!parent) {
+    function getBlocksData() {
+        if (!window.wp || !window.wp.data) {
             return null;
         }
 
-        var existing = document.getElementById(id);
-        if (existing && existing.previousElementSibling === parent) {
-            return existing;
-        }
-        if (existing) {
-            existing.remove();
-        }
-
-        var node = document.createElement('span');
-        node.className = 'cvl-postcode-locality-status';
-        node.id = id;
-        node.setAttribute('role', 'status');
-        node.setAttribute('aria-live', 'polite');
-        parent.insertAdjacentElement('afterend', node);
-        return node;
-    }
-
-    function showMessage(section, message, kind) {
-        var postcodeInput = field(section, 'postcode');
-        if (!postcodeInput) {
-            return;
-        }
-
-        var container = messageNode(section, postcodeInput);
-        if (!container) {
-            return;
-        }
-
-        if (container.textContent !== message) {
-            container.textContent = message;
-        }
-        container.className = 'cvl-postcode-locality-status' + (kind ? ' is-' + kind : '');
-        container.hidden = !message;
-    }
-
-    /**
-     * React controla os valores de Blocks: usar o setter nativo permite que
-     * o evento input seja observado pelo React e atualizado no estado real.
-     */
-    function updateTextValue(input, value) {
-        if (input.value === value) {
-            return true;
-        }
-
-        if (input.tagName === 'SELECT') {
-            var match = Array.prototype.some.call(input.options, function (option) {
-                return option.value === value || option.textContent.trim().toUpperCase() === value.toUpperCase();
-            });
-            if (!match) {
-                return false;
+        try {
+            var cart = window.wp.data.select(blockStore);
+            if (!cart || typeof cart.getCustomerData !== 'function') {
+                return null;
             }
-            input.value = value;
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-            return true;
-        }
 
-        if (input.tagName !== 'INPUT' && input.tagName !== 'TEXTAREA') {
-            return false;
-        }
+            var customer = cart.getCustomerData();
+            if (!customer || typeof customer !== 'object') {
+                return null;
+            }
 
-        var prototype = input.tagName === 'TEXTAREA'
-            ? HTMLTextAreaElement.prototype
-            : HTMLInputElement.prototype;
-        var descriptor = Object.getOwnPropertyDescriptor(prototype, 'value');
+            var dispatch = window.wp.data.dispatch(blockStore);
+            if (
+                !dispatch || typeof dispatch.setBillingAddress !== 'function'
+                || typeof dispatch.setShippingAddress !== 'function'
+            ) {
+                return null;
+            }
 
-        if (descriptor && typeof descriptor.set === 'function') {
-            descriptor.set.call(input, value);
-        } else {
-            input.value = value;
-        }
+            var checkout = window.wp.data.select(checkoutStore);
+            var sameAddress = checkout && typeof checkout.getUseShippingAsBilling === 'function'
+                ? checkout.getUseShippingAsBilling() === true
+                : false;
+            var needsShipping = typeof cart.getNeedsShipping === 'function'
+                ? cart.getNeedsShipping() !== false
+                : true;
 
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        // WooCommerce clássico e plugins antigos escutam o evento change.
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-        return true;
-    }
-
-    function applyLocality(section, code, localidade) {
-        var status = state[section];
-        var city = field(section, 'city');
-        if (!isVisible(city) || !countryIsPortugal(section)) {
-            return;
-        }
-
-        var current = String(city.value || '').trim();
-        var wasOurValue = !!status.autoValue && current === status.autoValue;
-        var shouldApply = !current || (wasOurValue && status.autoCode !== code);
-
-        if (current.toLocaleLowerCase('pt-PT') === localidade.toLocaleLowerCase('pt-PT')) {
-            showMessage(section, 'Localidade confirmada: ' + localidade + '.', 'success');
-            return;
-        }
-
-        if (!shouldApply) {
-            showMessage(section, 'Localidade sugerida: ' + localidade + '. Mantivemos a que indicou; confirme se está correta.', 'notice');
-            return;
-        }
-
-        if (updateTextValue(city, localidade)) {
-            status.autoValue = localidade;
-            status.autoCode = code;
-            status.attemptsToRestore++;
-            showMessage(section, 'Localidade preenchida automaticamente: ' + localidade + '.', 'success');
-        } else {
-            showMessage(section, 'Localidade sugerida: ' + localidade + '. Escolha-a no campo Localidade.', 'notice');
+            return {
+                customer: customer,
+                dispatch: dispatch,
+                sameAddress: sameAddress,
+                needsShipping: needsShipping
+            };
+        } catch (_error) {
+            return null;
         }
     }
 
-    function clearPreviousAutofill(section, cityInput) {
-        var info = state[section];
-        if (cityInput && info.autoValue && String(cityInput.value || '').trim() === info.autoValue) {
-            updateTextValue(cityInput, '');
+    function currentAddress(section, context) {
+        return context.customer[section === 'billing' ? 'billingAddress' : 'shippingAddress'];
+    }
+
+    function hasIndependentAddress(section, context) {
+        if (section === 'shipping') {
+            return context.needsShipping;
         }
-        info.autoValue = '';
-        info.autoCode = '';
-        info.attemptsToRestore = 0;
+        // O WooCommerce copia a morada de entrega para faturação.
+        // Se estiver ativa esta opção, não disparar pesquisa dupla.
+        return !context.sameAddress || !context.needsShipping;
     }
 
     function cancel(section) {
-        var status = state[section];
-        status.request += 1;
-        if (status.timer) {
-            window.clearTimeout(status.timer);
-            status.timer = null;
+        var record = state[section];
+        record.request++;
+        if (record.timer) {
+            clearTimeout(record.timer);
+            record.timer = null;
         }
-        if (activeControllers[section]) {
-            activeControllers[section].abort();
-            activeControllers[section] = null;
+        if (record.controller) {
+            record.controller.abort();
+            record.controller = null;
         }
     }
 
-    function lookup(section, code) {
-        if (!options.ajaxUrl || !options.nonce) {
+    function blocksApply(section, code, locality) {
+        var context = getBlocksData();
+        if (!context || !hasIndependentAddress(section, context)) {
             return;
         }
 
-        var status = state[section];
-        var request = ++status.request;
-        var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-        activeControllers[section] = controller;
+        var address = currentAddress(section, context);
+        if (!address || address.country !== 'PT' || normalize(address.postcode) !== code) {
+            return;
+        }
 
-        showMessage(section, 'A procurar a localidade…', 'loading');
+        var record = state[section];
+        var city = String(address.city || '').trim();
+        if (city && city !== record.autoCity) {
+            // A localidade já foi escrita pelo cliente: não substituir.
+            return;
+        }
+        if (city === locality) {
+            return;
+        }
 
-        var params = new URLSearchParams({
+        record.autoCity = locality;
+        record.autoPostcode = code;
+        var updated = Object.assign({}, address, { city: locality });
+        if (section === 'billing') {
+            context.dispatch.setBillingAddress(updated);
+        } else {
+            context.dispatch.setShippingAddress(updated);
+            // Woo Blocks nem sempre propaga ao endereço de faturação
+            // oculto quando ambos são o mesmo. Corrigir sem tocar nos restantes
+            // campos fiscais nem no tipo de cliente.
+            if (context.sameAddress) {
+                var current = context.customer.billingAddress || {};
+                context.dispatch.setBillingAddress(
+                    Object.assign({}, current, { city: locality })
+                );
+            }
+        }
+    }
+
+    function blocksClearOldCity(section, current, record) {
+        if (!record.autoCity || !current || String(current.city || '').trim() !== record.autoCity) {
+            record.autoCity = '';
+            record.autoPostcode = '';
+            return;
+        }
+        var context = getBlocksData();
+        if (!context || !hasIndependentAddress(section, context)) {
+            return;
+        }
+        record.autoCity = '';
+        record.autoPostcode = '';
+
+        var newAddress = Object.assign({}, current, { city: '' });
+        if (section === 'billing') {
+            context.dispatch.setBillingAddress(newAddress);
+        } else {
+            context.dispatch.setShippingAddress(newAddress);
+            if (context.sameAddress) {
+                var bill = context.customer.billingAddress || {};
+                // Apenas apagar o que foi automaticamente preenchido.
+                if (String(bill.city || '').trim() === String(current.city || '').trim()) {
+                    context.dispatch.setBillingAddress(
+                        Object.assign({}, bill, { city: '' })
+                    );
+                }
+            }
+        }
+    }
+
+    function classicField(section, fieldName) {
+        return document.getElementById(section + '_' + fieldName);
+    }
+
+    function classicApply(section, code, locality) {
+        var city = classicField(section, 'city');
+        var postcode = classicField(section, 'postcode');
+        var country = classicField(section, 'country');
+        if (
+            !city || !postcode || !country || country.value !== 'PT'
+            || normalize(postcode.value) !== code
+        ) {
+            return;
+        }
+
+        var record = state[section];
+        var current = String(city.value || '').trim();
+        if (current && current !== record.autoCity) {
+            return;
+        }
+
+        if (current === locality) {
+            return;
+        }
+
+        city.value = locality;
+        record.autoCity = locality;
+        record.autoPostcode = code;
+        city.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function applyResult(section, code, result, isBlocks) {
+        if (!result || result.status !== 'found' || typeof result.localidade !== 'string') {
+            return; // Sem correspondência: o cliente pode preencher manualmente.
+        }
+
+        var city = result.localidade.trim();
+        if (!city || city.length > 180) {
+            return;
+        }
+
+        if (isBlocks) {
+            blocksApply(section, code, city);
+        } else {
+            classicApply(section, code, city);
+        }
+    }
+
+    function lookup(section, code, isBlocks) {
+        if (!config.ajaxUrl || !config.nonce) {
+            return;
+        }
+
+        var record = state[section];
+        var request = ++record.request;
+        var controller = typeof AbortController === 'function' ? new AbortController() : null;
+        record.controller = controller;
+
+        var post = new URLSearchParams({
             action: 'cvl_postcode_locality',
-            nonce: options.nonce,
+            nonce: config.nonce,
             country: 'PT',
             postcode: code
         });
 
-        var requestOptions = {
+        var options = {
             method: 'POST',
             credentials: 'same-origin',
             cache: 'no-store',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-            body: params.toString()
+            body: post.toString()
         };
         if (controller) {
-            requestOptions.signal = controller.signal;
+            options.signal = controller.signal;
         }
 
-        fetch(options.ajaxUrl, requestOptions).then(function (response) {
-            if (!response.ok) {
-                throw new Error('HTTP ' + response.status);
-            }
-            return response.json();
-        }).then(function (payload) {
-            if (
-                status.request !== request
-                || status.code !== code
-                || !countryIsPortugal(section)
-                || canonicalPostcode(field(section, 'postcode') && field(section, 'postcode').value) !== code
-            ) {
-                return;
-            }
+        fetch(config.ajaxUrl, options)
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Locality lookup unavailable');
+                }
+                return response.json();
+            })
+            .then(function (payload) {
+                if (record.request !== request || record.postcode !== code) {
+                    return;
+                }
 
-            var result = payload && payload.success ? payload.data : null;
-            if (!result || typeof result.status !== 'string') {
-                showMessage(section, 'Não foi possível preencher automaticamente. Introduza a localidade manualmente.', 'notice');
-                return;
-            }
-
-            known[code] = result;
-            if (result.status === 'found' && typeof result.localidade === 'string' && result.localidade.trim()) {
-                applyLocality(section, code, result.localidade.trim());
-            } else if (result.status === 'ambiguous') {
-                showMessage(section, 'Este código postal pode corresponder a várias localidades. Preencha a localidade manualmente.', 'notice');
-            } else {
-                showMessage(section, 'Não foi possível identificar a localidade. Pode preenchê-la manualmente.', 'notice');
-            }
-        }).catch(function (error) {
-            if (status.request === request && (!error || error.name !== 'AbortError')) {
-                showMessage(section, 'A pesquisa está indisponível. Pode preencher a localidade manualmente.', 'notice');
-            }
-        }).finally(function () {
-            if (status.request === request) {
-                activeControllers[section] = null;
-            }
-        });
+                var result = payload && payload.success ? payload.data : null;
+                if (result && result.status === 'found') {
+                    known[code] = result;
+                }
+                applyResult(section, code, result, isBlocks);
+            })
+            .catch(function () {
+                // Falha na consulta nunca impede checkout nem lança erro visual.
+            })
+            .finally(function () {
+                if (record.request === request) {
+                    record.controller = null;
+                }
+            });
     }
 
-    function examine(section, delay) {
-        var postcodeField = field(section, 'postcode');
-        var cityField = field(section, 'city');
-        var status = state[section];
-
-        if (!isVisible(postcodeField) || !isVisible(cityField)) {
-            if (status.code) {
-                cancel(section);
-            }
-            status.code = '';
-            status.attempted = false;
-            showMessage(section, '', '');
+    function schedule(section, postcode, isBlocks, cityValue, rawAddress) {
+        var record = state[section];
+        var code = normalize(postcode);
+        if (record.postcode === code) {
             return;
         }
 
-        if (!countryIsPortugal(section)) {
-            if (status.code) {
-                cancel(section);
+        cancel(section);
+        record.postcode = code;
+
+        if (isBlocks) {
+            if (record.autoPostcode && record.autoPostcode !== code) {
+                blocksClearOldCity(section, rawAddress, record);
             }
-            clearPreviousAutofill(section, cityField);
-            status.code = '';
-            status.attempted = false;
-            showMessage(section, '', '');
-            return;
+        } else if (record.autoPostcode && record.autoPostcode !== code) {
+            var city = classicField(section, 'city');
+            if (city && city.value === record.autoCity) {
+                city.value = '';
+                city.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            record.autoCity = '';
+            record.autoPostcode = '';
         }
 
-        var code = canonicalPostcode(postcodeField.value);
         if (!code) {
-            if (status.code) {
-                cancel(section);
-            }
-            clearPreviousAutofill(section, cityField);
-            status.code = '';
-            status.attempted = false;
-            showMessage(section, '', '');
             return;
         }
 
-        // Uma alteração de CP7 não pode deixar uma localidade anterior
-        // preenchida automaticamente num endereço diferente.
-        if (code !== status.code) {
-            cancel(section);
-            clearPreviousAutofill(section, cityField);
-            status.code = code;
-            status.attempted = false;
-        }
-
-        if (status.attempted) {
-            // React poderá recriar um input, mas não insistir indefinidamente.
-            if (status.autoCode === code && status.autoValue && !cityField.value.trim() && status.attemptsToRestore < 2) {
-                applyLocality(section, code, status.autoValue);
-            }
+        // Uma localidade introduzida manualmente nunca desencadeia substituição.
+        if (String(cityValue || '').trim() && String(cityValue || '').trim() !== record.autoCity) {
             return;
         }
 
-        status.attempted = true;
         if (known[code]) {
-            var result = known[code];
-            if (result.status === 'found' && typeof result.localidade === 'string') {
-                applyLocality(section, code, result.localidade);
-            } else {
-                showMessage(section, 'Localidade não encontrada automaticamente. Preencha-a manualmente.', 'notice');
-            }
+            applyResult(section, code, known[code], isBlocks);
             return;
         }
 
-        status.timer = window.setTimeout(function () {
-            status.timer = null;
-            // Abortadas/alteradas entretanto? Não chamar a API.
-            if (status.code === code && countryIsPortugal(section)) {
-                lookup(section, code);
+        record.timer = setTimeout(function () {
+            record.timer = null;
+            if (record.postcode === code) {
+                lookup(section, code, isBlocks);
             }
-        }, delay);
+        }, 350);
     }
 
-    function inspectAll() {
-        scheduled = false;
+    function checkBlocks() {
+        var context = getBlocksData();
+        if (!context) {
+            return;
+        }
+
         sections.forEach(function (section) {
-            examine(section, 350);
+            if (!hasIndependentAddress(section, context)) {
+                cancel(section);
+                state[section].postcode = '';
+                return;
+            }
+            var address = currentAddress(section, context);
+            if (!address || address.country !== 'PT') {
+                if (state[section].postcode) {
+                    cancel(section);
+                    state[section].postcode = '';
+                }
+                return;
+            }
+            schedule(section, address.postcode, true, address.city, address);
         });
     }
 
-    function scheduleInspect() {
-        if (scheduled) {
-            return;
-        }
-        scheduled = true;
-        window.requestAnimationFrame(inspectAll);
-    }
-
-    function onChange(event) {
-        var input = event.target;
-        if (!input || !input.id) {
+    function classicOnChange(event) {
+        var el = event.target;
+        if (!el || !el.id) {
             return;
         }
 
         sections.forEach(function (section) {
-            // O cliente pode corrigir a localidade sem que a pesquisa a
-            // substitua novamente nem continue a mostrar uma confirmação.
-            if (
-                event.isTrusted
-                && (input.id === section + '-city' || input.id === section + '_city')
-                && state[section].autoValue
-                && String(input.value || '').trim() !== state[section].autoValue
-            ) {
-                state[section].autoValue = '';
-                state[section].autoCode = '';
-                showMessage(section, '', '');
+            if (el.id !== section + '_postcode' && el.id !== section + '_country') {
                 return;
             }
 
-            if (
-                input.id === section + '-postcode'
-                || input.id === section + '_postcode'
-                || input.id === section + '-country'
-                || input.id === section + '_country'
-            ) {
-                examine(section, event.type === 'focusout' ? 0 : 350);
+            var postcode = classicField(section, 'postcode');
+            var country = classicField(section, 'country');
+            var city = classicField(section, 'city');
+            if (!postcode || !country || !city) {
+                return;
             }
+
+            if (country.value !== 'PT') {
+                cancel(section);
+                state[section].postcode = '';
+                return;
+            }
+            schedule(section, postcode.value, false, city.value, null);
         });
     }
-
-    document.addEventListener('input', onChange, true);
-    document.addEventListener('change', onChange, true);
-    document.addEventListener('focusout', onChange, true);
 
     function init() {
-        scheduleInspect();
-        if (!document.body || !('MutationObserver' in window)) {
-            return;
-        }
-        var observer = new MutationObserver(function (mutations) {
-            // Ignorar alterações de texto: só os campos React criados/removidos.
-            var interesting = mutations.some(function (mutation) {
-                if (mutation.type !== 'childList') {
-                    return false;
-                }
-                return Array.prototype.some.call(mutation.addedNodes, function (node) {
-                    return node.nodeType === 1
-                        && (node.matches && (
-                            node.matches('input, select, .wc-block-checkout, .wc-block-components-address-form, form.checkout')
-                            || node.querySelector('input[id$="-postcode"],input[id$="_postcode"]')
-                        ));
-                });
-            });
-            if (interesting) {
-                scheduleInspect();
+        if (!blocksInitialized && document.querySelector('.wc-block-checkout, .wp-block-woocommerce-checkout')) {
+            if (window.wp && window.wp.data && typeof window.wp.data.subscribe === 'function') {
+                blocksInitialized = true;
+                window.wp.data.subscribe(checkBlocks, blockStore);
+                checkBlocks();
             }
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
+        }
+
+        if (!classicInitialized && document.querySelector('form.checkout.woocommerce-checkout')) {
+            classicInitialized = true;
+            document.addEventListener('input', classicOnChange, true);
+            document.addEventListener('change', classicOnChange, true);
+            sections.forEach(function (section) {
+                var postcode = classicField(section, 'postcode');
+                if (postcode) {
+                    classicOnChange({ target: postcode });
+                }
+            });
+        }
     }
 
     if (document.readyState === 'loading') {
