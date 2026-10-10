@@ -1,0 +1,112 @@
+name: Consolidar categorias duplicadas conforme backup
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/cv-category-merge-apply.yml"]
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: cv-category-production-merge
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: cv-full-category-audit-38053548266
+          repository: ricardolemoschavevertical/loja.chavevertical.com
+          run-id: 38053548266
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/cv-original-category-snapshot
+
+      - name: Verificar sintaxe e repetir preflight SEM escrita
+        shell: bash
+        env:
+          CV_CATEGORY_MERGE_MODE: plan
+          CV_CATEGORY_MERGE_SNAPSHOT: ${{ runner.temp }}/cv-original-category-snapshot/cv-category-full-inventory.json
+          CV_CATEGORY_MERGE_OUTPUT_DIR: ${{ runner.temp }}/cv-category-merge-${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          umask 0077
+          php -l ops/cv-merge-backup-duplicates.php
+          mkdir -p "$CV_CATEGORY_MERGE_OUTPUT_DIR"
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval-file ops/cv-merge-backup-duplicates.php
+          test -s "$CV_CATEGORY_MERGE_OUTPUT_DIR/preflight-plan.json"
+          CV_CATEGORY_PLAN="$CV_CATEGORY_MERGE_OUTPUT_DIR/preflight-plan.json" python3 - <<'PY'
+          import json,os
+          d=json.load(open(os.environ['CV_CATEGORY_PLAN']))
+          assert d['groups']==34 and d['duplicates_to_merge']==141
+          assert d['expected_after']==926
+          assert d['product_assignments_to_move']==420
+          assert d['child_categories_to_move']==124
+          print('PRE-FLIGHT OK: 34 grupos, 141 categorias excedentes')
+          PY
+
+      - name: Backup SQL das tabelas de taxonomia ANTES de alterar
+        shell: bash
+        env:
+          CV_CATEGORY_MERGE_OUTPUT_DIR: ${{ runner.temp }}/cv-category-merge-${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          umask 0077
+          ROOT=/home/chavevertical-loja/htdocs/loja.chavevertical.com
+          prefix=$(wp --path="$ROOT" db prefix)
+          wp --path="$ROOT" db export "$CV_CATEGORY_MERGE_OUTPUT_DIR/categorias-tabelas-antes.sql" --tables="${prefix}terms,${prefix}term_taxonomy,${prefix}term_relationships,${prefix}termmeta" --single-transaction
+          test -s "$CV_CATEGORY_MERGE_OUTPUT_DIR/categorias-tabelas-antes.sql"
+          test "$(stat -c '%s' "$CV_CATEGORY_MERGE_OUTPUT_DIR/categorias-tabelas-antes.sql")" -gt 10000
+          echo "SQL taxonomy backup verificado"
+
+      - name: Consolidar duplicados verificados e preservar produtos
+        shell: bash
+        env:
+          CV_CATEGORY_MERGE_MODE: apply
+          CV_CATEGORY_MERGE_APPROVAL: MERGE_BACKUP_IDENTICAL_CATEGORY_PATHS
+          CV_CATEGORY_MERGE_SNAPSHOT: ${{ runner.temp }}/cv-original-category-snapshot/cv-category-full-inventory.json
+          CV_CATEGORY_MERGE_OUTPUT_DIR: ${{ runner.temp }}/cv-category-merge-${{ github.run_id }}
+          CV_CATEGORY_MERGE_SQL_BACKUP: ${{ runner.temp }}/cv-category-merge-${{ github.run_id }}/categorias-tabelas-antes.sql
+        run: |
+          set -euo pipefail
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval-file ops/cv-merge-backup-duplicates.php
+          test -s "$CV_CATEGORY_MERGE_OUTPUT_DIR/resultado-final.json"
+          CV_FINAL="$CV_CATEGORY_MERGE_OUTPUT_DIR/resultado-final.json" python3 - <<'PY'
+          import json,os
+          d=json.load(open(os.environ['CV_FINAL']))
+          assert d['status']=='success' and d['before']==1067 and d['after']==926
+          assert d['deleted']==141 and d['groups']==34
+          print('Merged groups',d['groups'],'deleted duplicates',d['deleted'],'moved products',d['products_reassigned'])
+          PY
+
+      - name: Confirmar a taxonomia final e redirecionamentos 301
+        shell: bash
+        run: |
+          set -euo pipefail
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval '
+            $terms=get_terms(["taxonomy"=>"product_cat","hide_empty"=>false,"fields"=>"ids"]);
+            if (is_wp_error($terms) || count($terms)!==926) {
+              fwrite(STDERR,"Contagem final divergente\n");exit(1);
+            }
+            $redirects=get_option("cv_core_category_slug_redirects",[]);
+            if (!is_array($redirects) || count($redirects)<141) {
+              fwrite(STDERR,"Redirecionamentos insuficientes\n");exit(2);
+            }
+            echo "woo_live_categories=".count($terms).";redirects=".count($redirects)."\n";
+          '
+
+      - name: Preservar auditoria, SQL e journal para reversao
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cv-category-merge-auditoria-${{ github.run_id }}
+          path: ${{ runner.temp }}/cv-category-merge-${{ github.run_id }}/
+          retention-days: 30
+          if-no-files-found: warn
