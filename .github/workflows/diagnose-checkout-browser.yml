@@ -159,6 +159,22 @@ jobs:
             console.log('FISCAL_MARKUP='+JSON.stringify(fiscalMarkup));
 
 
+
+            const radioRuntime=await page.evaluate(()=>{
+              const id='cvl-checkout-fiscal-radios-js';
+              const root=document.getElementById('order');
+              const native=document.getElementById('order-cvl-fiscal-customer-type');
+              return {
+                jsTag:!!document.getElementById(id),
+                jsTags:Array.from(document.scripts).filter(x=>x.src?.includes('checkout-fiscal-radios')).map(x=>x.src),
+                group:!!document.getElementById('cvl-fiscal-customer-radio-group'),
+                rootClass:root?.className??null,
+                nativeWrapperClass:native?.closest('.wc-block-components-select-input')?.className??null,
+                nativeParentId:native?.closest('.wc-block-components-select-input')?.parentElement?.id??null,
+                headCSS:!!Array.from(document.querySelectorAll('link[rel="stylesheet"]')).find(x=>x.href.includes('checkout.css'))
+              };
+            });
+            console.log('FISCAL_RADIO_RUNTIME='+JSON.stringify(radioRuntime));
             const typeField = page.locator('select[id*="cvl-fiscal-customer-type"]');
             const choiceGroup = page.locator('#cvl-fiscal-customer-radio-group');
             const empresaRadio = page.locator('#cvl-fiscal-customer-radio-group input[value="empresa"]');
