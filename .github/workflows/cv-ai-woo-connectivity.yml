@@ -1,0 +1,67 @@
+name: Pair inactive Woo installer with CV AI Worker URL
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/cv-ai-woo-connectivity.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  connect-readonly:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 6
+    steps:
+      - name: Check HTTP reachability from inside WooCommerce
+        shell: bash
+        run: |
+          set -euo pipefail
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval '
+            $url="https://cv-ai-enricher.chavevertical.workers.dev";
+            foreach (["cv-cloudflare-ai-enricher","cv-mcp-bridge"] as $slug) {
+              if (!file_exists(WP_PLUGIN_DIR."/".$slug."/".$slug.".php") &&
+                  !file_exists(WP_PLUGIN_DIR."/".$slug."/cv-cloudflare-ai-enricher.php")) {
+                fwrite(STDERR,"Missing plugin files: ".$slug."\n");exit(1);
+              }
+            }
+            if(class_exists("CV_Cloudflare_AI_Enricher") || class_exists("CV_MCP_Bridge")){
+              fwrite(STDERR,"A new plugin is active unexpectedly.\n");exit(2);
+            }
+            $res=wp_remote_get($url."/health",[
+              "timeout"=>25,"redirection"=>0,
+              "headers"=>["Accept"=>"application/json"],
+            ]);
+            if (is_wp_error($res)) {fwrite(STDERR,"WordPress HTTP failed: ".$res->get_error_message()."\n");exit(3);}
+            $status=wp_remote_retrieve_response_code($res);
+            $data=json_decode(wp_remote_retrieve_body($res),true);
+            if ($status!==200 || !is_array($data) || empty($data["ok"]) || !empty($data["processing_enabled"]) || !empty($data["product_apply_enabled"])){
+              fwrite(STDERR,"Cloudflare health invalid: HTTP ".$status."\n");exit(4);
+            }
+            $tree=CV_Core_Catalog_Rules::tree("enricher");
+            if(is_wp_error($tree) || !in_array(($tree["total"]??null),[895,896,897],true)){
+              fwrite(STDERR,"Woo live taxonomy mismatch\n");exit(5);
+            }
+            echo "WORDPRESS_TO_WORKER_HEALTH=200; Woo_live_categories=".$tree["total"]."; autoapply=disabled\n";
+          '
+
+      - name: Save public Worker URL for future activation, no token written
+        shell: bash
+        run: |
+          set -euo pipefail
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval '
+            $key="cv_cfai_settings";
+            $current=get_option($key,[]);
+            if(!is_array($current))$current=[];
+            $target="https://cv-ai-enricher.chavevertical.workers.dev";
+            if(!empty($current["worker_url"]) && $current["worker_url"]!==$target){
+              fwrite(STDERR,"Previous Worker URL differs: refusing to overwrite.\n");exit(1);
+            }
+            if(!empty($current["token"])) {
+              fwrite(STDERR,"Token found in DB: must migrate securely, no overwrite.\n");exit(2);
+            }
+            $current["worker_url"]=$target;
+            update_option($key,$current,false);
+            $saved=get_option($key,[]);
+            if(($saved["worker_url"]??"")!==$target)exit(3);
+            echo "INACTIVE_PLUGIN_WORKER_URL_CONFIGURED=YES;SECRET=NOT_SAVED\n";
+          '
