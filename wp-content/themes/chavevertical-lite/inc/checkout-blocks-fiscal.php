@@ -103,6 +103,17 @@ function cvl_blocks_fiscal_fields(): array {
             ),
             'sanitize_callback' => 'cvl_blocks_fiscal_sanitize',
         ),
+        // O envio pode usar a morada de faturação sem pedir novo endereço.
+        // É um campo nativo do Woo Blocks, acessível e independente dos campos
+        // fiscais: o JS apenas sincroniza billing -> shipping quando selecionado.
+        array(
+            'id'       => 'cvl-fiscal/use-billing-for-shipping',
+            'label'    => 'Usar a mesma morada de faturação para entrega',
+            'optionalLabel' => 'Usar a mesma morada de faturação para entrega',
+            'location' => 'order',
+            'type'     => 'checkbox',
+            'required' => false,
+        ),
     );
 }
 
