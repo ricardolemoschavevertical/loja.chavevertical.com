@@ -1,0 +1,28 @@
+name: Ler progresso slugs categorias via REST
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cv-category-slug-live-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ler IDs especificos sem alterar WooCommerce
+        shell: bash
+        run: |
+          set -euo pipefail
+          for id in 100 497 407 2224 44 491 23273 23108; do
+            payload=$(curl --fail --silent --show-error --retry 1 --connect-timeout 10 --max-time 30 "https://loja.chavevertical.com/wp-json/wp/v2/product_cat/$id?_fields=id,name,slug,parent" || true)
+            echo "CATEGORY_ID=$id"
+            echo "$payload" | head -c 550
+            echo
+          done
