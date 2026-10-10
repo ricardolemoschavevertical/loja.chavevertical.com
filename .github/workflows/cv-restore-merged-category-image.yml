@@ -1,5 +1,8 @@
 name: Preservar imagem de categoria apos fusao
 on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/cv-restore-merged-category-image.yml"]
   workflow_run:
     workflows: ["Consolidar categorias duplicadas conforme backup"]
     types: [completed]
@@ -7,7 +10,7 @@ permissions:
   contents: read
 jobs:
   image:
-    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.event.workflow_run.conclusion == 'success'
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && (github.event_name == 'push' || github.event.workflow_run.conclusion == 'success')
     runs-on: [self-hosted, Linux, X64, loja-chavevertical]
     timeout-minutes: 4
     steps:
