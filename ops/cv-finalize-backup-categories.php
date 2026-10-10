@@ -194,8 +194,10 @@ foreach(array_keys($toDelete) as $old) {
         ];
     }
 }
-if(file_put_contents($dir.'/snapshot-before.json',
-   wp_json_encode($snapshot,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE))===false)
+$snapshotPath=$dir.'/snapshot-before.json';
+if(file_put_contents($snapshotPath,
+   wp_json_encode($snapshot,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE))===false
+   || !is_file($snapshotPath) || filesize($snapshotPath)<1000)
     throw new RuntimeException('Falha a preservar estado antes de escrever.');
 $journal=$dir.'/journal.ndjson';
 $log=static function($row)use($journal) {
@@ -291,7 +293,7 @@ try {
         update_term_meta($keep,'cv_merged_category_legacy_snapshots',$archives);
         $altImages=array_values(array_unique(array_map('intval',$altImages)));
         if($altImages)update_term_meta($keep,'cv_merged_category_alternate_images',$altImages);
-        if(get_term_meta($keep,'cv_merged_category_legacy_snapshots',true)!==$archives)
+        if(wp_json_encode(get_term_meta($keep,'cv_merged_category_legacy_snapshots',true))!==wp_json_encode($archives))
             throw new RuntimeException('Falhou preservar metadados originais do grupo '.$keep);
     }
     if(count($removed)!==6)throw new RuntimeException('Remoções incompletas');
