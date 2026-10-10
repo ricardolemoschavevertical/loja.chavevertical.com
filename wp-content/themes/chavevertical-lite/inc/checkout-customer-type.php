@@ -110,7 +110,7 @@ function cvl_checkout_customer_clean_data( $data ) {
     foreach ( array( 'billing_nif', 'billing_nipc' ) as $key ) {
         $value = sanitize_text_field( (string) ( $data[ $key ] ?? '' ) );
         // Validar PT mesmo se a morada de faturação for estrangeira.
-        if ( 'PT' === $country || '' === $country || preg_match( '/^PT[\s.\-]*[0-9]/i', $value ) ) {
+        if ( 'PT' === $country || '' === $country || preg_match( '/^PT/i', $value ) ) {
             $compact = strtoupper( preg_replace( '/[\s.\-]+/', '', $value ) );
             if ( str_starts_with( $compact, 'PT' ) ) {
                 $compact = substr( $compact, 2 );
@@ -196,7 +196,7 @@ function cvl_checkout_tax_kind_allowed( string $kind, string $customer_type ): b
  * NIF 7 é designado NIF da entidade, nunca falsamente NIPC.
  */
 function cvl_checkout_company_tax_label( string $value, string $country ): string {
-    if ( 'PT' !== strtoupper( $country ) && ! preg_match( '/^PT[\\s.\\-]*[0-9]/i', $value ) ) {
+    if ( 'PT' !== strtoupper( $country ) && ! preg_match( '/^PT/i', $value ) ) {
         return 'N.º fiscal / VAT';
     }
     return 'entidade_at' === cvl_checkout_pt_tax_id_kind( $value )
@@ -247,7 +247,7 @@ function cvl_checkout_customer_validate( $data, $errors ): void {
     $country = strtoupper( trim( (string) ( $data['billing_country'] ?? 'PT' ) ) );
     $is_pt_identifier = 'PT' === $country
         || '' === $country
-        || (bool) preg_match( '/^PT[\\s.\\-]*[0-9]/i', $tax );
+        || (bool) preg_match( '/^PT/i', $tax );
 
     if ( $is_pt_identifier ) {
         $kind = cvl_checkout_pt_tax_id_kind( $tax );
