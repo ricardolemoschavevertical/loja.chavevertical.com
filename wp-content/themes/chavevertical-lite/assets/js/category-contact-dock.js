@@ -107,6 +107,7 @@
 
       const items = Array.from(dock.querySelectorAll('.cv-dock-item'));
       const supportsHover = window.matchMedia('(hover:hover) and (pointer:fine)');
+      const iconOnly = document.body.classList.contains('single-product');
       const closeOthers = (active) => {
         items.forEach((item) => { if (item !== active) item.open = false; });
       };
@@ -155,6 +156,12 @@
         };
 
         summary?.addEventListener('click', (event) => {
+          if (iconOnly) {
+            // Um único clique executa o destino, sem abrir cartões nem texto.
+            event.preventDefault();
+            runPrimary();
+            return;
+          }
           // No primeiro toque deixa o <details> abrir de forma nativa.
           if (!item.open) return;
           // No segundo toque ou após hover, não recolher: ativar a ação.
@@ -170,7 +177,7 @@
         });
 
         item.addEventListener('pointerenter', (event) => {
-          if (!supportsHover.matches || event.pointerType !== 'mouse') return;
+          if (iconOnly || !supportsHover.matches || event.pointerType !== 'mouse') return;
           closeOthers(item);
           item.open = true;
         });
@@ -180,6 +187,10 @@
           }
         });
         item.addEventListener('toggle', () => {
+          if (iconOnly && item.open) {
+            item.open = false;
+            return;
+          }
           if (item.open) closeOthers(item);
           if (summary) {
             summary.setAttribute('aria-label', item.open && actionLabel
