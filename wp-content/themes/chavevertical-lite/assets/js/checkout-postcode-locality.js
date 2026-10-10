@@ -352,6 +352,20 @@
         }
 
         sections.forEach(function (section) {
+            // O cliente pode corrigir a localidade sem que a pesquisa a
+            // substitua novamente nem continue a mostrar uma confirmação.
+            if (
+                event.isTrusted
+                && (input.id === section + '-city' || input.id === section + '_city')
+                && state[section].autoValue
+                && String(input.value || '').trim() !== state[section].autoValue
+            ) {
+                state[section].autoValue = '';
+                state[section].autoCode = '';
+                showMessage(section, '', '');
+                return;
+            }
+
             if (
                 input.id === section + '-postcode'
                 || input.id === section + '_postcode'
