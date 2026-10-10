@@ -1,0 +1,34 @@
+name: Reconciliacao publica das categorias backup e loja
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cv-public-category-reconcile.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Comparar categorias diretamente nas APIs REST publicas (sem escrita)
+        env:
+          CV_PUBLIC_CATEGORY_AUDIT_OUTPUT_DIR: ${{ runner.temp }}/cv-public-cats-${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile ops/compare-live-category-api.py
+          python3 ops/compare-live-category-api.py > "$RUNNER_TEMP/cv-public-comparison.log"
+          grep 'CV_PUBLIC_CAT_SUMMARY' "$RUNNER_TEMP/cv-public-comparison.log"
+          test -s "$CV_PUBLIC_CATEGORY_AUDIT_OUTPUT_DIR/comparacao-slugs-publica.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cv-public-taxonomy-reconcile-${{ github.run_id }}
+          path: ${{ runner.temp }}/cv-public-cats-${{ github.run_id }}/
+          retention-days: 30
+          if-no-files-found: warn
