@@ -1,7 +1,7 @@
 name: Finalizar alinhamento comercial categorias Woo
 on:
   workflow_run:
-    workflows: ["Ultimos cinco grupos de categorias - plano"]
+    workflows: ["Aplicar reorganizacao de categorias face ao backup"]
     types: [completed]
 permissions:
   contents: read
@@ -11,44 +11,43 @@ concurrency:
   cancel-in-progress: false
 jobs:
   finalize:
-    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && github.event.workflow_run.head_branch == 'main' && (github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'cancelled') && github.event.workflow_run.id == 38056071731
     runs-on: [self-hosted, Linux, X64, loja-chavevertical]
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Recuperar plano auditado anterior (sempre sem escrita)
+      - name: Recuperar prova persistida da fase anterior
         uses: actions/download-artifact@v4
         with:
-          name: cv-last-five-category-plan-${{ github.event.workflow_run.id }}
+          name: cv-misplaced-migracao-${{ github.event.workflow_run.id }}
           repository: ricardolemoschavevertical/loja.chavevertical.com
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ github.token }}
-          path: ${{ runner.temp }}/cv-final-category-reviewed
+          path: ${{ runner.temp }}/cv-stage2-proof
 
-      - name: Validar cinco grupos e conflito circular conhecido
+      - name: Validar resultado completo da reorganização anterior
         shell: bash
         env:
-          CV_REVIEWED_PLAN: ${{ runner.temp }}/cv-final-category-reviewed/five-groups-plan.json
+          CV_STAGE2_RESULT: ${{ runner.temp }}/cv-stage2-proof/resultado-final.json
           CV_FINAL_MERGE_MODE: plan
           CV_FINAL_MERGE_DIR: ${{ runner.temp }}/cv-final-category-${{ github.run_id }}
         run: |
           set -euo pipefail
+          test -s "$CV_STAGE2_RESULT"
           python3 - <<'PY'
           import json,os
-          p=json.load(open(os.environ['CV_REVIEWED_PLAN']))
-          s=p['summary']
-          assert s['backup_total']==894 and s['loja_total']==901
-          assert s['groups']==5 and s['potential_duplicates_to_merge']==6
-          assert s['conflict_count']==1
-          c=s['conflicts'][0]
-          assert c['group']=='ferramentas-pneumaticas>enroladores-de-mangueira-de-ar-comprimido'
-          assert c['id']==[23106]
-          print('Plano preliminar aprovado: cinco grupos, seis duplicados e troca controlada de slugs')
+          d=json.load(open(os.environ['CV_STAGE2_RESULT']))
+          assert d['status']=='success', 'Segundo lote não concluiu'
+          assert d['before']==926 and d['after']==901
+          assert d['merges']==25 and d['reparented']==2
+          assert d['redirects']>=206, 'Redirecionamentos em falta'
+          print('Segundo lote concluído pelo próprio script WordPress:', d['merges'], 'fusões')
           PY
           php -l ops/cv-finalize-backup-categories.php
           mkdir -p "$CV_FINAL_MERGE_DIR"
+          # Modo PLAN é estritamente só de leitura; validar árvore viva/backup agora.
           wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval-file ops/cv-finalize-backup-categories.php
           CV_FINAL_PLAN="$CV_FINAL_MERGE_DIR/plan.json" python3 - <<'PY'
           import os,json
@@ -58,8 +57,25 @@ jobs:
           assert len(p['groups'])==5 and len(p['category_ids_to_delete'])==6
           assert set(p['protected_term_ids'])=={15,2248}
           assert p['total_alternate_images_to_preserve']>=4
-          print('Preflight WooCommerce completo; imagens alternativas protegidas.')
+          print('Preflight final aprovado: cinco grupos, seis duplicados, imagens preservadas.')
           PY
+
+      - name: Confirmar que não há migração concorrente
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ps -eo args= | grep -E 'wp .*eval-file .*cv-realign-backup-misplaced.php' | grep -v grep; then
+            echo "A migração anterior ainda está ativa; nenhuma escrita autorizada"
+            exit 1
+          fi
+          wp --path=/home/chavevertical-loja/htdocs/loja.chavevertical.com eval '
+            $lock=get_option("cv_category_merge_operation_lock",false);
+            if ($lock) {
+              fwrite(STDERR, "Lock de taxonomia ainda presente, nao executar nova fusao.\n");
+              exit(1);
+            }
+            echo "taxonomy-merge-lock=free\n";
+          '
 
       - name: Backup SQL da taxonomia imediatamente antes da operação
         shell: bash
