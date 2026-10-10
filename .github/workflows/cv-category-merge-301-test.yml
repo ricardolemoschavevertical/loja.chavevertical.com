@@ -1,5 +1,8 @@
 name: Confirmar 301 apos consolidacao de categorias
 on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/cv-category-merge-301-test.yml"]
   workflow_run:
     workflows: ["Consolidar categorias duplicadas conforme backup"]
     types: [completed]
@@ -7,7 +10,7 @@ permissions:
   contents: read
 jobs:
   seo:
-    if: github.event.workflow_run.conclusion == 'success' && github.repository == 'ricardolemoschavevertical/loja.chavevertical.com'
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com' && (github.event_name == 'push' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
