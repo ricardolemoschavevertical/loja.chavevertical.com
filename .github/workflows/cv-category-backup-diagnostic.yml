@@ -1,0 +1,36 @@
+name: Diagnostico leitura categorias do backup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cv-category-backup-diagnostic.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostics:
+    if: github.repository == 'ricardolemoschavevertical/loja.chavevertical.com'
+    runs-on: [self-hosted, Linux, X64, loja-chavevertical]
+    timeout-minutes: 6
+    steps:
+      - name: Verificar API publica da copia historica sem alterar dados
+        shell: bash
+        run: |
+          set -euo pipefail
+          for host in backup.chavevertical.com loja.chavevertical.com; do
+            echo "HOST=$host"
+            for path in /wp-json/ /wp-json/wp/v2/product_cat?per_page=1 /wp-json/wc/store/v1/products/categories?per_page=1 /wp-json/wc/v3/products/categories?per_page=1 '/?rest_route=/wp/v2/product_cat&per_page=1' /product_cat-sitemap.xml /product_cat-sitemap1.xml /wp-sitemap-taxonomies-product_cat-1.xml /shop/; do
+              echo "PATH=$path"
+              # Requests limited to public resources; print status and a short content preview only.
+              code=$(curl -L -k -sS --connect-timeout 5 --max-time 14 -o /tmp/cv-cat-diagnostic-response -w '%{http_code} content_type=%{content_type} final_url=%{url_effective}' "https://$host$path" 2>/dev/null || echo 'unreachable')
+              echo "RESULT=$code"
+              if [ -s /tmp/cv-cat-diagnostic-response ]; then
+                head -c 210 /tmp/cv-cat-diagnostic-response | tr '\n' ' ' | tr '\r' ' '
+                echo
+              fi
+              : >/tmp/cv-cat-diagnostic-response
+            done
+          done
