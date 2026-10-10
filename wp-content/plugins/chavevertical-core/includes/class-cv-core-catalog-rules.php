@@ -21,10 +21,10 @@ final class CV_Core_Catalog_Rules {
     }
     /**
      * Preserve SEO links when a category slug (or an ancestor slug) changes.
-     * Only redirect taxonomy 404s, never valid product/category routes.
+     * Exact-match recorded old paths even when WordPress resolves them as HTTP 200 after slug reassignment.
      */
     public static function redirect_old_category_urls() {
-        if (!is_404() || is_admin() || wp_doing_ajax()) return;
+        if (is_admin() || wp_doing_ajax()) return;
         if (function_exists('wp_is_json_request') && wp_is_json_request()) return;
         $uri = isset($_SERVER['REQUEST_URI']) && is_string($_SERVER['REQUEST_URI'])
             ? wp_unslash($_SERVER['REQUEST_URI']) : '';
